@@ -12,3 +12,7 @@ dist/
 
 .env
 .env.*
+
+# Spike run journals can capture command output from an interactive ED
+# login session -- never publish that, even accidentally.
+spikes/runs/

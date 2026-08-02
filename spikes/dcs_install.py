@@ -68,11 +68,14 @@ STEAM_DCS_GAMEID = "umu-223750"
 GE_PROTON_RELEASES_API = (
     "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases/latest"
 )
-# Pin explicitly once a version is known good; "latest" is a starting point only.
-GE_PROTON_TAG = "latest"
 
 DCS_WEB_INSTALLER_URL = "https://www.digitalcombatsimulator.com/en/downloads/world/"
 DCS_UPDATER_HOST = "updates.digitalcombatsimulator.com"
+
+# umu-launcher has no stable on-PATH install story yet (not on this machine,
+# no umu-launcher system package on Fedora at time of writing), so invoke it
+# through `uv tool run` rather than assuming a location on PATH.
+UMU_RUN_CMD = ["uv", "tool", "run", "--from", "umu-launcher", "umu-run"]
 
 
 # --------------------------------------------------------------------------
@@ -205,9 +208,11 @@ def run_cmd(
 
 def pinned_versions(layout: Layout) -> dict[str, str]:
     """Snapshot everything that could explain why a run behaves differently."""
+    ge_proton_dirs = sorted((layout.toolchain_dir / "ge-proton").glob("GE-Proton*"))
     return {
-        "umu_version": _tool_version(["umu-run", "--version"]),
-        "ge_proton_tag": GE_PROTON_TAG,
+        "umu_version": _tool_version([*UMU_RUN_CMD, "--version"]),
+        "ge_proton_version": ge_proton_dirs[-1].name if ge_proton_dirs else "not-installed",
+        "gameid": STEAM_DCS_GAMEID,
         "gpu_driver": _tool_version(
             ["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"]
         ),
@@ -239,32 +244,15 @@ def ensure_toolchain(layout: Layout, journal: RunJournal, *, dry_run: bool) -> N
     if not dry_run:
         layout.toolchain_dir.mkdir(parents=True, exist_ok=True)
 
-    umu_dir = layout.toolchain_dir / "umu"
-    if not (umu_dir / "bin" / "umu-run").exists():
-        print(f"installing umu-launcher into {umu_dir}")
-        if not dry_run:
-            umu_dir.mkdir(parents=True, exist_ok=True)
-            run_cmd(
-                [
-                    "uv",
-                    "tool",
-                    "install",
-                    "--python-preference",
-                    "only-managed",
-                    "--target",
-                    str(umu_dir),
-                    "umu-launcher",
-                ],
-                journal,
-                dry_run=dry_run,
-                check=False,
-            )
-        else:
-            print("  (dry-run) would: uv tool install --target <umu_dir> umu-launcher")
+    print("installing umu-launcher as a uv tool (invoked later via `uv tool run`)")
+    if not dry_run:
+        run_cmd(["uv", "tool", "install", "umu-launcher"], journal, dry_run=dry_run, check=False)
+    else:
+        print("  (dry-run) would: uv tool install umu-launcher")
 
     ge_proton_dir = layout.toolchain_dir / "ge-proton"
     if not any(ge_proton_dir.glob("GE-Proton*")):
-        print(f"fetching GE-Proton ({GE_PROTON_TAG}) into {ge_proton_dir}")
+        print(f"fetching latest GE-Proton into {ge_proton_dir}")
         if not dry_run:
             ge_proton_dir.mkdir(parents=True, exist_ok=True)
             _download_ge_proton(ge_proton_dir)
@@ -282,11 +270,11 @@ def ensure_toolchain(layout: Layout, journal: RunJournal, *, dry_run: bool) -> N
 
 
 def _download_ge_proton(dest_dir: Path) -> None:
-    with urllib.request.urlopen(GE_PROTON_RELEASES_API) as resp:  # noqa: S310
+    with urllib.request.urlopen(GE_PROTON_RELEASES_API) as resp:
         release = json.loads(resp.read())
     asset = next(a for a in release["assets"] if a["name"].endswith(".tar.gz"))
     tarball_path = dest_dir / asset["name"]
-    urllib.request.urlretrieve(asset["browser_download_url"], tarball_path)  # noqa: S310
+    urllib.request.urlretrieve(asset["browser_download_url"], tarball_path)
     with tarfile.open(tarball_path) as tf:
         tf.extractall(dest_dir, filter="data")
     tarball_path.unlink()
@@ -302,13 +290,17 @@ def build_prefix(layout: Layout, journal: RunJournal, *, dry_run: bool) -> dict[
     ge_proton_dirs = sorted((layout.toolchain_dir / "ge-proton").glob("GE-Proton*"))
     proton_path = str(ge_proton_dirs[-1]) if ge_proton_dirs else "GE-Proton"
 
+    # Layer on top of the real environment -- umu-run needs a working
+    # HOME/DISPLAY/XDG_RUNTIME_DIR to do anything, interactive or not.
     env = {
+        **os.environ,
         "WINEPREFIX": str(layout.prefix_dir),
         "GAMEID": STEAM_DCS_GAMEID,
         "PROTONPATH": proton_path,
-        "PATH": f"{layout.toolchain_dir / 'umu' / 'bin'}:{os.environ['PATH']}",
     }
-    run_cmd(["umu-run", ""], journal, dry_run=dry_run, env=env, check=False)
+    # umu-run with an empty target just builds the prefix and exits -- this
+    # is the documented way to create one without launching anything yet.
+    run_cmd([*UMU_RUN_CMD, ""], journal, dry_run=dry_run, env=env, check=False)
     return env
 
 
@@ -318,19 +310,31 @@ def map_game_and_saved_games(layout: Layout, *, dry_run: bool) -> None:
     Both must live outside the disposable prefix: deleting and rebuilding the
     prefix (the repair the whole architecture rests on) must not destroy the
     150 GB install or the ED login / keybinds / dcs.log that live here.
-    Confirm the exact symlink-vs-bind-mount mechanism on the first real run
-    and record it in the run journal -- see issue #2 acceptance criteria.
+
+    game/ is mapped as a wine drive letter (dosdevices/d: -> game/), since
+    that's the mechanism wine/umu expect for an install living outside
+    drive_c. Saved Games is symlinked directly into the user profile, where
+    DCS looks for it by default. Confirm both hold up on the first real run
+    and record any deviation in the run journal -- see issue #2 acceptance
+    criteria.
     """
     users_dir = layout.prefix_dir / "drive_c" / "users" / "steamuser"
-    target = users_dir / "Saved Games"
-    print(f"mapping {layout.saved_games_dir} -> {target}")
+    saved_games_target = users_dir / "Saved Games"
+    game_drive_target = layout.prefix_dir / "dosdevices" / "d:"
+    print(f"mapping {layout.saved_games_dir} -> {saved_games_target}")
+    print(f"mapping {layout.game_dir} -> {game_drive_target}")
     if not dry_run:
         layout.game_dir.mkdir(parents=True, exist_ok=True)
         layout.saved_games_dir.mkdir(parents=True, exist_ok=True)
         users_dir.mkdir(parents=True, exist_ok=True)
-        if target.exists() or target.is_symlink():
-            target.unlink()
-        target.symlink_to(layout.saved_games_dir)
+        if saved_games_target.exists() or saved_games_target.is_symlink():
+            saved_games_target.unlink()
+        saved_games_target.symlink_to(layout.saved_games_dir)
+
+        game_drive_target.parent.mkdir(parents=True, exist_ok=True)
+        if game_drive_target.exists() or game_drive_target.is_symlink():
+            game_drive_target.unlink()
+        game_drive_target.symlink_to(layout.game_dir)
 
 
 def launch_dcs_updater(
@@ -344,7 +348,7 @@ def launch_dcs_updater(
     """
     installer_path = layout.toolchain_dir / "DCS_World_Web.exe"
     print(f"launching {installer_path} for interactive login/module selection")
-    run_cmd(["umu-run", str(installer_path)], journal, dry_run=dry_run, env=env, check=False)
+    run_cmd([*UMU_RUN_CMD, str(installer_path)], journal, dry_run=dry_run, env=env, check=False)
 
 
 def record_human_verdict(journal: RunJournal, *, dry_run: bool) -> None:
@@ -379,14 +383,21 @@ def harness_restore_game_from_gold(layout: Layout, journal: RunJournal, *, dry_r
             f"--cold requested but no gold copy at {layout.gold_dir}; "
             "run a warm install through to completion first, then seed gold/ manually."
         )
-    if layout.game_dir.exists() and not dry_run:
-        shutil.rmtree(layout.game_dir)
+    # Reflink into a staging dir first and swap only on success, so a failed
+    # copy can't leave game/ empty or half-restored.
+    staging_dir = layout.game_dir.with_name(layout.game_dir.name + ".restoring")
     print(f"reflink-restoring {layout.game_dir} from {layout.gold_dir}")
+    if not dry_run and staging_dir.exists():
+        shutil.rmtree(staging_dir)
     run_cmd(
-        ["cp", "--reflink=always", "-a", str(layout.gold_dir), str(layout.game_dir)],
+        ["cp", "--reflink=always", "-a", str(layout.gold_dir), str(staging_dir)],
         journal,
         dry_run=dry_run,
     )
+    if not dry_run:
+        if layout.game_dir.exists():
+            shutil.rmtree(layout.game_dir)
+        staging_dir.rename(layout.game_dir)
 
 
 def harness_ensure_cache_active(layout: Layout, *, dry_run: bool) -> None:
@@ -395,14 +406,20 @@ def harness_ensure_cache_active(layout: Layout, *, dry_run: bool) -> None:
     Asserts a cache hit and fails loudly on a miss -- see module docstring.
     Mechanism (netns + nginx on :80, /etc/hosts pointed at it, no root, no
     MITM cert) is the plan from issue #2; the concrete implementation is one
-    of the empirical unknowns this ticket exists to pin down.
+    of the empirical unknowns this ticket exists to pin down. Until it's
+    wired up, refuse to proceed rather than silently falling back to the
+    real CDN -- a silent fallback looks exactly like success.
     """
-    if not dry_run:
-        layout.http_cache_dir.mkdir(parents=True, exist_ok=True)
-    print(f"TODO(#2): wire up rootless netns + nginx cache at {layout.http_cache_dir}")
-    print("TODO(#2): disable torrent via DCS_updater.exe settings before first launch")
     if dry_run:
-        print("  (dry-run) would: fail loudly if a request reaches the real CDN instead of cache")
+        print(
+            f"  (dry-run) would: wire up rootless netns + nginx cache at "
+            f"{layout.http_cache_dir}, fail loudly on a cache miss"
+        )
+        return
+    raise NotImplementedError(
+        "cache harness not wired up yet (#2) -- pass --skip-harness to hit the real CDN "
+        "(slow, and only representative of the unharnessed run in #14)"
+    )
 
 
 # --------------------------------------------------------------------------
