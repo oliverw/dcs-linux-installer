@@ -80,11 +80,15 @@ GE_PROTON_RELEASES_API = (
 DCS_WEB_INSTALLER_URL = "https://www.digitalcombatsimulator.com/en/downloads/world/"
 DCS_UPDATER_HOST = "updates.digitalcombatsimulator.com"
 
-# umu-launcher has no stable on-PATH install story yet (not on this machine,
-# no umu-launcher system package on Fedora at time of writing), so invoke it
-# through `uv tool run`, which resolves and caches it on demand -- no
-# separate install step needed.
-UMU_RUN_CMD = ("uv", "tool", "run", "--from", "umu-launcher", "umu-run")
+# RUN 0001: umu-launcher is NOT on PyPI (404), so `uv tool run --from
+# umu-launcher` can never work. Upstream ships an official fc44 RPM and a
+# distro-agnostic zipapp. The zipapp wins here: no root, no dnf, works on
+# immutable distros -- which issue #1 explicitly cares about.
+UMU_ZIPAPP_URL = (
+    "https://github.com/Open-Wine-Components/umu-launcher/releases/download/"
+    "{version}/umu-launcher-{version}-zipapp.tar"
+)
+UMU_VERSION = "1.4.4"
 
 
 # --------------------------------------------------------------------------
@@ -125,6 +129,11 @@ class Layout:
         return self.toolchain_dir / "ge-proton"
 
     @property
+    def umu_run(self) -> Path:
+        """The extracted umu zipapp -- a single self-contained executable."""
+        return self.toolchain_dir / "umu" / "umu-run"
+
+    @property
     def http_cache_dir(self) -> Path:
         return self.cache_root / "http"
 
@@ -137,18 +146,19 @@ _GE_PROTON_VERSION_RE = re.compile(r"GE-Proton(\d+)-(\d+)")
 
 
 def _latest_ge_proton_dir(layout: Layout) -> Path | None:
-    """The newest cached GE-Proton build, sorted numerically (not lexically).
+    """The newest cached GE-Proton build for this architecture.
 
-    Lexical sort would rank "GE-Proton9-27" above "GE-Proton10-1" -- wrong,
-    and exactly the kind of drift `pinned_versions` exists to catch.
+    Sorted numerically, not lexically: lexical sort ranks "GE-Proton9-27"
+    above "GE-Proton10-1". Names that don't parse are dropped rather than
+    sorted to zero -- RUN 0001 left a stale "GE-Proton11-3-aarch64" here,
+    and a wrong-arch build must never be selectable.
     """
-
-    def sort_key(path: Path) -> tuple[int, int]:
+    versioned: list[tuple[tuple[int, int], Path]] = []
+    for path in layout.ge_proton_dir.glob("GE-Proton*"):
         match = _GE_PROTON_VERSION_RE.fullmatch(path.name)
-        return (int(match[1]), int(match[2])) if match else (0, 0)
-
-    candidates = sorted(layout.ge_proton_dir.glob("GE-Proton*"), key=sort_key)
-    return candidates[-1] if candidates else None
+        if match:
+            versioned.append(((int(match[1]), int(match[2])), path))
+    return max(versioned)[1] if versioned else None
 
 
 # --------------------------------------------------------------------------
@@ -241,7 +251,7 @@ def pinned_versions(layout: Layout) -> dict[str, str]:
     """Snapshot everything that could explain why a run behaves differently."""
     ge_proton_dir = _latest_ge_proton_dir(layout)
     return {
-        "umu_version": _tool_version([*UMU_RUN_CMD, "--version"]),
+        "umu_version": _tool_version([str(layout.umu_run), "--version"]),
         "ge_proton_version": ge_proton_dir.name if ge_proton_dir else "not-installed",
         "gameid": STEAM_DCS_GAMEID,
         "gpu_driver": _tool_version(
@@ -269,15 +279,21 @@ def _tool_version(cmd: list[str]) -> str:
 
 
 def ensure_toolchain(layout: Layout, journal: RunJournal, *, dry_run: bool) -> None:
-    """Fetch GE-Proton and the DCS updater into the cache toolchain.
+    """Fetch umu, GE-Proton and the DCS updater into the cache toolchain.
 
     Idempotent: skips anything already present. Must not assume umu-run or
-    winetricks are on PATH -- the development machine has neither. umu-run
-    itself needs no separate install step: `uv tool run --from umu-launcher
-    umu-run` resolves and caches it on first use.
+    winetricks are on PATH -- the development machine has neither, and
+    umu-launcher is not on PyPI (RUN 0001), so it is fetched as a zipapp.
     """
     if not dry_run:
         layout.toolchain_dir.mkdir(parents=True, exist_ok=True)
+
+    if not layout.umu_run.exists():
+        print(f"fetching umu-launcher {UMU_VERSION} zipapp into {layout.umu_run.parent}")
+        if not dry_run:
+            _download_umu_zipapp(layout)
+        else:
+            print(f"  (dry-run) would: GET {UMU_ZIPAPP_URL.format(version=UMU_VERSION)}")
 
     if not _latest_ge_proton_dir(layout):
         print(f"fetching latest GE-Proton into {layout.ge_proton_dir}")
@@ -297,10 +313,31 @@ def ensure_toolchain(layout: Layout, journal: RunJournal, *, dry_run: bool) -> N
             print(f"  (dry-run) would: fetch installer from {DCS_WEB_INSTALLER_URL}")
 
 
+def _download_umu_zipapp(layout: Layout) -> None:
+    """Fetch and extract the umu zipapp -- yields <toolchain>/umu/umu-run."""
+    layout.umu_run.parent.parent.mkdir(parents=True, exist_ok=True)
+    url = UMU_ZIPAPP_URL.format(version=UMU_VERSION)
+    tarball_path = layout.toolchain_dir / f"umu-launcher-{UMU_VERSION}-zipapp.tar"
+    urllib.request.urlretrieve(url, tarball_path)
+    # The tar contains umu/umu-run, so extract at toolchain_dir level.
+    with tarfile.open(tarball_path) as tf:
+        tf.extractall(layout.toolchain_dir, filter="data")
+    tarball_path.unlink()
+    layout.umu_run.chmod(0o755)
+
+
 def _download_ge_proton(dest_dir: Path) -> None:
+    """Fetch the x86_64 GE-Proton build.
+
+    RUN 0001 grabbed the first .tar.gz asset and landed the aarch64 build on
+    an x86_64 machine. Upstream names the x86_64 one without an arch suffix
+    ("GE-Proton11-3.tar.gz" vs "GE-Proton11-3-aarch64.tar.gz"), so match the
+    unsuffixed form explicitly rather than taking whatever comes first.
+    """
     with urllib.request.urlopen(GE_PROTON_RELEASES_API) as resp:
         release = json.loads(resp.read())
-    asset = next(a for a in release["assets"] if a["name"].endswith(".tar.gz"))
+    wanted = f"{release['tag_name']}.tar.gz"
+    asset = next(a for a in release["assets"] if a["name"] == wanted)
     tarball_path = dest_dir / asset["name"]
     urllib.request.urlretrieve(asset["browser_download_url"], tarball_path)
     with tarfile.open(tarball_path) as tf:
@@ -326,13 +363,43 @@ def build_prefix(layout: Layout, journal: RunJournal, *, dry_run: bool) -> dict[
         "GAMEID": STEAM_DCS_GAMEID,
         "PROTONPATH": proton_path,
     }
-    # umu-run with an empty target just builds the prefix and exits -- this
-    # is the documented way to create one without launching anything yet.
-    # No check=False here: if prefix creation fails, everything downstream
-    # (drive mapping, the updater launch) would be operating on a broken
-    # prefix, so fail loudly rather than limping on.
-    run_cmd([*UMU_RUN_CMD, ""], journal, dry_run=dry_run, env=env)
+    # umu-run with an empty target builds the prefix, then exits 1 trying to
+    # ShellExecute "" ("Application could not be started") -- RUN 0002. The
+    # prefix is fully created regardless, so verify the postcondition
+    # (system.reg) instead of trusting the exit code, and still fail loudly
+    # if the prefix genuinely didn't appear.
+    run_cmd([str(layout.umu_run), ""], journal, dry_run=dry_run, env=env, check=False)
+    if not dry_run and not (layout.prefix_dir / "system.reg").exists():
+        raise RuntimeError(
+            f"prefix creation failed: no system.reg under {layout.prefix_dir} "
+            "-- see commands.log in the run journal"
+        )
     return env
+
+
+# Verbs from the community guides. vcrun2019 is BLACKLISTED (issue #1: it
+# causes a system RAM leak) -- use 2015 or 2022 if a vcrun turns out to be
+# needed at all.
+WINETRICKS_VERBS = ("corefonts", "xact", "d3dcompiler_47")
+
+
+def apply_winetricks(
+    layout: Layout, env: dict[str, str], journal: RunJournal, *, dry_run: bool
+) -> None:
+    """Apply winetricks verbs to the umu-managed prefix.
+
+    Issue #2 lists this as a known gap ("How winetricks verbs are applied to
+    a umu-managed prefix is documented"). RUN 0002 answer: umu-run takes a
+    `winetricks` positional argument -- `umu-run winetricks <verbs>` -- so
+    winetricks never needs to be on PATH or told about the prefix itself.
+    """
+    print(f"applying winetricks verbs: {' '.join(WINETRICKS_VERBS)}")
+    run_cmd(
+        [str(layout.umu_run), "winetricks", *WINETRICKS_VERBS],
+        journal,
+        dry_run=dry_run,
+        env=env,
+    )
 
 
 def map_game_and_saved_games(layout: Layout, *, dry_run: bool) -> None:
@@ -388,7 +455,7 @@ def launch_dcs_updater(
     print(f"launching {installer_path} for interactive login/module selection")
     print("MANUAL: in the installer, set the install path to D:\\ (mapped to game/)")
     print("MANUAL: in DCS_updater.exe settings, disable torrent downloads (see #2)")
-    run_cmd([*UMU_RUN_CMD, str(installer_path)], journal, dry_run=dry_run, env=env)
+    run_cmd([str(layout.umu_run), str(installer_path)], journal, dry_run=dry_run, env=env)
 
 
 def record_human_verdict(journal: RunJournal, *, dry_run: bool) -> None:
@@ -514,6 +581,7 @@ def main(argv: list[str] | None = None) -> int:
     ensure_toolchain(layout, journal, dry_run=args.dry_run)
     journal.write_versions(pinned_versions(layout))
     env = build_prefix(layout, journal, dry_run=args.dry_run)
+    apply_winetricks(layout, env, journal, dry_run=args.dry_run)
     map_game_and_saved_games(layout, dry_run=args.dry_run)
 
     # Gate only the step that actually hits the ED CDN -- everything above
