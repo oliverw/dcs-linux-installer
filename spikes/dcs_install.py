@@ -444,6 +444,43 @@ def apply_winetricks(
         marker.write_text(" ".join(WINETRICKS_VERBS))
 
 
+# RUN 0013: the AH-64D crashes entering a mission with
+#   UIBASERENDERER: Cannot create font [] size 30!
+#   C0000005 ACCESS_VIOLATION in CockpitBase.dll, via ah64d
+# The cockpit asks for a Segoe font, gets an empty name back and
+# dereferences null. corefonts installs 42 fonts, none of them Segoe.
+#
+# IC-SAFE: this writes only into the wine prefix. No hashed game file is
+# touched, so it is safe for pure-client multiplayer servers.
+#
+# seguisym.ttf is Microsoft-licensed and not redistributable, so a locally
+# installed font is substituted. Glyph coverage will not match Microsoft's
+# exactly; symbology that relies on private-use codepoints may still render
+# wrong even though the crash is gone.
+FONT_SUBSTITUTE_CANDIDATES = (
+    "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf",
+    "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf",
+)
+SEGOE_FONT_NAMES = ("seguisym.ttf", "seguisb.ttf", "segoeui.ttf")
+
+
+def apply_font_patch(layout: Layout, *, dry_run: bool) -> None:
+    """Give the prefix a Segoe stand-in so the Apache cockpit can start."""
+    fonts_dir = layout.prefix_dir / "drive_c" / "windows" / "Fonts"
+    source = next((Path(c) for c in FONT_SUBSTITUTE_CANDIDATES if Path(c).exists()), None)
+    if source is None:
+        print("WARNING: no substitute font found; the AH-64D will crash entering a mission")
+        return
+    print(f"font patch: {source.name} -> {', '.join(SEGOE_FONT_NAMES)} (IC-safe)")
+    if dry_run:
+        return
+    fonts_dir.mkdir(parents=True, exist_ok=True)
+    for name in SEGOE_FONT_NAMES:
+        shutil.copyfile(source, fonts_dir / name)
+
+
 def map_game_and_saved_games(layout: Layout, *, dry_run: bool) -> None:
     """Map game/ and Saved Games/DCS out of the prefix.
 
@@ -747,6 +784,7 @@ def main(argv: list[str] | None = None) -> int:
     journal.write_versions(pinned_versions(layout))
     env = build_prefix(layout, journal, dry_run=args.dry_run)
     apply_winetricks(layout, env, journal, dry_run=args.dry_run)
+    apply_font_patch(layout, dry_run=args.dry_run)
     map_game_and_saved_games(layout, dry_run=args.dry_run)
 
     # Gate only the step that actually hits the ED CDN -- everything above
