@@ -1,0 +1,50 @@
+[project]
+name = "dcs-linux-installer"
+version = "0.1.0"
+description = "Install DCS World Standalone on Linux, and keep it working."
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Oliver Weichhold", email = "oliver.weichhold@pm.me" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "rich>=15.0.0",
+    "typer>=0.27.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/oliverw/dcs-linux-installer"
+Issues = "https://github.com/oliverw/dcs-linux-installer/issues"
+
+[project.scripts]
+dcs-linux = "dcs_linux.cli:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dcs_linux"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.0",
+    "pytest>=9.1.1",
+    "ruff>=0.16.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
