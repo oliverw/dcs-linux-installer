@@ -1,0 +1,4 @@
+# DCS writes CRLF. These are parser fixtures for #12, so they must survive
+# byte-for-byte -- if git normalises the line endings the fixture no longer
+# represents what the parser will actually see on disk.
+* -text

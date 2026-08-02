@@ -5,7 +5,7 @@ Issues and PRDs for this repo live as GitHub issues. Use the `gh` CLI for all op
 - Unless told otherwise, only ever work a single issue per session.
 - If given an umbrella issue, work the first available sub-issue.
 - When working on issues, create one dedicated work branch and associated worktree to isolate your changes. Worktrees belong inside repository's .worktrees directory.
-- When your task is done, commit to your work branch and merge your work branch back to `main`. Then delete ONLY YOUR OWN associated work branch and worktree. Clean up your build artifacts and temporary data you created!
+- When your task is done, commit to your work branch and merge your work branch back to `main`. Then delete ONLY YOUR OWN associated work branch and worktree. Clean up your build artifacts and temporary data.
 
 ## Conventions
 

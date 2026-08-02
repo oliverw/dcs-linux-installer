@@ -1,0 +1,13 @@
+{
+  "notes": "Unattended warm iteration, driven end to end by the spike: prefix wiped and rebuilt, winetricks applied, font patch applied, game/ and Saved Games remapped, DCS launched with --launch-only. dcs.log captured to the journal; DCS reached renderer init and closed cleanly with 0 ACCESS_VIOLATION. NOT FLOWN -- no human was at the controls for this run, so this does NOT satisfy the ticket's success bar. The flown pass (AH-64D Instant Action, airborne 60s+) was a separate session launched by hand rather than through the spike, so the spike has never itself journalled a flown run. See tests/fixtures/dcs-logs/dcs.log-healthy-33modules-fontpatched for that session.",
+  "verdict": "pass-unattended",
+  "versions": {
+    "captured_at": "2026-08-02T21:49:20.398453+00:00",
+    "gameid": "umu-223750",
+    "ge_proton_version": "GE-Proton11-3",
+    "gpu_driver": "610.43.03",
+    "kernel": "7.1.4-202.fc44.x86_64",
+    "python": "3.11.15",
+    "umu_version": "umu-launcher version 1.4.4 (3.11.15 (main, Jun 23 2026, 15:19:43) [Clang 22.1.3 ])"
+  }
+}
