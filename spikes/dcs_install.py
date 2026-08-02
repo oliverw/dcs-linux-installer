@@ -53,7 +53,6 @@ import json
 import os
 import platform
 import re
-import shlex
 import shutil
 import subprocess
 import sys
@@ -412,6 +411,14 @@ def apply_winetricks(
     `winetricks` positional argument -- `umu-run winetricks <verbs>` -- so
     winetricks never needs to be on PATH or told about the prefix itself.
     """
+    # The prefix is wiped every iteration, so this reruns every time and
+    # costs minutes of font registering. Guard on a marker inside the prefix:
+    # it dies with the prefix, so it can never mask a genuinely missing verb.
+    marker = layout.prefix_dir / ".winetricks-applied"
+    if not dry_run and marker.exists() and marker.read_text().split() == list(WINETRICKS_VERBS):
+        print("winetricks verbs already applied to this prefix; skipping")
+        return
+
     print(f"applying winetricks verbs: {' '.join(WINETRICKS_VERBS)}")
     run_cmd(
         [str(layout.umu_run), "winetricks", *WINETRICKS_VERBS],
@@ -419,6 +426,8 @@ def apply_winetricks(
         dry_run=dry_run,
         env=env,
     )
+    if not dry_run:
+        marker.write_text(" ".join(WINETRICKS_VERBS))
 
 
 def map_game_and_saved_games(layout: Layout, *, dry_run: bool) -> None:
@@ -467,7 +476,6 @@ def launch_dcs_updater(
     journal: RunJournal,
     *,
     dry_run: bool,
-    harnessed: bool = False,
 ) -> None:
     """Hand off to the DCS updater GUI for login and module selection.
 
@@ -485,10 +493,7 @@ def launch_dcs_updater(
     print(f"launching {installer_path} for interactive login/module selection")
     print("MANUAL: in the installer, set the install path to D:\\ (mapped to game/)")
     print("MANUAL: in DCS_updater.exe settings, disable torrent downloads (see #2)")
-    cmd = [str(layout.umu_run), str(installer_path)]
-    if harnessed:
-        cmd = harness_wrap_in_hosts_ns(layout, cmd, dry_run=dry_run)
-    run_cmd(cmd, journal, dry_run=dry_run, env=env)
+    run_cmd([str(layout.umu_run), str(installer_path)], journal, dry_run=dry_run, env=env)
 
 
 def record_human_verdict(journal: RunJournal, *, dry_run: bool, verdict: str | None = None) -> None:
@@ -656,7 +661,8 @@ def harness_ensure_cache_active(layout: Layout, journal: RunJournal, *, dry_run:
         dry_run=dry_run,
     )
     _harness_wait_for_cache_hit(journal)
-    print("cache harness active: ED hosts will resolve to the local nginx cache")
+    harness_activate_hosts(layout, journal, dry_run=dry_run)
+    print("cache harness active: ED hosts resolve to the local nginx cache")
 
 
 def _harness_wait_for_cache_hit(journal: RunJournal, attempts: int = 15) -> None:
@@ -698,37 +704,56 @@ def _harness_wait_for_cache_hit(journal: RunJournal, attempts: int = 15) -> None
     )
 
 
-def harness_hosts_file(layout: Layout, *, dry_run: bool) -> Path:
-    """A merged /etc/hosts that points the ED hosts at the local cache."""
-    merged = layout.cache_root / "hosts-merged"
-    if dry_run:
-        return merged
-    overrides = "".join(f"127.0.0.1 {h}\n::1 {h}\n" for h in ED_HOSTS)
-    merged.parent.mkdir(parents=True, exist_ok=True)
-    merged.write_text(Path("/etc/hosts").read_text() + "\n# dcs-linux spike harness\n" + overrides)
-    return merged
+HOSTS_BEGIN = "# >>> dcs-linux-spike harness >>>"
+HOSTS_END = "# <<< dcs-linux-spike harness <<<"
 
 
-def harness_wrap_in_hosts_ns(layout: Layout, cmd: list[str], *, dry_run: bool) -> list[str]:
-    """Run cmd in a mount namespace where the ED hosts resolve to the cache.
-
-    Host networking is deliberately kept -- only /etc/hosts differs -- so
-    the GUI, GPU and audio behave exactly as they would outside the harness.
-
-    The uid dance matters (RUN 0006). Bind-mounting over /etc/hosts needs to
-    be uid 0 inside the user namespace, but umu-run hard-refuses to start as
-    root ("This script should never be run as the root user"). Mapping our
-    own uid instead loses the mount. So: enter as root, mount, then setpriv
-    back down to the real uid before exec'ing -- the mount outlives the
-    privilege drop.
-    """
-    merged = harness_hosts_file(layout, dry_run=dry_run)
-    inner = (
-        f"mount --bind {shlex.quote(str(merged))} /etc/hosts && "
-        f"exec setpriv --reuid={os.getuid()} --regid={os.getgid()} --clear-groups "
-        + shlex.join(cmd)
+def _strip_hosts_block(journal: RunJournal, *, dry_run: bool) -> None:
+    """Delete any existing harness block from /etc/hosts (no-op if absent)."""
+    run_cmd(
+        ["sudo", "-n", "sed", "-i", f"\\|{HOSTS_BEGIN}|,\\|{HOSTS_END}|d", "/etc/hosts"],
+        journal,
+        dry_run=dry_run,
     )
-    return ["unshare", "-Urm", "--map-auto", "sh", "-c", inner]
+
+
+def harness_activate_hosts(layout: Layout, journal: RunJournal, *, dry_run: bool) -> None:
+    """Point the ED hosts at the local cache, system-wide.
+
+    RUN 0007 killed the namespace approach: bind-mounting /etc/hosts needs
+    uid 0 inside the user namespace, but umu-run refuses to start as root,
+    and dropping to a non-root uid there maps to an unrelated subuid with no
+    access to our own files. There is no mapping that satisfies both.
+
+    So the redirect is a marked block in the real /etc/hosts instead. It is
+    system-wide while active -- nothing on this machine can reach the ED
+    site -- so harness_deactivate_hosts() must run no matter how the run
+    ends. main() does that in a finally.
+    """
+    print("pointing ED hosts at the local cache (system-wide, reverted on exit)")
+    _strip_hosts_block(journal, dry_run=dry_run)
+    lines = [HOSTS_BEGIN]
+    for host in ED_HOSTS:
+        lines += [f"127.0.0.1 {host}", f"::1 {host}"]
+    lines.append(HOSTS_END)
+    block = "\n".join(lines) + "\n"
+    if not dry_run:
+        proc = subprocess.run(
+            ["sudo", "-n", "tee", "-a", "/etc/hosts"],
+            input=block,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        journal.record_command(["sudo", "tee", "-a", "/etc/hosts"], proc)
+        if proc.returncode != 0:
+            raise RuntimeError(f"could not update /etc/hosts: {proc.stderr}")
+
+
+def harness_deactivate_hosts(journal: RunJournal, *, dry_run: bool) -> None:
+    """Strip the harness block from /etc/hosts. Safe to call when absent."""
+    print("restoring /etc/hosts")
+    _strip_hosts_block(journal, dry_run=dry_run)
 
 
 # --------------------------------------------------------------------------
@@ -793,10 +818,16 @@ def main(argv: list[str] | None = None) -> int:
 
     # Gate only the step that actually hits the ED CDN -- everything above
     # (toolchain, prefix, drive mapping) works fine without the harness.
-    if not args.skip_harness:
-        harness_ensure_cache_active(layout, journal, dry_run=args.dry_run)
-    launch_dcs_updater(layout, env, journal, dry_run=args.dry_run, harnessed=not args.skip_harness)
-    record_human_verdict(journal, dry_run=args.dry_run, verdict=args.verdict)
+    try:
+        if not args.skip_harness:
+            harness_ensure_cache_active(layout, journal, dry_run=args.dry_run)
+        launch_dcs_updater(layout, env, journal, dry_run=args.dry_run)
+        record_human_verdict(journal, dry_run=args.dry_run, verdict=args.verdict)
+    finally:
+        # /etc/hosts is a system-wide change: nothing on this machine can
+        # reach the ED site while it stands. Restore it however we exit.
+        if not args.skip_harness:
+            harness_deactivate_hosts(journal, dry_run=args.dry_run)
     journal.capture_dcs_log(layout.saved_games_dir)
 
     print(f"run {journal.number:04d} journal: {journal.dir}")
