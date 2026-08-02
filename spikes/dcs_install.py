@@ -316,6 +316,20 @@ def ensure_toolchain(layout: Layout, journal: RunJournal, *, dry_run: bool) -> N
             print(f"  (dry-run) would: fetch installer from {DCS_WEB_INSTALLER_URL}")
 
 
+def find_installed_updater(layout: Layout) -> Path | None:
+    """The updater inside an existing install, if there is one.
+
+    RUN 0010: once DCS_World_web.exe has bootstrapped an install it refuses
+    to reuse the directory, so re-running the web installer is a dead end.
+    The installed bin/DCS_updater.exe is what continues an install -- and
+    adopting an existing install is what issue #1's ownership model wants
+    anyway.
+    """
+    for candidate in sorted(layout.game_dir.glob("*/bin/DCS_updater.exe")):
+        return candidate
+    return None
+
+
 def find_dcs_installer(layout: Layout) -> Path | None:
     """Locate the hand-dropped DCS web installer, case-insensitively.
 
@@ -411,9 +425,10 @@ def apply_winetricks(
     `winetricks` positional argument -- `umu-run winetricks <verbs>` -- so
     winetricks never needs to be on PATH or told about the prefix itself.
     """
-    # The prefix is wiped every iteration, so this reruns every time and
-    # costs minutes of font registering. Guard on a marker inside the prefix:
-    # it dies with the prefix, so it can never mask a genuinely missing verb.
+    # Marker lives inside the prefix so it can never claim verbs are present
+    # in a prefix that lacks them. Note this saves nothing on a warm run --
+    # build_prefix wipes the prefix, taking the marker with it. It only helps
+    # if a future mode reuses an existing prefix.
     marker = layout.prefix_dir / ".winetricks-applied"
     if not dry_run and marker.exists() and marker.read_text().split() == list(WINETRICKS_VERBS):
         print("winetricks verbs already applied to this prefix; skipping")
@@ -483,17 +498,23 @@ def launch_dcs_updater(
     logs in and picks modules. The script's job stops at getting the updater
     on screen with the cache harness in place.
     """
-    installer_path = find_dcs_installer(layout) or layout.toolchain_dir / DCS_INSTALLER_NAME
-    if not dry_run and not installer_path.exists():
-        raise RuntimeError(
-            f"DCS web installer missing at {installer_path}.\n"
-            f"Download it from {DCS_WEB_INSTALLER_URL} (the page needs a browser\n"
-            f"session, so this step cannot be scripted) and save it to that path."
-        )
-    print(f"launching {installer_path} for interactive login/module selection")
-    print("MANUAL: in the installer, set the install path to D:\\ (mapped to game/)")
-    print("MANUAL: in DCS_updater.exe settings, disable torrent downloads (see #2)")
-    run_cmd([str(layout.umu_run), str(installer_path)], journal, dry_run=dry_run, env=env)
+    installed = find_installed_updater(layout)
+    if installed is not None:
+        print(f"existing install found; continuing via {installed}")
+        cmd = [str(layout.umu_run), str(installed), "update"]
+    else:
+        installer_path = find_dcs_installer(layout) or layout.toolchain_dir / DCS_INSTALLER_NAME
+        if not dry_run and not installer_path.exists():
+            raise RuntimeError(
+                f"DCS web installer missing at {installer_path}.\n"
+                f"Download it from {DCS_WEB_INSTALLER_URL} (the page needs a browser\n"
+                f"session, so this step cannot be scripted) and save it to that path."
+            )
+        print(f"launching {installer_path} for interactive login/module selection")
+        print("MANUAL: set the install path to D:\\ (mapped to game/)")
+        cmd = [str(layout.umu_run), str(installer_path)]
+    print("MANUAL: in updater settings, disable torrent downloads (see #2)")
+    run_cmd(cmd, journal, dry_run=dry_run, env=env)
 
 
 def record_human_verdict(journal: RunJournal, *, dry_run: bool, verdict: str | None = None) -> None:
@@ -775,6 +796,7 @@ class Args:
     cold: bool
     dry_run: bool
     skip_harness: bool
+    serve_cache: bool
     verdict: str | None
 
 
@@ -785,6 +807,11 @@ def parse_args(argv: list[str] | None = None) -> Args:
     parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT)
     parser.add_argument("--cold", action="store_true", help="also restore game/ from gold/")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, touch nothing")
+    parser.add_argument(
+        "--serve-cache",
+        action="store_true",
+        help="bring up the cache and hold it until interrupted, then restore /etc/hosts",
+    )
     parser.add_argument(
         "--verdict",
         default=None,
@@ -801,6 +828,7 @@ def parse_args(argv: list[str] | None = None) -> Args:
         cold=ns.cold,
         dry_run=ns.dry_run,
         skip_harness=ns.skip_harness,
+        serve_cache=ns.serve_cache,
         verdict=ns.verdict,
     )
 
@@ -814,6 +842,24 @@ def main(argv: list[str] | None = None) -> int:
         f"run {journal.number:04d} -- data_root={layout.data_root} cold={args.cold} "
         f"dry_run={args.dry_run} skip_harness={args.skip_harness}"
     )
+
+    if args.serve_cache:
+        # A DCS install is not one sitting: the updater gets closed, errors
+        # out, gets reopened. A normal run tears the harness down when the
+        # updater exits, so the next attempt silently reaches the real CDN --
+        # the exact "looks like success" failure this harness exists to stop.
+        # This mode holds it up until interrupted.
+        try:
+            harness_ensure_cache_active(layout, journal, dry_run=args.dry_run)
+            print("cache is up; run the updater as often as you like.")
+            print("press Ctrl-C here when you are done to restore /etc/hosts.")
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            print()
+        finally:
+            harness_deactivate_hosts(journal, dry_run=args.dry_run)
+        return 0
 
     if args.cold:
         harness_restore_game_from_gold(layout, journal, dry_run=args.dry_run)
