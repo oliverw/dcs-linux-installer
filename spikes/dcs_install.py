@@ -25,25 +25,21 @@ Layout, three independent lifetimes under --data-root
 
     <data-root>/.cache/dcs-linux/
         toolchain/       umu, GE-Proton, DCS_updater, winetricks payloads
-        http/            nginx cache of http://*.digitalcombatsimulator.com
         gold/            known-good copy of the finished game directory
 
 Every run writes spikes/runs/NNNN/ with pinned versions, every command run
 and its output, the captured dcs.log, and the human verdict.
 
 Usage:
-    uv run spikes/dcs_install.py                 # warm: wipe+rebuild prefix, then
-                                                   # hand off to the updater (needs
-                                                   # the cache harness -- see below)
-    uv run spikes/dcs_install.py --cold          # also restore game/ from gold/
+    uv run spikes/dcs_install.py                 # warm: wipe+rebuild prefix,
+                                                 # updater handoff, then launch
+    uv run spikes/dcs_install.py --launch-only   # skip the updater; unattended
+    uv run spikes/dcs_install.py --cold          # restore game/ from gold/ first
+    uv run spikes/dcs_install.py --seed-gold     # snapshot game/ into gold/
     uv run spikes/dcs_install.py --dry-run       # print the plan, touch nothing
-    uv run spikes/dcs_install.py --skip-harness  # real CDN, no cache (see #14)
 
-The cache harness gates only the updater handoff (where the 150 GB
-download happens); toolchain fetch and prefix creation run without it. It
-needs rootless podman, and a one-time
-`sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80` so the cache can
-bind :80 -- the harness checks and tells you if that's missing.
+There is no HTTP cache. The updater downloads over HTTPS, so a proxy cache
+cannot see the traffic; gold/ + reflink is the iteration mechanism instead.
 """
 
 from __future__ import annotations
@@ -79,7 +75,6 @@ GE_PROTON_RELEASES_API = (
 )
 
 DCS_WEB_INSTALLER_URL = "https://www.digitalcombatsimulator.com/en/downloads/world/"
-DCS_UPDATER_HOST = "updates.digitalcombatsimulator.com"
 DCS_INSTALLER_NAME = "DCS_World_web.exe"
 
 # RUN 0001: umu-launcher is NOT on PyPI (404), so `uv tool run --from
@@ -134,10 +129,6 @@ class Layout:
     def umu_run(self) -> Path:
         """The extracted umu zipapp -- a single self-contained executable."""
         return self.toolchain_dir / "umu" / "umu-run"
-
-    @property
-    def http_cache_dir(self) -> Path:
-        return self.cache_root / "http"
 
     @property
     def gold_dir(self) -> Path:
@@ -204,16 +195,34 @@ class RunJournal:
                 f.write(json.dumps(entry) + "\n")
 
     def capture_dcs_log(self, saved_games_dir: Path) -> Path | None:
-        candidates = sorted(saved_games_dir.glob("DCS*/Logs/dcs.log"))
+        """Copy the newest dcs.log into the journal.
+
+        This silently produced nothing for the first 13 runs: it only ran on
+        the success path, and most runs raised before reaching it. It is now
+        called from a finally, so a crashed run -- the case where the log
+        matters most -- still gets one.
+        """
+        candidates = sorted(
+            saved_games_dir.glob("DCS*/Logs/dcs.log"),
+            key=lambda p: p.stat().st_mtime,
+        )
         if not candidates:
+            print("no dcs.log to capture")
             return None
         dest = self.dir / "dcs.log"
-        if not self.dry_run:
-            shutil.copyfile(candidates[-1], dest)
+        if self.dry_run:
+            return dest
+        shutil.copyfile(candidates[-1], dest)
+        print(f"captured dcs.log -> {dest}")
         return dest
 
-    def write_verdict(self, verdict: str, notes: str = "") -> None:
-        self._write_json("verdict.json", {"verdict": verdict, "notes": notes})
+    def write_verdict(
+        self, verdict: str, notes: str = "", versions: dict[str, str] | None = None
+    ) -> None:
+        payload: dict[str, Any] = {"verdict": verdict, "notes": notes}
+        if versions:
+            payload["versions"] = versions
+        self._write_json("verdict.json", payload)
 
     def _write_json(self, name: str, payload: dict[str, Any]) -> None:
         if self.dry_run:
@@ -315,6 +324,11 @@ def ensure_toolchain(layout: Layout, journal: RunJournal, *, dry_run: bool) -> N
             print(f"  (dry-run) would: fetch installer from {DCS_WEB_INSTALLER_URL}")
 
 
+def _find_game_binary(layout: Layout, name: str) -> Path | None:
+    """First <game>/*/bin/<name>, or None."""
+    return next(iter(sorted(layout.game_dir.glob(f"*/bin/{name}"))), None)
+
+
 def find_installed_updater(layout: Layout) -> Path | None:
     """The updater inside an existing install, if there is one.
 
@@ -324,9 +338,7 @@ def find_installed_updater(layout: Layout) -> Path | None:
     adopting an existing install is what issue #1's ownership model wants
     anyway.
     """
-    for candidate in sorted(layout.game_dir.glob("*/bin/DCS_updater.exe")):
-        return candidate
-    return None
+    return _find_game_binary(layout, "DCS_updater.exe")
 
 
 def find_dcs_installer(layout: Layout) -> Path | None:
@@ -466,7 +478,7 @@ FONT_SUBSTITUTE_CANDIDATES = (
 SEGOE_FONT_NAMES = ("seguisym.ttf", "seguisb.ttf", "segoeui.ttf")
 
 
-def apply_font_patch(layout: Layout, *, dry_run: bool) -> None:
+def apply_font_patch(layout: Layout, journal: RunJournal, *, dry_run: bool) -> None:
     """Give the prefix a Segoe stand-in so the Apache cockpit can start."""
     fonts_dir = layout.prefix_dir / "drive_c" / "windows" / "Fonts"
     source = next((Path(c) for c in FONT_SUBSTITUTE_CANDIDATES if Path(c).exists()), None)
@@ -479,6 +491,10 @@ def apply_font_patch(layout: Layout, *, dry_run: bool) -> None:
     fonts_dir.mkdir(parents=True, exist_ok=True)
     for name in SEGOE_FONT_NAMES:
         shutil.copyfile(source, fonts_dir / name)
+    journal.record_command(
+        ["<font-patch>", str(source), *SEGOE_FONT_NAMES],
+        subprocess.CompletedProcess([], 0, stdout=f"copied into {fonts_dir}", stderr=""),
+    )
 
 
 def map_game_and_saved_games(layout: Layout, *, dry_run: bool) -> None:
@@ -557,9 +573,7 @@ def launch_dcs_updater(
 
 def find_dcs_exe(layout: Layout) -> Path | None:
     """bin/DCS.exe inside the installed game, if present."""
-    for candidate in sorted(layout.game_dir.glob("*/bin/DCS.exe")):
-        return candidate
-    return None
+    return _find_game_binary(layout, "DCS.exe")
 
 
 # Safe (non-IC-risky) launch tweaks from the community guides, per issue #1's
@@ -597,33 +611,40 @@ def launch_dcs(layout: Layout, env: dict[str, str], journal: RunJournal, *, dry_
     )
 
 
-def record_human_verdict(journal: RunJournal, *, dry_run: bool, verdict: str | None = None) -> None:
+def record_human_verdict(
+    journal: RunJournal,
+    *,
+    dry_run: bool,
+    verdict: str | None = None,
+    versions: dict[str, str] | None = None,
+) -> None:
     """Success bar: main menu, Instant Action free flight, ~60s flyable.
 
     The verdict is a human judgement by design, but --verdict lets a run be
     driven non-interactively (and stdin may not be a TTY at all).
     """
     if dry_run:
-        journal.write_verdict("dry-run", "no verdict collected in dry-run mode")
+        journal.write_verdict("dry-run", "no verdict collected in dry-run mode", versions)
         return
     if verdict is not None:
-        journal.write_verdict(verdict, "supplied via --verdict")
+        journal.write_verdict(verdict, "supplied via --verdict", versions)
         return
     if not sys.stdin.isatty():
-        journal.write_verdict("unrecorded", "no TTY and no --verdict; record this by hand")
+        journal.write_verdict("unrecorded", "no TTY and no --verdict; record by hand", versions)
         print("no TTY: verdict left unrecorded -- rerun with --verdict, or edit verdict.json")
         return
     answer = input("Reached main menu, flew Instant Action for ~60s? [pass/fail]: ").strip()
     notes = input("Notes (symptom if failed, anything notable if passed): ").strip()
-    journal.write_verdict(answer, notes)
+    journal.write_verdict(answer, notes, versions)
 
 
 # --------------------------------------------------------------------------
-# CACHE HARNESS -- dev-only. Every symbol here is throwaway scaffolding that
-# makes iteration on a 150 GB game affordable. MUST NEVER appear in the
-# shipped tool (src/dcs_linux/). See issue #2's "known deviation": every run
-# made with this harness active is not representative of a real user's
-# environment -- that's what #14 validates separately.
+# ITERATION HARNESS -- dev-only. Throwaway scaffolding that makes rebuilding
+# against a 536 GB install affordable, by snapshotting and restoring it with
+# btrfs/xfs reflinks. MUST NEVER appear in the shipped tool (src/dcs_linux/).
+#
+# Unlike the deleted HTTP cache, this does not distort what is being tested:
+# a restored install is byte-identical to the one the updater produced.
 # --------------------------------------------------------------------------
 
 
@@ -695,24 +716,17 @@ def harness_restore_game_from_gold(layout: Layout, journal: RunJournal, *, dry_r
 # dies before any HTTP is spoken. Caching it would need TLS interception,
 # which issue #2 rules out. updates.* refuses 443 outright, so it is
 # genuinely http-only and safe to redirect.
-# NOTE (run 0010): there is no HTTP cache harness, and there cannot be one.
-#
-# Issue #2 assumed "the HTTP servers are plain http://, so the traffic is
-# cacheable with no TLS interception". The host does offer plain http, but
-# the updater does not use it: it downloads over HTTPS to cdn77
-# (79.127.211.89:443, rDNS 787975672.fra.cdn77.com). An HTTP proxy cache
-# never sees that traffic, and intercepting it needs a MITM certificate,
+# POSTMORTEM (run 0010): there is no HTTP cache harness, and there cannot be
+# one. Issue #2 assumed "the HTTP servers are plain http://, so the traffic is
+# cacheable with no TLS interception". The host does offer plain http, but the
+# updater does not use it -- it downloads over HTTPS to cdn77. An HTTP proxy
+# cache never sees that traffic, and intercepting it needs a MITM certificate,
 # which the ticket rules out.
 #
 # A working nginx/podman cache plus an /etc/hosts redirect was built and
-# verified (MISS then HIT against the real CDN) before this was noticed --
-# it cached the probe perfectly and zero bytes of DCS. It has been deleted
-# rather than left as dead machinery, along with the two pieces of machine
-# state it needed (net.ipv4.ip_unprivileged_port_start=80 and a system-wide
-# /etc/hosts block).
-#
-# Cheap iteration comes from gold/ + reflink instead, which does not care
-# what protocol the download used. See harness_restore_game_from_gold.
+# verified (MISS then HIT against the real CDN) before this was noticed. It
+# cached the probe perfectly and zero bytes of DCS. Deleted rather than left
+# as dead machinery, along with the machine state it required.
 
 
 # --------------------------------------------------------------------------
@@ -726,6 +740,7 @@ class Args:
     cold: bool
     dry_run: bool
     seed_gold: bool
+    launch_only: bool
     update_only: bool
     verdict: str | None
 
@@ -737,6 +752,11 @@ def parse_args(argv: list[str] | None = None) -> Args:
     parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT)
     parser.add_argument("--cold", action="store_true", help="also restore game/ from gold/")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, touch nothing")
+    parser.add_argument(
+        "--launch-only",
+        action="store_true",
+        help="skip the interactive updater; rebuild and launch DCS unattended",
+    )
     parser.add_argument(
         "--seed-gold",
         action="store_true",
@@ -758,6 +778,7 @@ def parse_args(argv: list[str] | None = None) -> Args:
         cold=ns.cold,
         dry_run=ns.dry_run,
         seed_gold=ns.seed_gold,
+        launch_only=ns.launch_only,
         update_only=ns.update_only,
         verdict=ns.verdict,
     )
@@ -784,16 +805,22 @@ def main(argv: list[str] | None = None) -> int:
     journal.write_versions(pinned_versions(layout))
     env = build_prefix(layout, journal, dry_run=args.dry_run)
     apply_winetricks(layout, env, journal, dry_run=args.dry_run)
-    apply_font_patch(layout, dry_run=args.dry_run)
+    apply_font_patch(layout, journal, dry_run=args.dry_run)
     map_game_and_saved_games(layout, dry_run=args.dry_run)
 
     # Gate only the step that actually hits the ED CDN -- everything above
     # (toolchain, prefix, drive mapping) works fine without the harness.
-    launch_dcs_updater(layout, env, journal, dry_run=args.dry_run)
-    if not args.update_only:
-        launch_dcs(layout, env, journal, dry_run=args.dry_run)
-    record_human_verdict(journal, dry_run=args.dry_run, verdict=args.verdict)
-    journal.capture_dcs_log(layout.saved_games_dir)
+    versions = pinned_versions(layout)
+    try:
+        if not args.launch_only:
+            launch_dcs_updater(layout, env, journal, dry_run=args.dry_run)
+        if not args.update_only:
+            launch_dcs(layout, env, journal, dry_run=args.dry_run)
+        record_human_verdict(journal, dry_run=args.dry_run, verdict=args.verdict, versions=versions)
+    finally:
+        # A crashed run is exactly when the log matters, so capture it on
+        # every exit path -- not only the happy one.
+        journal.capture_dcs_log(layout.saved_games_dir)
 
     print(f"run {journal.number:04d} journal: {journal.dir}")
     return 0

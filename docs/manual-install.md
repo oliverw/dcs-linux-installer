@@ -15,7 +15,7 @@ The single most important decision. Keep these three apart:
 | Directory | Wiped? | Holds |
 | --- | --- | --- |
 | `prefix/` | **yes**, every rebuild | umu + pinned GE-Proton |
-| `game/` | no | the ~250 GB install |
+| `game/` | no | the install (536 GB with 33 modules) |
 | `saved-games/` | no | ED login, config, keybinds, `Logs/dcs.log` |
 
 `Saved Games/DCS` lives inside the prefix by default. Since "delete the prefix
@@ -183,7 +183,7 @@ Note the filename is lowercase `web`.
 In the installer:
 
 - **Set the install path to `D:\`** — this is `game/`. Installing to `C:\`
-  puts 250 GB inside the prefix, where the next rebuild destroys it.
+  puts the whole install inside the prefix, where the next rebuild destroys it.
 - **Leave torrent/P2P enabled.** It is dramatically faster; throughput went
   from ~12 GB to ~100 GB in the same span once re-enabled.
 
@@ -233,7 +233,8 @@ extents are shared):
 cp -a --reflink=always "$GAME" "$DATA/.cache/dcs-linux/gold"
 ```
 
-Measured: **251 GB in 1.3 seconds**, with disk usage unchanged.
+Measured: **536 GB in 5.0 seconds**, with disk usage unchanged. Restoring
+is the same shape -- a deliberately corrupted install came back in **6.6 s**.
 
 Restore it the same way. Rebuilding the prefix from scratch then costs a few
 minutes, not a 250 GB download.
