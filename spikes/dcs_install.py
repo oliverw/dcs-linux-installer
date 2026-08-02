@@ -518,6 +518,48 @@ def launch_dcs_updater(
     run_cmd(cmd, journal, dry_run=dry_run, env=env)
 
 
+def find_dcs_exe(layout: Layout) -> Path | None:
+    """bin/DCS.exe inside the installed game, if present."""
+    for candidate in sorted(layout.game_dir.glob("*/bin/DCS.exe")):
+        return candidate
+    return None
+
+
+# Safe (non-IC-risky) launch tweaks from the community guides, per issue #1's
+# patch registry seed. Applied here as environment/args rather than file edits,
+# so nothing hashed by the integrity check is touched.
+LAUNCH_ENV = {
+    # 2.9.12.5336+ hangs querying WMI under wine
+    "WINEDLLOVERRIDES": "wbemprox=n",
+    "WINE_SIMULATE_WRITECOPY": "1",
+}
+LAUNCH_ARGS = ("--no-launcher",)  # skip the black-screen launcher
+
+
+def launch_dcs(layout: Layout, env: dict[str, str], journal: RunJournal, *, dry_run: bool) -> None:
+    """Launch DCS itself -- the success bar is a main menu and a flyable mission.
+
+    Starting and running are different failures on Linux: the known
+    breakages surface in a mission, not at the menu. So this only gets the
+    game up; the human decides whether it actually flew.
+    """
+    dcs_exe = find_dcs_exe(layout)
+    if dcs_exe is None:
+        if dry_run:
+            print("  (dry-run) would: launch bin/DCS.exe --no-launcher")
+            return
+        raise RuntimeError(f"no bin/DCS.exe under {layout.game_dir}; the install did not complete")
+    print(f"launching {dcs_exe} {' '.join(LAUNCH_ARGS)}")
+    print("SUCCESS BAR: main menu -> Instant Action free flight -> ~60s flyable")
+    run_cmd(
+        [str(layout.umu_run), str(dcs_exe), *LAUNCH_ARGS],
+        journal,
+        dry_run=dry_run,
+        env={**env, **LAUNCH_ENV},
+        check=False,  # a crash is a result to journal, not a reason to abort
+    )
+
+
 def record_human_verdict(journal: RunJournal, *, dry_run: bool, verdict: str | None = None) -> None:
     """Success bar: main menu, Instant Action free flight, ~60s flyable.
 
@@ -546,6 +588,33 @@ def record_human_verdict(journal: RunJournal, *, dry_run: bool, verdict: str | N
 # made with this harness active is not representative of a real user's
 # environment -- that's what #14 validates separately.
 # --------------------------------------------------------------------------
+
+
+def harness_seed_gold(layout: Layout, journal: RunJournal, *, dry_run: bool) -> None:
+    """Snapshot the current install into gold/ by reflink.
+
+    Measured: 251 GB in 1.3 s with no additional disk used, because btrfs
+    shares the extents. This is what makes iteration cheap now that the
+    HTTP cache turned out to be impossible.
+    """
+    if not dry_run and not layout.game_dir.is_dir():
+        raise RuntimeError(f"nothing to snapshot: {layout.game_dir} does not exist")
+    staging = layout.gold_dir.with_name(layout.gold_dir.name + ".seeding")
+    if not dry_run:
+        layout.gold_dir.parent.mkdir(parents=True, exist_ok=True)
+        if staging.exists():
+            shutil.rmtree(staging)
+    print(f"reflink-snapshotting {layout.game_dir} -> {layout.gold_dir}")
+    run_cmd(
+        ["cp", "-a", "--reflink=always", str(layout.game_dir), str(staging)],
+        journal,
+        dry_run=dry_run,
+    )
+    if not dry_run:
+        if layout.gold_dir.exists():
+            shutil.rmtree(layout.gold_dir)
+        staging.rename(layout.gold_dir)
+    print("gold/ seeded; --cold now restores this install in seconds")
 
 
 def harness_restore_game_from_gold(layout: Layout, journal: RunJournal, *, dry_run: bool) -> None:
@@ -619,6 +688,8 @@ class Args:
     data_root: Path
     cold: bool
     dry_run: bool
+    seed_gold: bool
+    update_only: bool
     verdict: str | None
 
 
@@ -630,6 +701,16 @@ def parse_args(argv: list[str] | None = None) -> Args:
     parser.add_argument("--cold", action="store_true", help="also restore game/ from gold/")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, touch nothing")
     parser.add_argument(
+        "--seed-gold",
+        action="store_true",
+        help="snapshot the current install into gold/ by reflink, then exit",
+    )
+    parser.add_argument(
+        "--update-only",
+        action="store_true",
+        help="run the DCS updater and stop; do not launch the game",
+    )
+    parser.add_argument(
         "--verdict",
         default=None,
         help="record this verdict instead of prompting (pass/fail/...)",
@@ -639,6 +720,8 @@ def parse_args(argv: list[str] | None = None) -> Args:
         data_root=ns.data_root,
         cold=ns.cold,
         dry_run=ns.dry_run,
+        seed_gold=ns.seed_gold,
+        update_only=ns.update_only,
         verdict=ns.verdict,
     )
 
@@ -653,6 +736,10 @@ def main(argv: list[str] | None = None) -> int:
         f"dry_run={args.dry_run}"
     )
 
+    if args.seed_gold:
+        harness_seed_gold(layout, journal, dry_run=args.dry_run)
+        return 0
+
     if args.cold:
         harness_restore_game_from_gold(layout, journal, dry_run=args.dry_run)
 
@@ -665,6 +752,8 @@ def main(argv: list[str] | None = None) -> int:
     # Gate only the step that actually hits the ED CDN -- everything above
     # (toolchain, prefix, drive mapping) works fine without the harness.
     launch_dcs_updater(layout, env, journal, dry_run=args.dry_run)
+    if not args.update_only:
+        launch_dcs(layout, env, journal, dry_run=args.dry_run)
     record_human_verdict(journal, dry_run=args.dry_run, verdict=args.verdict)
     journal.capture_dcs_log(layout.saved_games_dir)
 
