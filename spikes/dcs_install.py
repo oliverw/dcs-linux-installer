@@ -82,6 +82,7 @@ GE_PROTON_RELEASES_API = (
 
 DCS_WEB_INSTALLER_URL = "https://www.digitalcombatsimulator.com/en/downloads/world/"
 DCS_UPDATER_HOST = "updates.digitalcombatsimulator.com"
+DCS_INSTALLER_NAME = "DCS_World_web.exe"
 
 # RUN 0001: umu-launcher is NOT on PyPI (404), so `uv tool run --from
 # umu-launcher` can never work. Upstream ships an official fc44 RPM and a
@@ -306,14 +307,29 @@ def ensure_toolchain(layout: Layout, journal: RunJournal, *, dry_run: bool) -> N
         else:
             print(f"  (dry-run) would: GET {GE_PROTON_RELEASES_API}, extract tarball")
 
-    installer_path = layout.toolchain_dir / "DCS_World_Web.exe"
-    if not installer_path.exists():
-        print(f"fetching DCS web installer into {installer_path}")
+    if find_dcs_installer(layout) is None:
+        installer_path = layout.toolchain_dir / DCS_INSTALLER_NAME
+        print(f"DCS web installer not found at {installer_path}")
         if not dry_run:
             print(f"  MANUAL: download from {DCS_WEB_INSTALLER_URL} to {installer_path}")
             print("  (the installer page requires a browser session; not scripted yet)")
         else:
             print(f"  (dry-run) would: fetch installer from {DCS_WEB_INSTALLER_URL}")
+
+
+def find_dcs_installer(layout: Layout) -> Path | None:
+    """Locate the hand-dropped DCS web installer, case-insensitively.
+
+    ED ships it as "DCS_World_web.exe" but capitalisation varies by mirror
+    and by browser, and this file arrives by hand -- so match on a folded
+    name rather than betting on one spelling.
+    """
+    if not layout.toolchain_dir.is_dir():
+        return None
+    for path in layout.toolchain_dir.iterdir():
+        if path.is_file() and path.name.casefold() == DCS_INSTALLER_NAME.casefold():
+            return path
+    return None
 
 
 def _download_umu_zipapp(layout: Layout) -> None:
@@ -459,7 +475,7 @@ def launch_dcs_updater(
     logs in and picks modules. The script's job stops at getting the updater
     on screen with the cache harness in place.
     """
-    installer_path = layout.toolchain_dir / "DCS_World_Web.exe"
+    installer_path = find_dcs_installer(layout) or layout.toolchain_dir / DCS_INSTALLER_NAME
     if not dry_run and not installer_path.exists():
         raise RuntimeError(
             f"DCS web installer missing at {installer_path}.\n"
@@ -475,14 +491,25 @@ def launch_dcs_updater(
     run_cmd(cmd, journal, dry_run=dry_run, env=env)
 
 
-def record_human_verdict(journal: RunJournal, *, dry_run: bool) -> None:
-    """Success bar: main menu, Instant Action free flight, ~60s flyable."""
+def record_human_verdict(journal: RunJournal, *, dry_run: bool, verdict: str | None = None) -> None:
+    """Success bar: main menu, Instant Action free flight, ~60s flyable.
+
+    The verdict is a human judgement by design, but --verdict lets a run be
+    driven non-interactively (and stdin may not be a TTY at all).
+    """
     if dry_run:
         journal.write_verdict("dry-run", "no verdict collected in dry-run mode")
         return
-    verdict = input("Reached main menu, flew Instant Action for ~60s? [pass/fail]: ").strip()
+    if verdict is not None:
+        journal.write_verdict(verdict, "supplied via --verdict")
+        return
+    if not sys.stdin.isatty():
+        journal.write_verdict("unrecorded", "no TTY and no --verdict; record this by hand")
+        print("no TTY: verdict left unrecorded -- rerun with --verdict, or edit verdict.json")
+        return
+    answer = input("Reached main menu, flew Instant Action for ~60s? [pass/fail]: ").strip()
     notes = input("Notes (symptom if failed, anything notable if passed): ").strip()
-    journal.write_verdict(verdict, notes)
+    journal.write_verdict(answer, notes)
 
 
 # --------------------------------------------------------------------------
@@ -704,6 +731,7 @@ class Args:
     cold: bool
     dry_run: bool
     skip_harness: bool
+    verdict: str | None
 
 
 def parse_args(argv: list[str] | None = None) -> Args:
@@ -714,13 +742,22 @@ def parse_args(argv: list[str] | None = None) -> Args:
     parser.add_argument("--cold", action="store_true", help="also restore game/ from gold/")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, touch nothing")
     parser.add_argument(
+        "--verdict",
+        default=None,
+        help="record this verdict instead of prompting (pass/fail/...)",
+    )
+    parser.add_argument(
         "--skip-harness",
         action="store_true",
         help="real CDN, no local cache -- the unharnessed validation run (#14)",
     )
     ns = parser.parse_args(argv)
     return Args(
-        data_root=ns.data_root, cold=ns.cold, dry_run=ns.dry_run, skip_harness=ns.skip_harness
+        data_root=ns.data_root,
+        cold=ns.cold,
+        dry_run=ns.dry_run,
+        skip_harness=ns.skip_harness,
+        verdict=ns.verdict,
     )
 
 
@@ -748,7 +785,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.skip_harness:
         harness_ensure_cache_active(layout, journal, dry_run=args.dry_run)
     launch_dcs_updater(layout, env, journal, dry_run=args.dry_run, harnessed=not args.skip_harness)
-    record_human_verdict(journal, dry_run=args.dry_run)
+    record_human_verdict(journal, dry_run=args.dry_run, verdict=args.verdict)
     journal.capture_dcs_log(layout.saved_games_dir)
 
     print(f"run {journal.number:04d} journal: {journal.dir}")
