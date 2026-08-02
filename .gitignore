@@ -17,3 +17,6 @@ dist/
 # login step -- never publish that. The rest of the journal (versions,
 # verdict, dcs.log) is the deliverable issue #2 asks for and stays tracked.
 spikes/runs/*/commands.log
+
+# ED credential blob -- must never be committed or shipped in a bug report
+authdata.bin

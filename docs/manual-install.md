@@ -25,6 +25,14 @@ that repair silently destroys your login and keybinds. Map it out.
 Verified: a 12 GB partial download in `game/` survived a full prefix wipe and
 rebuild, and the updater resumed rather than restarting.
 
+**Your ED login lives in `Saved Games/DCS/Config/authdata.bin`.** Because the
+step below maps `Saved Games` out of the prefix, that file sits in
+`saved-games/` and survives a rebuild — no re-login. Leave it in the default
+location inside the prefix and every prefix rebuild logs you out.
+
+> `authdata.bin` is a credential. Never commit it, and never include it in a
+> diagnostics bundle or bug report.
+
 Pick a drive with room. This guide uses `$DATA`:
 
 ```bash
