@@ -13,6 +13,7 @@ dist/
 .env
 .env.*
 
-# Spike run journals can capture command output from an interactive ED
-# login session -- never publish that, even accidentally.
-spikes/runs/
+# commands.log captures full stdout/stderr, including the interactive ED
+# login step -- never publish that. The rest of the journal (versions,
+# verdict, dcs.log) is the deliverable issue #2 asks for and stays tracked.
+spikes/runs/*/commands.log
