@@ -559,7 +559,15 @@ def harness_restore_game_from_gold(layout: Layout, journal: RunJournal, *, dry_r
 # Hosts the DCS updater pulls content from. Both v4 and v6 must be pinned:
 # glibc still goes to DNS for AAAA if only an A record is in /etc/hosts,
 # which silently defeats the whole redirect (RUN 0004).
-ED_HOSTS = ("updates.digitalcombatsimulator.com", "www.digitalcombatsimulator.com")
+# ONLY content hosts belong here. RUN 0009: redirecting
+# www.digitalcombatsimulator.com breaks the updater outright --
+# "ERROR: Conection to server 'www.digitalcombatsimulator.com' failed".
+# www is the API/auth host and is HTTPS-only, so pointing it at an
+# http-only cache means nothing is listening on 443 and the connection
+# dies before any HTTP is spoken. Caching it would need TLS interception,
+# which issue #2 rules out. updates.* refuses 443 outright, so it is
+# genuinely http-only and safe to redirect.
+ED_HOSTS = ("updates.digitalcombatsimulator.com",)
 
 HARNESS_CONTAINER = "dcs-linux-spike-edcache"
 
