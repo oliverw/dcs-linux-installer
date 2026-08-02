@@ -460,6 +460,12 @@ def launch_dcs_updater(
     on screen with the cache harness in place.
     """
     installer_path = layout.toolchain_dir / "DCS_World_Web.exe"
+    if not dry_run and not installer_path.exists():
+        raise RuntimeError(
+            f"DCS web installer missing at {installer_path}.\n"
+            f"Download it from {DCS_WEB_INSTALLER_URL} (the page needs a browser\n"
+            f"session, so this step cannot be scripted) and save it to that path."
+        )
     print(f"launching {installer_path} for interactive login/module selection")
     print("MANUAL: in the installer, set the install path to D:\\ (mapped to game/)")
     print("MANUAL: in DCS_updater.exe settings, disable torrent downloads (see #2)")
