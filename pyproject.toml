@@ -5,7 +5,7 @@ description = "Install DCS World Standalone on Linux, and keep it working."
 readme = "README.md"
 license = "MIT"
 authors = [
-    { name = "Oliver Weichhold", email = "oliver.weichhold@pm.me" }
+    { name = "Oliver Weichhold", email = "oliver@weichhold.com" }
 ]
 requires-python = ">=3.11"
 dependencies = [
