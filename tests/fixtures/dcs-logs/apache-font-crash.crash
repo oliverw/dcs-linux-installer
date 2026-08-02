@@ -1,0 +1,54 @@
+# -------------- 20260802-212624 --------------
+DCS/2.9.28.26385 (x86_64; MT; Windows NT 10.0.19045)
+D:\DCS World\bin\CockpitBase.dll
+# C0000005 ACCESS_VIOLATION at 00006fffbc878490 00:00000000
+SymInit: Symbol-SearchPath: 'D:\DCS World\bin;', symOptions: 532, UserName: 'steamuser'
+OS-Version: 10.0.19045 () 0x0-0x1
+0x00000000003a8490 (cockpitbase): (function-name not available) + 0x0
+0x00000000003a765e (cockpitbase): (function-name not available) + 0x0
+0x00000000003a0f90 (cockpitbase): (function-name not available) + 0x0
+0x0000000000383018 (cockpitbase): (function-name not available) + 0x0
+0x0000000000006ee5 (lua): (function-name not available) + 0x0
+0x00000000000131cc (lua): (function-name not available) + 0x0
+0x00000000000068ab (lua): (function-name not available) + 0x0
+0x00000000000070cf (lua): (function-name not available) + 0x0
+0x0000000000006a9e (lua): (function-name not available) + 0x0
+0x0000000000001c00 (lua): (function-name not available) + 0x0
+0x000000000007e359 (edcore): (function-name not available) + 0x0
+0x000000000007afa3 (edcore): (function-name not available) + 0x0
+0x000000000038248f (cockpitbase): (function-name not available) + 0x0
+0x000000000037837b (cockpitbase): (function-name not available) + 0x0
+0x000000000037ac5a (cockpitbase): (function-name not available) + 0x0
+0x000000000037b814 (cockpitbase): (function-name not available) + 0x0
+0x000000000075d4cf (ah64d): (function-name not available) + 0x0
+0x00000000001f622d (cockpitbase): (function-name not available) + 0x0
+0x00000000001f526e (cockpitbase): (function-name not available) + 0x0
+0x00000000004111fc (cockpitbase): (function-name not available) + 0x0
+0x0000000000412bf2 (cockpitbase): (function-name not available) + 0x0
+0x00000000007f8ba8 (dcs): (function-name not available) + 0x0
+0x00000000007ac627 (dcs): (function-name not available) + 0x0
+0x00000000007b483a (dcs): (function-name not available) + 0x0
+0x00000000007ae755 (dcs): (function-name not available) + 0x0
+0x00000000007cf558 (dcs): (function-name not available) + 0x0
+0x000000000062389c (dcs): (function-name not available) + 0x0
+0x0000000000965d4c (dcs): (function-name not available) + 0x0
+0x0000000000967274 (dcs): (function-name not available) + 0x0
+0x000000000093eb23 (dcs): (function-name not available) + 0x0
+0x00000000009383bf (dcs): (function-name not available) + 0x0
+0x000000000093cfa6 (dcs): (function-name not available) + 0x0
+0x000000000093be20 (dcs): (function-name not available) + 0x0
+0x0000000000930eb9 (dcs): (function-name not available) + 0x0
+0x0000000000afff37 (dcs): (function-name not available) + 0x0
+0x0000000000afe644 (dcs): (function-name not available) + 0x0
+0x00000000009f7b32 (dcs): (function-name not available) + 0x0
+0x00000000009f9e6c (dcs): (function-name not available) + 0x0
+0x00000000009d35f5 (dcs): (function-name not available) + 0x0
+0x00000000000a011a (edcore): (function-name not available) + 0x0
+0x000000000009fa42 (edcore): (function-name not available) + 0x0
+0x00000000000a009c (edcore): (function-name not available) + 0x0
+0x00000000009f7614 (dcs): (function-name not available) + 0x0
+0x00000000009a85a4 (dcs): (function-name not available) + 0x0
+0x00000000009a9bd3 (dcs): (function-name not available) + 0x0
+0x0000000002387b43 (dcs): (function-name not available) + 0x0
+0x00000000010778a6 (dcs): (function-name not available) + 0x0
+0x0000000000011649 (kernel32): (function-name not available) + 0x0
