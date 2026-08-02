@@ -57,7 +57,6 @@ import shutil
 import subprocess
 import sys
 import tarfile
-import time
 import urllib.request
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -513,7 +512,9 @@ def launch_dcs_updater(
         print(f"launching {installer_path} for interactive login/module selection")
         print("MANUAL: set the install path to D:\\ (mapped to game/)")
         cmd = [str(layout.umu_run), str(installer_path)]
-    print("MANUAL: in updater settings, disable torrent downloads (see #2)")
+    # Torrent was only ever disabled to force traffic through the HTTP
+    # cache. With no cache, P2P is simply the faster path.
+    print("MANUAL: leave torrent/P2P ENABLED in updater settings -- it is faster")
     run_cmd(cmd, journal, dry_run=dry_run, env=env)
 
 
@@ -588,201 +589,24 @@ def harness_restore_game_from_gold(layout: Layout, journal: RunJournal, *, dry_r
 # dies before any HTTP is spoken. Caching it would need TLS interception,
 # which issue #2 rules out. updates.* refuses 443 outright, so it is
 # genuinely http-only and safe to redirect.
-ED_HOSTS = ("updates.digitalcombatsimulator.com",)
-
-HARNESS_CONTAINER = "dcs-linux-spike-edcache"
-
-# nginx as a caching forward-ish proxy: it serves whatever Host it is given
-# and caches by host+URI, so one server covers every ED host. Verified
-# against the real CDN in RUN 0004 (MISS then HIT).
-NGINX_CONF = """\
-events { worker_connections 1024; }
-http {
-  proxy_cache_path /cache levels=1:2 keys_zone=ed:64m max_size=200g inactive=365d use_temp_path=off;
-  log_format cachelog '$status $upstream_cache_status $host$request_uri';
-  access_log /dev/stdout cachelog;
-  resolver 1.1.1.1 8.8.8.8 ipv6=off valid=300s;
-  server {
-    listen 80;
-    server_name _;
-    location / {
-      proxy_cache ed;
-      proxy_cache_valid 200 206 365d;
-      proxy_cache_key "$host$request_uri";
-      proxy_cache_lock on;
-      proxy_set_header Host $host;
-      add_header X-ED-Cache $upstream_cache_status always;
-      proxy_pass http://$host;
-    }
-  }
-}
-"""
-
-
-def harness_ensure_cache_active(layout: Layout, journal: RunJournal, *, dry_run: bool) -> None:
-    """Stand up the local ED cache and prove it actually caches.
-
-    Called right before the updater launches -- that's where the 150 GB
-    download happens, so that's the only step this needs to gate. Toolchain
-    fetch and prefix creation don't touch the ED CDN and run fine without it.
-
-    Design, as validated in RUN 0004 rather than assumed:
-
-      * The ED update hosts serve plain http:// with no https redirect, and
-        return ETag/Last-Modified, so a stock nginx proxy_cache is enough --
-        no TLS interception, no MITM certificate.
-      * nginx runs in a rootless podman container, so no root and no
-        system-wide nginx install (the dev machine has none).
-      * The updater is pointed at it by a bind-mounted /etc/hosts inside a
-        *mount* namespace only. The ticket's plan called for a network
-        namespace too, but that turns out to be unnecessary and costs more:
-        keeping the host network means GPU, X11/Wayland and audio all keep
-        working with no pasta/slirp plumbing.
-
-    Fails loudly rather than silently falling back to the real CDN -- a
-    silent fallback looks exactly like success and would burn a day.
-    """
-    if dry_run:
-        print(
-            f"  (dry-run) would: start {HARNESS_CONTAINER} (nginx/podman) caching to "
-            f"{layout.http_cache_dir}, then self-test for a cache HIT"
-        )
-        return
-
-    if not shutil.which("podman"):
-        raise RuntimeError("cache harness needs podman (rootless); not on PATH")
-
-    # nginx must answer on :80 because that is where the updater will knock,
-    # and rootless podman can only publish it if unprivileged ports reach
-    # down that far. This is the one thing the harness cannot arrange itself.
-    port_start = int(
-        Path("/proc/sys/net/ipv4/ip_unprivileged_port_start").read_text().strip() or 1024
-    )
-    if port_start > 80:
-        raise RuntimeError(
-            f"cache harness needs to bind :80 but net.ipv4.ip_unprivileged_port_start is "
-            f"{port_start}. Run once as root:\n"
-            f"    sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80\n"
-            f"(or pass --skip-harness to hit the real CDN -- see #14)"
-        )
-
-    layout.http_cache_dir.mkdir(parents=True, exist_ok=True)
-    conf_path = layout.cache_root / "nginx.conf"
-    conf_path.write_text(NGINX_CONF)
-
-    run_cmd(["podman", "rm", "-f", HARNESS_CONTAINER], journal, dry_run=dry_run, check=False)
-    run_cmd(
-        [
-            "podman",
-            "run",
-            "-d",
-            "--name",
-            HARNESS_CONTAINER,
-            "-p",
-            "127.0.0.1:80:80",
-            "-v",
-            f"{conf_path}:/etc/nginx/nginx.conf:ro,Z",
-            "-v",
-            f"{layout.http_cache_dir}:/cache:Z",
-            "docker.io/library/nginx:alpine",
-        ],
-        journal,
-        dry_run=dry_run,
-    )
-    _harness_wait_for_cache_hit(journal)
-    harness_activate_hosts(layout, journal, dry_run=dry_run)
-    print("cache harness active: ED hosts resolve to the local nginx cache")
-
-
-def _harness_wait_for_cache_hit(journal: RunJournal, attempts: int = 15) -> None:
-    """Prove the cache caches: same object twice, second must report HIT.
-
-    This is the assertion issue #2 insists on. Without it a misconfigured
-    proxy that quietly passes everything through to the real CDN would look
-    exactly like a working harness.
-    """
-    probe = f"http://127.0.0.1/?harness-probe={datetime.now(UTC).timestamp()}"
-    curl = [
-        "curl",
-        "-sS",
-        "-o",
-        "/dev/null",
-        "--max-time",
-        "30",
-        "-H",
-        f"Host: {ED_HOSTS[0]}",
-        "-w",
-        "%{http_code} %header{X-ED-Cache}",
-        probe,
-    ]
-
-    for _attempt in range(attempts):
-        first = subprocess.run(curl, capture_output=True, text=True, check=False)
-        if first.returncode == 0 and first.stdout.startswith("200"):
-            second = subprocess.run(curl, capture_output=True, text=True, check=False)
-            journal.record_command(curl, second)
-            if "HIT" in second.stdout:
-                return
-            raise RuntimeError(
-                f"cache harness is up but does not cache: second request reported "
-                f"{second.stdout!r}, expected HIT. Refusing to run against the real CDN."
-            )
-        time.sleep(1)
-    raise RuntimeError(
-        f"cache harness never became ready after {attempts}s (last: {first.stdout!r})"
-    )
-
-
-HOSTS_BEGIN = "# >>> dcs-linux-spike harness >>>"
-HOSTS_END = "# <<< dcs-linux-spike harness <<<"
-
-
-def _strip_hosts_block(journal: RunJournal, *, dry_run: bool) -> None:
-    """Delete any existing harness block from /etc/hosts (no-op if absent)."""
-    run_cmd(
-        ["sudo", "-n", "sed", "-i", f"\\|{HOSTS_BEGIN}|,\\|{HOSTS_END}|d", "/etc/hosts"],
-        journal,
-        dry_run=dry_run,
-    )
-
-
-def harness_activate_hosts(layout: Layout, journal: RunJournal, *, dry_run: bool) -> None:
-    """Point the ED hosts at the local cache, system-wide.
-
-    RUN 0007 killed the namespace approach: bind-mounting /etc/hosts needs
-    uid 0 inside the user namespace, but umu-run refuses to start as root,
-    and dropping to a non-root uid there maps to an unrelated subuid with no
-    access to our own files. There is no mapping that satisfies both.
-
-    So the redirect is a marked block in the real /etc/hosts instead. It is
-    system-wide while active -- nothing on this machine can reach the ED
-    site -- so harness_deactivate_hosts() must run no matter how the run
-    ends. main() does that in a finally.
-    """
-    print("pointing ED hosts at the local cache (system-wide, reverted on exit)")
-    _strip_hosts_block(journal, dry_run=dry_run)
-    lines = [HOSTS_BEGIN]
-    for host in ED_HOSTS:
-        lines += [f"127.0.0.1 {host}", f"::1 {host}"]
-    lines.append(HOSTS_END)
-    block = "\n".join(lines) + "\n"
-    if not dry_run:
-        proc = subprocess.run(
-            ["sudo", "-n", "tee", "-a", "/etc/hosts"],
-            input=block,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        journal.record_command(["sudo", "tee", "-a", "/etc/hosts"], proc)
-        if proc.returncode != 0:
-            raise RuntimeError(f"could not update /etc/hosts: {proc.stderr}")
-
-
-def harness_deactivate_hosts(journal: RunJournal, *, dry_run: bool) -> None:
-    """Strip the harness block from /etc/hosts. Safe to call when absent."""
-    print("restoring /etc/hosts")
-    _strip_hosts_block(journal, dry_run=dry_run)
+# NOTE (run 0010): there is no HTTP cache harness, and there cannot be one.
+#
+# Issue #2 assumed "the HTTP servers are plain http://, so the traffic is
+# cacheable with no TLS interception". The host does offer plain http, but
+# the updater does not use it: it downloads over HTTPS to cdn77
+# (79.127.211.89:443, rDNS 787975672.fra.cdn77.com). An HTTP proxy cache
+# never sees that traffic, and intercepting it needs a MITM certificate,
+# which the ticket rules out.
+#
+# A working nginx/podman cache plus an /etc/hosts redirect was built and
+# verified (MISS then HIT against the real CDN) before this was noticed --
+# it cached the probe perfectly and zero bytes of DCS. It has been deleted
+# rather than left as dead machinery, along with the two pieces of machine
+# state it needed (net.ipv4.ip_unprivileged_port_start=80 and a system-wide
+# /etc/hosts block).
+#
+# Cheap iteration comes from gold/ + reflink instead, which does not care
+# what protocol the download used. See harness_restore_game_from_gold.
 
 
 # --------------------------------------------------------------------------
@@ -795,8 +619,6 @@ class Args:
     data_root: Path
     cold: bool
     dry_run: bool
-    skip_harness: bool
-    serve_cache: bool
     verdict: str | None
 
 
@@ -808,27 +630,15 @@ def parse_args(argv: list[str] | None = None) -> Args:
     parser.add_argument("--cold", action="store_true", help="also restore game/ from gold/")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, touch nothing")
     parser.add_argument(
-        "--serve-cache",
-        action="store_true",
-        help="bring up the cache and hold it until interrupted, then restore /etc/hosts",
-    )
-    parser.add_argument(
         "--verdict",
         default=None,
         help="record this verdict instead of prompting (pass/fail/...)",
-    )
-    parser.add_argument(
-        "--skip-harness",
-        action="store_true",
-        help="real CDN, no local cache -- the unharnessed validation run (#14)",
     )
     ns = parser.parse_args(argv)
     return Args(
         data_root=ns.data_root,
         cold=ns.cold,
         dry_run=ns.dry_run,
-        skip_harness=ns.skip_harness,
-        serve_cache=ns.serve_cache,
         verdict=ns.verdict,
     )
 
@@ -840,26 +650,8 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         f"run {journal.number:04d} -- data_root={layout.data_root} cold={args.cold} "
-        f"dry_run={args.dry_run} skip_harness={args.skip_harness}"
+        f"dry_run={args.dry_run}"
     )
-
-    if args.serve_cache:
-        # A DCS install is not one sitting: the updater gets closed, errors
-        # out, gets reopened. A normal run tears the harness down when the
-        # updater exits, so the next attempt silently reaches the real CDN --
-        # the exact "looks like success" failure this harness exists to stop.
-        # This mode holds it up until interrupted.
-        try:
-            harness_ensure_cache_active(layout, journal, dry_run=args.dry_run)
-            print("cache is up; run the updater as often as you like.")
-            print("press Ctrl-C here when you are done to restore /etc/hosts.")
-            while True:
-                time.sleep(3600)
-        except KeyboardInterrupt:
-            print()
-        finally:
-            harness_deactivate_hosts(journal, dry_run=args.dry_run)
-        return 0
 
     if args.cold:
         harness_restore_game_from_gold(layout, journal, dry_run=args.dry_run)
@@ -872,16 +664,8 @@ def main(argv: list[str] | None = None) -> int:
 
     # Gate only the step that actually hits the ED CDN -- everything above
     # (toolchain, prefix, drive mapping) works fine without the harness.
-    try:
-        if not args.skip_harness:
-            harness_ensure_cache_active(layout, journal, dry_run=args.dry_run)
-        launch_dcs_updater(layout, env, journal, dry_run=args.dry_run)
-        record_human_verdict(journal, dry_run=args.dry_run, verdict=args.verdict)
-    finally:
-        # /etc/hosts is a system-wide change: nothing on this machine can
-        # reach the ED site while it stands. Restore it however we exit.
-        if not args.skip_harness:
-            harness_deactivate_hosts(journal, dry_run=args.dry_run)
+    launch_dcs_updater(layout, env, journal, dry_run=args.dry_run)
+    record_human_verdict(journal, dry_run=args.dry_run, verdict=args.verdict)
     journal.capture_dcs_log(layout.saved_games_dir)
 
     print(f"run {journal.number:04d} journal: {journal.dir}")
