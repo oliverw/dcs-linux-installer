@@ -714,9 +714,20 @@ def harness_wrap_in_hosts_ns(layout: Layout, cmd: list[str], *, dry_run: bool) -
 
     Host networking is deliberately kept -- only /etc/hosts differs -- so
     the GUI, GPU and audio behave exactly as they would outside the harness.
+
+    The uid dance matters (RUN 0006). Bind-mounting over /etc/hosts needs to
+    be uid 0 inside the user namespace, but umu-run hard-refuses to start as
+    root ("This script should never be run as the root user"). Mapping our
+    own uid instead loses the mount. So: enter as root, mount, then setpriv
+    back down to the real uid before exec'ing -- the mount outlives the
+    privilege drop.
     """
     merged = harness_hosts_file(layout, dry_run=dry_run)
-    inner = f"mount --bind {shlex.quote(str(merged))} /etc/hosts && exec " + shlex.join(cmd)
+    inner = (
+        f"mount --bind {shlex.quote(str(merged))} /etc/hosts && "
+        f"exec setpriv --reuid={os.getuid()} --regid={os.getgid()} --clear-groups "
+        + shlex.join(cmd)
+    )
     return ["unshare", "-Urm", "--map-auto", "sh", "-c", inner]
 
 
