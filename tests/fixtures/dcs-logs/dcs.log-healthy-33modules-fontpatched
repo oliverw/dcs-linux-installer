@@ -1198,3 +1198,293 @@ pause10: 782 cycles (std dev: 311.8)
 2026-08-02 21:36:35.614 INFO    EDTERRAIN4 (1188): ITerrainContextImpl4::setTextureMode(full=1)
 2026-08-02 21:36:35.624 INFO    Dispatcher (Main): load terrain done
 2026-08-02 21:36:35.625 INFO    LUA-TERRAIN (Main): Init done
+2026-08-02 21:37:23.046 ERROR   EDCORE (Main): [C:\users\steamuser\Saved Games\DCS\Config/Input/disabled.lua] CreateFile(REWRITE): Path not found.
+2026-08-02 21:37:23.046 ERROR   EDCORE (Main): Can't open file 'C:\users\steamuser\Saved Games\DCS\Config/Input/disabled.lua' from real path fs.
+2026-08-02 21:37:23.046 ERROR   LuaGUI (Main): Cannot save disabled devices into file[C:\users\steamuser\Saved Games\DCS\Config/Input/disabled.lua]! Error can't open "C:\users\steamuser\Saved Games\DCS\Config/Input/disabled.lua" for 'w'
+2026-08-02 21:37:27.869 INFO    Dispatcher (Main): load terrain from ./Mods/terrains/Caucasus\terrain.cfg.lua
+2026-08-02 21:37:27.972 INFO    SECURITYCONTROL (Main): Loaded ./Mods/terrains/Caucasus\terrain.cfg.lua.pak.crypt
+2026-08-02 21:37:27.972 INFO    TERRAIN (Main): lSystem::load(./Mods/terrains/Caucasus\terrain.cfg.lua)
+2026-08-02 21:37:27.972 INFO    TERRAIN (Main): lSystem::openSession(./Mods/terrains/Caucasus\terrain.cfg.lua)
+2026-08-02 21:37:27.972 INFO    WORLDGENERAL (Main): TerrainUtility:: updated in parallel: 0, updated in the main thread: 0
+2026-08-02 21:37:28.105 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setTrafficDecimation(4)
+2026-08-02 21:37:28.105 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setDate( day=21, month=3)
+2026-08-02 21:37:28.105 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setTextureMode(full=1)
+2026-08-02 21:37:28.120 INFO    EDCORE (Main): 0.000 s  terrain references
+2026-08-02 21:37:28.122 INFO    EDCORE (Main): 0.000 s  terrain models
+2026-08-02 21:37:28.123 INFO    EDCORE (Main): 0.000 s  terrain assets
+2026-08-02 21:37:28.128 INFO    EDCORE (Main): 0.000 s  terrain assets2
+2026-08-02 21:37:28.135 INFO    EDCORE (Main): 0.000 s  terrain landfile
+2026-08-02 21:37:28.141 INFO    EDCORE (Main): 0.000 s  terrain surfaceTile
+2026-08-02 21:37:28.146 INFO    EDCORE (Main): 0.000 s  terrain vfstextures
+2026-08-02 21:37:28.152 INFO    EDCORE (Main): 0.000 s  terrain scene
+2026-08-02 21:37:28.158 INFO    EDCORE (Main): 0.000 s  terrain roaddetails
+2026-08-02 21:37:28.163 INFO    EDCORE (Main): 0.000 s  terrain forest
+2026-08-02 21:37:28.169 INFO    EDCORE (Main): 0.000 s  terrain routes
+2026-08-02 21:37:28.175 INFO    EDCORE (Main): 0.000 s  terrain surfacedetails
+2026-08-02 21:37:28.181 INFO    EDCORE (Main): 0.000 s  terrain blocks
+2026-08-02 21:37:28.186 INFO    EDCORE (Main): 0.000 s  terrain superficials
+2026-08-02 21:37:28.192 INFO    EDCORE (Main): 0.000 s  terrain lma
+2026-08-02 21:37:28.198 INFO    EDCORE (Main): 0.000 s  terrain vectordatasettings
+2026-08-02 21:37:28.203 INFO    EDCORE (Main): 0.000 s  terrain navgraph
+2026-08-02 21:37:28.209 INFO    EDCORE (Main): 0.000 s  terrain vti
+2026-08-02 21:37:28.209 INFO    EDTERRAIN4 (Main): terrain time: 0.103024 s
+2026-08-02 21:37:28.216 INFO    TERRAIN (Main): lSystem::InitScenes()
+2026-08-02 21:37:28.308 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setTrafficDecimation(4)
+2026-08-02 21:37:28.308 WARNING LOG (404): 3 duplicate message(s) skipped.
+2026-08-02 21:37:28.308 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setDate( day=21, month=3)
+2026-08-02 21:37:28.309 WARNING LOG (404): 3 duplicate message(s) skipped.
+2026-08-02 21:37:28.309 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setTextureMode(full=1)
+2026-08-02 21:37:28.336 WARNING LOG (404): 3 duplicate message(s) skipped.
+2026-08-02 21:37:28.336 INFO    EDTERRAIN4 (1204): ITerrainContextImpl4::setTrafficDecimation(4)
+2026-08-02 21:37:28.336 INFO    EDTERRAIN4 (1204): ITerrainContextImpl4::setDate( day=21, month=3)
+2026-08-02 21:37:28.336 INFO    EDTERRAIN4 (1204): ITerrainContextImpl4::setTextureMode(full=1)
+2026-08-02 21:37:28.337 INFO    Dispatcher (Main): load terrain done
+2026-08-02 21:37:28.338 INFO    LUA-TERRAIN (Main): Init done
+2026-08-02 21:37:28.539 INFO    Dispatcher (Main): loadMission C:\users\steamuser\AppData\Local\Temp\DCS\tempMission.miz
+2026-08-02 21:37:28.541 INFO    WORLDGENERAL (Main): loading mission from: "C:\users\steamuser\AppData\Local\Temp\DCS\tempMission.miz"
+2026-08-02 21:37:28.656 INFO    APP (Main): use_xRay: yes
+2026-08-02 21:37:28.656 INFO    APP (Main): netfm_enable_coeff_switching: yes
+2026-08-02 21:37:28.684 INFO    Dispatcher (Main): Terrain theatre Caucasus
+2026-08-02 21:37:28.699 INFO    EDCORE (Main): (dDispatcher)enterToState_:4
+2026-08-02 21:37:28.699 INFO    Dispatcher (Main): Start
+2026-08-02 21:37:29.044 INFO    Dispatcher (Main): Terrain theatre Caucasus
+2026-08-02 21:37:29.058 INFO    Dispatcher (Main): load terrain from ./Mods/terrains/Caucasus\terrain.cfg.lua
+2026-08-02 21:37:29.139 INFO    SECURITYCONTROL (Main): Loaded ./Mods/terrains/Caucasus\terrain.cfg.lua.pak.crypt
+2026-08-02 21:37:29.139 INFO    TERRAIN (Main): lSystem::load(./Mods/terrains/Caucasus\terrain.cfg.lua)
+2026-08-02 21:37:29.139 INFO    TERRAIN (Main): lSystem::openSession(./Mods/terrains/Caucasus\terrain.cfg.lua)
+2026-08-02 21:37:29.139 INFO    WORLDGENERAL (Main): TerrainUtility:: updated in parallel: 0, updated in the main thread: 0
+2026-08-02 21:37:29.267 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setTrafficDecimation(4)
+2026-08-02 21:37:29.267 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setDate( day=21, month=3)
+2026-08-02 21:37:29.267 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setTextureMode(full=1)
+2026-08-02 21:37:29.269 INFO    EDCORE (Main): 0.000 s  terrain references
+2026-08-02 21:37:29.290 INFO    EDCORE (Main): 0.000 s  terrain models
+2026-08-02 21:37:29.293 INFO    EDCORE (Main): 0.000 s  terrain assets
+2026-08-02 21:37:29.299 INFO    EDCORE (Main): 0.000 s  terrain assets2
+2026-08-02 21:37:29.304 INFO    EDCORE (Main): 0.000 s  terrain landfile
+2026-08-02 21:37:29.310 INFO    EDCORE (Main): 0.000 s  terrain surfaceTile
+2026-08-02 21:37:29.316 INFO    EDCORE (Main): 0.000 s  terrain vfstextures
+2026-08-02 21:37:29.322 INFO    EDCORE (Main): 0.000 s  terrain scene
+2026-08-02 21:37:29.328 INFO    EDCORE (Main): 0.000 s  terrain roaddetails
+2026-08-02 21:37:29.334 INFO    EDCORE (Main): 0.000 s  terrain forest
+2026-08-02 21:37:29.340 INFO    EDCORE (Main): 0.000 s  terrain routes
+2026-08-02 21:37:29.344 INFO    EDCORE (Main): 0.000 s  terrain surfacedetails
+2026-08-02 21:37:29.350 INFO    EDCORE (Main): 0.000 s  terrain blocks
+2026-08-02 21:37:29.356 INFO    EDCORE (Main): 0.000 s  terrain superficials
+2026-08-02 21:37:29.361 INFO    EDCORE (Main): 0.000 s  terrain lma
+2026-08-02 21:37:29.367 INFO    EDCORE (Main): 0.000 s  terrain vectordatasettings
+2026-08-02 21:37:29.373 INFO    EDCORE (Main): 0.000 s  terrain navgraph
+2026-08-02 21:37:29.378 INFO    EDCORE (Main): 0.000 s  terrain vti
+2026-08-02 21:37:29.378 INFO    EDTERRAIN4 (Main): terrain time: 0.109800 s
+2026-08-02 21:37:29.387 INFO    TERRAIN (Main): lSystem::InitScenes()
+2026-08-02 21:37:29.477 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setTrafficDecimation(4)
+2026-08-02 21:37:29.477 WARNING LOG (404): 3 duplicate message(s) skipped.
+2026-08-02 21:37:29.477 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setDate( day=21, month=3)
+2026-08-02 21:37:29.478 WARNING LOG (404): 3 duplicate message(s) skipped.
+2026-08-02 21:37:29.478 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setTextureMode(full=1)
+2026-08-02 21:37:29.506 WARNING LOG (404): 3 duplicate message(s) skipped.
+2026-08-02 21:37:29.506 INFO    EDTERRAIN4 (1240): ITerrainContextImpl4::setTrafficDecimation(4)
+2026-08-02 21:37:29.506 INFO    EDTERRAIN4 (1240): ITerrainContextImpl4::setDate( day=21, month=3)
+2026-08-02 21:37:29.506 INFO    EDTERRAIN4 (1240): ITerrainContextImpl4::setTextureMode(full=1)
+2026-08-02 21:37:29.507 INFO    Dispatcher (Main): load terrain done
+2026-08-02 21:37:29.539 INFO    WEATHER (Main): set fog: visibility:1  thickness:300.0
+2026-08-02 21:37:29.539 WARNING GRAPHICSCORE (Main): already registered Renderer callback
+2026-08-02 21:37:29.539 INFO    WEATHER (Main): set fog: visibility:100000  thickness:0.0
+2026-08-02 21:37:29.555 WARNING SCENE (Main): Scene was removed with 6 alive objects
+2026-08-02 21:37:29.556 INFO    VISUALIZER (Main): DCSScene initialized
+2026-08-02 21:37:29.574 INFO    DX11BACKEND (584): Use DLSS preset 'C'
+2026-08-02 21:37:29.679 INFO    DX11BACKEND (584): DLSS successfully initialized, 2228x1256 -> 3840x2160
+2026-08-02 21:37:29.746 INFO    VISUALIZER (584): DCSSceneRenderer initialized
+2026-08-02 21:37:29.766 INFO    Dispatcher (Main): initial random seed = 6649996
+2026-08-02 21:37:29.766 INFO    Dispatcher (Main): apply random seed = 6649996
+2026-08-02 21:37:29.827 INFO    WORLDGENERAL (Main): loaded from mission Scripts/World/GPS_GNSS.lua
+2026-08-02 21:37:30.289 INFO    WORLDGENERAL (Main): loaded from mission Config/View/SnapViewsDefault.lua
+2026-08-02 21:37:30.290 INFO    WORLDGENERAL (Main): loaded from mission Config/View/View.lua
+2026-08-02 21:37:30.290 INFO    WORLDGENERAL (Main): loaded from mission Config/View/Server.lua
+2026-08-02 21:37:31.613 WARNING FLIGHT (Main): No taxiroad found on Batumi from 2 to 1
+2026-08-02 21:37:31.613 WARNING FLIGHT (Main): No taxiroad found on Batumi from 3 to 1
+2026-08-02 21:37:31.614 WARNING FLIGHT (Main): No taxiroad found on Batumi from 4 to 1
+2026-08-02 21:37:31.614 WARNING FLIGHT (Main): No taxiroad found on Batumi from 5 to 1
+2026-08-02 21:37:31.614 WARNING FLIGHT (Main): No taxiroad found on Batumi from 6 to 1
+2026-08-02 21:37:31.614 WARNING FLIGHT (Main): No taxiroad found on Batumi from 7 to 1
+2026-08-02 21:37:31.614 WARNING FLIGHT (Main): No taxiroad found on Batumi from 8 to 1
+2026-08-02 21:37:31.615 WARNING FLIGHT (Main): No taxiroad found on Batumi from 9 to 1
+2026-08-02 21:37:31.615 WARNING FLIGHT (Main): No taxiroad found on Batumi from 10 to 1
+2026-08-02 21:37:31.615 WARNING FLIGHT (Main): No taxiroad found on Batumi from 11 to 1
+2026-08-02 21:37:31.810 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 1 to 16
+2026-08-02 21:37:31.810 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 2 to 16
+2026-08-02 21:37:31.811 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 3 to 16
+2026-08-02 21:37:31.811 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 4 to 16
+2026-08-02 21:37:31.811 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 5 to 16
+2026-08-02 21:37:31.812 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 6 to 16
+2026-08-02 21:37:31.812 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 7 to 16
+2026-08-02 21:37:31.812 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 8 to 16
+2026-08-02 21:37:31.813 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 9 to 16
+2026-08-02 21:37:31.813 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 10 to 16
+2026-08-02 21:37:31.813 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 11 to 16
+2026-08-02 21:37:31.813 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 12 to 16
+2026-08-02 21:37:31.814 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 13 to 16
+2026-08-02 21:37:31.814 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 14 to 16
+2026-08-02 21:37:31.814 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 15 to 16
+2026-08-02 21:37:31.921 WARNING FLIGHT (Main): No taxiroad found on Tbilisi-Lochini from 62 to 74
+2026-08-02 21:37:31.921 WARNING FLIGHT (Main): No taxiroad found on Tbilisi-Lochini from 63 to 74
+2026-08-02 21:37:31.921 WARNING FLIGHT (Main): No taxiroad found on Tbilisi-Lochini from 64 to 74
+2026-08-02 21:37:31.921 WARNING FLIGHT (Main): No taxiroad found on Tbilisi-Lochini from 65 to 74
+2026-08-02 21:37:32.015 INFO    APP (Main): MissionSpawn:spawnShips 81
+2026-08-02 21:37:32.129 WARNING EFFECTS2 (Main): OParticleSystem: preset 'steam' not found in 'speedSteam.lua', using default
+2026-08-02 21:37:32.131 WARNING LOG (404): 3 duplicate message(s) skipped.
+2026-08-02 21:37:32.131 WARNING EFFECTS2 (Main): OParticleSystem: preset '' not found in 'shipTrail.lua', using default
+2026-08-02 21:37:32.361 ERROR_ONCE DX11BACKEND (952): texture '/textures//liveries/ah-64d_blk_ii/avengers 1-227th arb/AH-64D_bottom_2_Avengers_RoughMet.' not found. Asked from ''
+2026-08-02 21:37:32.508 INFO    APP (Main): MissionSpawn:initScript
+2026-08-02 21:37:32.508 INFO    APP (Main): MissionSpawn:spawnCoalition neutrals
+2026-08-02 21:37:32.508 INFO    APP (Main): MissionSpawn:spawnCoalition red
+2026-08-02 21:37:32.508 INFO    APP (Main): MissionSpawn:spawnVehicles 81
+2026-08-02 21:37:32.690 ERROR_ONCE DX11BACKEND (960): texture 'zil135l_spec_fall' not found. Asked from ''
+2026-08-02 21:37:33.126 INFO    APP (Main): MissionSpawn:spawnCoalition blue
+2026-08-02 21:37:33.126 INFO    APP (Main): MissionSpawn:spawnHelicopters 2
+2026-08-02 21:37:33.126 INFO    APP (Main): MissionSpawn:spawnVehicles 2
+2026-08-02 21:37:33.331 INFO    APP (Main): MissionSpawn:spawnVehicles 16
+2026-08-02 21:37:33.388 INFO    APP (Main): MissionSpawn:spawnLocalPlayer 1,AH-64D_BLK_II
+2026-08-02 21:37:33.470 WARNING EDCORE (Main): Source mods/aircraft/ah-64d/cockpit/shape is already mounted to the same mount /models/.
+2026-08-02 21:37:33.636 INFO    VISUALIZER (944): ILV loaded  for /models/Cockpit_AH-64D.edm.ilv
+2026-08-02 21:37:33.637 INFO    ENLIGHT (944): get cockpit shading params from /models/Cockpit_AH-64D.edm.lua
+2026-08-02 21:37:33.639 ERROR_ONCE DX11BACKEND (944): texture '.' not found. Asked from ''
+2026-08-02 21:37:33.700 INFO    COCKPITBASE (Main): WebRTC VOIP init: registered radio receiver "ADF_ARN_149" with id - 0
+2026-08-02 21:37:33.704 INFO    COCKPITBASE (Main): WebRTC VOIP init: registered radio receiver/transmitter "UHF_RADIO" with id - 1
+2026-08-02 21:37:33.704 INFO    COCKPITBASE (Main): WebRTC VOIP init: enabled VOIP capability for radio UHF_RADIO
+2026-08-02 21:37:33.704 INFO    COCKPITBASE (Main): WebRTC VOIP init: registered radio receiver "ARC-164 Guard Receiver" with id - 2
+2026-08-02 21:37:33.704 INFO    COCKPITBASE (Main): WebRTC VOIP init: added guard receiver - ARC-164 Guard Receiver
+2026-08-02 21:37:33.705 INFO    COCKPITBASE (Main): WebRTC VOIP init: registered radio receiver/transmitter "VHF_AM_RADIO" with id - 3
+2026-08-02 21:37:33.705 INFO    COCKPITBASE (Main): WebRTC VOIP init: enabled VOIP capability for radio VHF_AM_RADIO
+2026-08-02 21:37:33.710 INFO    COCKPITBASE (Main): WebRTC VOIP init: registered radio receiver/transmitter "FM1" with id - 4
+2026-08-02 21:37:33.710 INFO    COCKPITBASE (Main): WebRTC VOIP init: enabled VOIP capability for radio FM1
+2026-08-02 21:37:33.715 INFO    COCKPITBASE (Main): WebRTC VOIP init: registered radio receiver/transmitter "FM2" with id - 5
+2026-08-02 21:37:33.715 INFO    COCKPITBASE (Main): WebRTC VOIP init: enabled VOIP capability for radio FM2
+2026-08-02 21:37:33.722 INFO    COCKPITBASE (Main): WebRTC VOIP init: registered radio receiver/transmitter "HF_RADIO" with id - 6
+2026-08-02 21:37:33.722 INFO    COCKPITBASE (Main): WebRTC VOIP init: enabled VOIP capability for radio HF_RADIO
+2026-08-02 21:37:56.069 ERROR   COCKPITBASE (Main): controller "VideoSignal_Color" missed in class cockpit::AH64::ccTEDAC_AH64
+2026-08-02 21:37:56.743 WARNING LOG (404): 1 duplicate message(s) skipped.
+2026-08-02 21:37:56.743 INFO    COCKPITBASE (Main): lua state still active HMD, 40 (status undefined)
+2026-08-02 21:37:56.745 INFO    COCKPITBASE (Main): lua state still active UHF_RADIO, 57
+2026-08-02 21:37:56.745 INFO    COCKPITBASE (Main): lua state still active VHF_AM_RADIO, 58
+2026-08-02 21:37:56.746 INFO    COCKPITBASE (Main): lua state still active HF_RADIO, 61
+2026-08-02 21:37:56.746 INFO    COCKPITBASE (Main): lua state still active CIU, 65 (status undefined)
+2026-08-02 21:37:56.746 INFO    COCKPITBASE (Main): lua state still active INTERCOM, 67 (status undefined)
+2026-08-02 21:37:56.749 INFO    COCKPITBASE (Main): lua state still active MACROS, 83 (status undefined)
+2026-08-02 21:37:56.776 INFO    WORLDGENERAL (Main): loaded from mission Scripts/World/birds.lua
+2026-08-02 21:37:56.934 INFO    VISUALIZER (Main): Preload() radius: 150000.000000
+2026-08-02 21:37:57.141 INFO    EDTERRAINGRAPHICS41 (Main): ITerrainGraphicsImpl4::forceLoading(): pos=(-317884, 20.7597, 635016), radius=150000
+2026-08-02 21:37:57.407 INFO    EDTERRAINGRAPHICS41 (584): surface5 clean up LOD 0: left 8  released 0
+2026-08-02 21:37:57.407 INFO    EDTERRAINGRAPHICS41 (584): surface5 clean up LOD 1: left 17  released 2
+2026-08-02 21:37:57.407 INFO    EDTERRAINGRAPHICS41 (584): surface5 clean up 0.110500 ms
+2026-08-02 21:37:58.074 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setTrafficDecimation(4)
+2026-08-02 21:37:58.074 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setDate( day=21, month=3)
+2026-08-02 21:37:58.074 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setTextureMode(full=1)
+2026-08-02 21:37:58.887 ERROR   ED_SOUND (736): render time = 0.010069s exceeded allowed slice of 0.010000s
+2026-08-02 21:37:59.820 ERROR   ED_SOUND (736): render time = 0.045005s exceeded allowed slice of 0.010000s
+2026-08-02 21:37:59.820 ERROR   ED_SOUND (740): render time = 0.043699s exceeded allowed slice of 0.010000s
+2026-08-02 21:38:00.450 WARNING BACKENDCOMMON (948): Need to reprocess [DDS] image '/textures/AH-64D_inside_D_Normal.dds'. Reason: Conversion requires - expanded pixel size, setting alpha to known value. Source is an 8:8:8 (24bpp) format
+2026-08-02 21:38:02.038 WARNING BACKENDCOMMON (960): Need to reprocess [DDS] image '/textures/ah64_pilot_seat_all_Normal.dds'. Reason: Conversion requires - expanded pixel size, setting alpha to known value. Source is an 8:8:8 (24bpp) format
+2026-08-02 21:38:07.632 INFO    VISUALIZER (Main): Preload() finished
+2026-08-02 21:38:07.781 INFO    Dispatcher (Main): precache units resources in slots
+2026-08-02 21:38:08.236 INFO    EDCORE (Main): Created game pool: h:2 n:6 l:4
+2026-08-02 21:38:08.236 INFO    Dispatcher (Main): loadMission Done: Control passed to the player
+2026-08-02 21:38:23.986 WARNING WORLD (Main): ModelTimeQuantizer: SAME MODEL TIME
+2026-08-02 21:38:43.342 WARNING LOG (404): 4 duplicate message(s) skipped.
+2026-08-02 21:38:43.342 INFO    Dispatcher (Main): Stop
+2026-08-02 21:38:44.146 INFO    TERRAIN (Main): lSystem::CleanScenes()
+2026-08-02 21:38:44.146 INFO    WORLDGENERAL (Main): TerrainUtility:: updated in parallel: 0, updated in the main thread: 0
+2026-08-02 21:38:44.162 INFO    VISUALIZER (584): Stopped collection of statistic.
+2026-08-02 21:29:43.000 ERROR_ONCE  (): 
+2026-08-02 21:38:44.234 INFO    DX11BACKEND (584): Use DLSS preset 'C'
+2026-08-02 21:38:44.288 INFO    DX11BACKEND (584): DLSS successfully initialized, 2228x1256 -> 3840x2160
+2026-08-02 21:38:44.394 ERROR_ONCE DX11BACKEND (584): render target 'uiTargetColor' not found
+2026-08-02 21:38:44.394 ERROR_ONCE DX11BACKEND (584): render target 'uiTargetDepth' not found
+2026-08-02 21:38:44.394 INFO    VISUALIZER (584): DCSSceneRenderer initialized
+2026-08-02 21:38:44.635 INFO    EDCORE (Main): Created boot pool: n:20
+2026-08-02 21:38:44.635 INFO    WORLDGENERAL (Main): wDetectorWorker:: updated in parallel: 0, updated in the main thread: 0
+2026-08-02 21:38:44.779 INFO    EDCORE (Main): (dDispatcher)enterToState_:3
+2026-08-02 21:38:44.796 INFO    Dispatcher (Main): load terrain from ./Mods/terrains/Caucasus\terrain.cfg.lua
+2026-08-02 21:38:44.887 INFO    SECURITYCONTROL (Main): Loaded ./Mods/terrains/Caucasus\terrain.cfg.lua.pak.crypt
+2026-08-02 21:38:44.887 INFO    TERRAIN (Main): lSystem::load(./Mods/terrains/Caucasus\terrain.cfg.lua)
+2026-08-02 21:38:44.887 INFO    TERRAIN (Main): lSystem::openSession(./Mods/terrains/Caucasus\terrain.cfg.lua)
+2026-08-02 21:38:44.908 INFO    EDCORE (Main): 0.000 s  terrain references
+2026-08-02 21:38:44.959 INFO    EDCORE (Main): 0.000 s  terrain models
+2026-08-02 21:38:44.965 INFO    EDCORE (Main): 0.000 s  terrain assets
+2026-08-02 21:38:44.969 INFO    EDCORE (Main): 0.000 s  terrain assets2
+2026-08-02 21:38:44.975 INFO    EDCORE (Main): 0.000 s  terrain landfile
+2026-08-02 21:38:44.980 INFO    EDCORE (Main): 0.000 s  terrain surfaceTile
+2026-08-02 21:38:44.986 INFO    EDCORE (Main): 0.000 s  terrain vfstextures
+2026-08-02 21:38:44.992 INFO    EDCORE (Main): 0.000 s  terrain scene
+2026-08-02 21:38:44.997 INFO    EDCORE (Main): 0.000 s  terrain roaddetails
+2026-08-02 21:38:45.003 INFO    EDCORE (Main): 0.000 s  terrain forest
+2026-08-02 21:38:45.008 INFO    EDCORE (Main): 0.000 s  terrain routes
+2026-08-02 21:38:45.014 INFO    EDCORE (Main): 0.000 s  terrain surfacedetails
+2026-08-02 21:38:45.018 INFO    EDCORE (Main): 0.000 s  terrain blocks
+2026-08-02 21:38:45.024 INFO    EDCORE (Main): 0.000 s  terrain superficials
+2026-08-02 21:38:45.030 INFO    EDCORE (Main): 0.000 s  terrain lma
+2026-08-02 21:38:45.035 INFO    EDCORE (Main): 0.000 s  terrain vectordatasettings
+2026-08-02 21:38:45.041 INFO    EDCORE (Main): 0.000 s  terrain navgraph
+2026-08-02 21:38:45.047 INFO    EDCORE (Main): 0.000 s  terrain vti
+2026-08-02 21:38:45.047 INFO    EDTERRAIN4 (Main): terrain time: 0.159218 s
+2026-08-02 21:38:45.066 INFO    TERRAIN (Main): lSystem::InitScenes()
+2026-08-02 21:38:45.182 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setTrafficDecimation(4)
+2026-08-02 21:38:45.182 WARNING LOG (404): 3 duplicate message(s) skipped.
+2026-08-02 21:38:45.182 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setDate( day=21, month=3)
+2026-08-02 21:38:45.183 WARNING LOG (404): 3 duplicate message(s) skipped.
+2026-08-02 21:38:45.183 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setTextureMode(full=1)
+2026-08-02 21:38:45.223 WARNING LOG (404): 3 duplicate message(s) skipped.
+2026-08-02 21:38:45.223 INFO    EDTERRAIN4 (1280): ITerrainContextImpl4::setTrafficDecimation(4)
+2026-08-02 21:38:45.223 INFO    EDTERRAIN4 (1280): ITerrainContextImpl4::setDate( day=21, month=3)
+2026-08-02 21:38:45.223 INFO    EDTERRAIN4 (1280): ITerrainContextImpl4::setTextureMode(full=1)
+2026-08-02 21:38:45.224 INFO    Dispatcher (Main): load terrain done
+2026-08-02 21:38:45.225 INFO    LUA-TERRAIN (Main): Init done
+2026-08-02 21:38:55.646 ERROR   EDCORE (Main): [C:\users\steamuser\Saved Games\DCS\Config/Input/disabled.lua] CreateFile(REWRITE): Path not found.
+2026-08-02 21:38:55.646 ERROR   EDCORE (Main): Can't open file 'C:\users\steamuser\Saved Games\DCS\Config/Input/disabled.lua' from real path fs.
+2026-08-02 21:38:55.646 ERROR   LuaGUI (Main): Cannot save disabled devices into file[C:\users\steamuser\Saved Games\DCS\Config/Input/disabled.lua]! Error can't open "C:\users\steamuser\Saved Games\DCS\Config/Input/disabled.lua" for 'w'
+2026-08-02 21:38:57.108 INFO    EDCORE (Main): (dDispatcher)enterToState_:5
+2026-08-02 21:38:57.232 INFO    APP (Main): application shutdown
+2026-08-02 21:38:57.233 INFO    WorldPlugIns (Main): Stopping preloader...
+2026-08-02 21:38:57.441 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 0
+2026-08-02 21:38:57.444 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 1
+2026-08-02 21:38:57.444 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 2
+2026-08-02 21:38:57.603 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 3
+2026-08-02 21:38:57.742 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 4
+2026-08-02 21:38:57.780 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 5
+2026-08-02 21:38:57.784 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 6
+2026-08-02 21:38:57.790 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 7
+2026-08-02 21:38:57.791 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 8
+2026-08-02 21:38:57.795 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 9
+2026-08-02 21:38:57.795 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 10
+2026-08-02 21:38:57.797 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 11
+2026-08-02 21:38:57.797 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 12
+2026-08-02 21:38:57.797 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 13
+2026-08-02 21:38:57.960 INFO    WorldPlugIns (Main): Deinitializing plugins...
+2026-08-02 21:38:58.988 INFO    TERRAIN (Main): lSystem::exit()
+2026-08-02 21:38:58.991 INFO    TERRAIN (Main): lSystem::CleanScenes()
+2026-08-02 21:38:58.991 INFO    WORLDGENERAL (Main): TerrainUtility:: updated in parallel: 0, updated in the main thread: 0
+2026-08-02 21:38:59.162 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setTrafficDecimation(4)
+2026-08-02 21:38:59.162 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setDate( day=21, month=3)
+2026-08-02 21:38:59.162 INFO    EDTERRAIN4 (584): ITerrainContextImpl4::setTextureMode(full=1)
+2026-08-02 21:38:59.173 INFO    INTER (584): ITerrainGraphicsEntryPoint::close()
+2026-08-02 21:38:59.226 INFO    INTER (Main): ITerrainEntryPoint::close()
+2026-08-02 21:38:59.540 INFO    INTER (Main): ITerrainGraphicsEntryPoint::close()
+2026-08-02 21:38:59.540 INFO    INTER (Main): ITerrainEntryPoint::close()
+2026-08-02 21:38:59.573 WARNING SCENE (584): Scene was removed with 6 alive objects
+2026-08-02 21:38:59.952 INFO    DX11BACKEND (584): DX11Renderer::shutdown()
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): NVIDIA API exit OK
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): textures_count: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): textures_size: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): buffers_count: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): buffers_size: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): CB_count: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): CB_size: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): SB_count: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): SB_size: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): IB_count: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): IB_size: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): VB_count: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): VB_size: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): total_buffers_size: 0
+2026-08-02 21:39:00.284 INFO    DX11BACKEND (584): total_size: 0
+2026-08-02 21:39:00.289 INFO    VISUALIZER (584): render thread has stopped
+=== Log closed.
