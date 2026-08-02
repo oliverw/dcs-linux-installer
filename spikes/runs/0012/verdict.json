@@ -1,0 +1,11 @@
+{
+  "verdict": "pass",
+  "notes": "SUCCESS BAR MET on Fedora 44 / RTX 4080. AH-64D Instant Action: main menu, mission entered, airborne and flyable 60s+ with no crash. Required the IC-safe Segoe font patch; without it the Apache dies on mission entry with C0000005 ACCESS_VIOLATION in CockpitBase.dll. Cockpit symbology (EUFD, MFD, HMD, KU) renders correctly with a DejaVu substitute -- Microsoft's seguisym.ttf is NOT required. TADS/PNVS sight not exercised, so the MFD/sight texture conversion patch remains UNTESTED. MFD_LCD_AH64_* 'texture not found' errors are runtime render-target names, not shipped files, and the MFDs render correctly despite them.",
+  "versions": {
+    "dcs": "2.9.28.26385",
+    "umu": "1.4.4",
+    "ge_proton": "GE-Proton11-3",
+    "driver": "610.43.03",
+    "kernel": "7.1.4-202.fc44.x86_64"
+  }
+}

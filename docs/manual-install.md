@@ -123,6 +123,32 @@ or pointing at the prefix:
 > **Do not install `vcrun2019`** — it causes a system RAM leak. Use 2015 or
 > 2022 if a `vcrun` turns out to be needed at all.
 
+### 3b. Segoe fonts — required for the AH-64D
+
+`corefonts` installs 42 fonts and **none of them are Segoe**. Without a Segoe
+stand-in, entering a mission in the Apache crashes every time:
+
+```
+UIBASERENDERER: Cannot create font [] size 30!
+# C0000005 ACCESS_VIOLATION in CockpitBase.dll, frame (ah64d)
+```
+
+The cockpit asks for a Segoe font, gets an empty name back, and dereferences
+null. Copy any locally installed sans font in under the Segoe names:
+
+```bash
+SRC=/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf     # or liberation-sans
+FONTS="$PREFIX/drive_c/windows/Fonts"
+for n in seguisym.ttf seguisb.ttf segoeui.ttf; do cp "$SRC" "$FONTS/$n"; done
+```
+
+**Integrity-check safe** — this writes only into the wine prefix. No hashed
+game file is touched, so pure-client multiplayer servers are unaffected.
+
+Microsoft's real `seguisym.ttf` is **not required**: verified in-cockpit that
+the EUFD, MFD labels, HMD heading tape and Keyboard Unit all render correctly
+with a DejaVu substitute.
+
 ---
 
 ## 4. Map game/ and Saved Games out of the prefix
@@ -229,11 +255,22 @@ From a verified-good startup — these are normal, not faults:
 | `DX11ShaderBinaries::loadCache done. Loaded 2630/2630` | shader cache healthy |
 | `texture 'KevinWakePattern812x1024.dds' not found` | cosmetic, water wake |
 | `UIBASERENDERER: Cannot load font [...\dxgui\skins\fonts\]!` | path resolves to a directory with no filename; seen on a good start |
+| `texture 'MFD_LCD_AH64_{LEFT,RIGHT}_{PLT,CPG}' not found` | runtime render-target names, not shipped files; MFDs render correctly regardless |
+
+Distinguish these from the **fatal** form, which is a different line entirely:
+
+```
+UIBASERENDERER: Cannot create font [] size 30!     <- empty name: crash follows
+```
 
 `VoiceChat.dll` loads cleanly on **2.9.28.26385** with no `optionsDb.lua`
 edit, so the widely-cited voice-chat fix appears unnecessary on current
 versions — worth confirming before applying it, since that edit touches a
 hashed file and carries integrity-check risk.
+
+**Not tested:** the TADS/PNVS sight. Reports of MFD/sight texture corruption
+concern sight views specifically, and this run never slewed the TADS. Treat
+the texture-conversion workaround as unverified rather than unnecessary.
 
 ---
 
@@ -246,7 +283,10 @@ hashed file and carries integrity-check risk.
 | CPU / RAM | i7-12700F, 64 GB |
 | umu-launcher | 1.4.4 (zipapp) |
 | GE-Proton | GE-Proton11-3 |
-| DCS | 2.9.28.26385 (WORLD, Caucasus, Marianas) |
+| DCS | 2.9.28.26385, 33 modules (AH-64D, FA-18C, A-10C, F-15E, AV-8B, Su-33; Caucasus, Syria, Nevada, Persian Gulf, Sinai, Marianas) |
 | Filesystem | btrfs on LUKS |
+
+**Result:** main menu → AH-64D Instant Action → airborne and flyable for
+60 s+ with no crash.
 
 Multi-distro and multi-GPU paths are **untested** — this is one machine.
