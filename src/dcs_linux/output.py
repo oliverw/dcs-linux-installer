@@ -17,10 +17,22 @@ class OutputOptions:
     no_color: bool
 
 
+def output_options(ctx: typer.Context) -> OutputOptions:
+    """The global output flags for this invocation."""
+    assert isinstance(ctx.obj, OutputOptions)
+    return ctx.obj
+
+
+def console_for(options: OutputOptions) -> Console:
+    """A console honouring --no-color, and NO_COLOR when the flag is absent."""
+    # Passing no_color=None (rather than False) lets Rich fall back to the
+    # NO_COLOR env var when the --no-color flag itself wasn't given.
+    return Console(no_color=options.no_color or None, highlight=False, soft_wrap=False)
+
+
 def emit_stub(ctx: typer.Context) -> None:
     """Report that the invoked subcommand exists but does nothing yet."""
-    assert isinstance(ctx.obj, OutputOptions)
-    options = ctx.obj
+    options = output_options(ctx)
     assert ctx.command.name is not None
     command = ctx.command.name
 
@@ -28,7 +40,5 @@ def emit_stub(ctx: typer.Context) -> None:
         typer.echo(json.dumps({"command": command, "status": "not_implemented"}))
         return
 
-    # Passing no_color=None (rather than False) lets Rich fall back to the
-    # NO_COLOR env var when the --no-color flag itself wasn't given.
-    console = Console(no_color=options.no_color or None, highlight=False)
+    console = console_for(options)
     console.print(f"[yellow]dcs-linux {command}[/yellow] is not implemented yet.")

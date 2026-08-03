@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import json
+
 import typer
 
 from dcs_linux import __version__
-from dcs_linux.output import OutputOptions, emit_stub
+from dcs_linux.checks import has_blocking_failure, run_checks
+from dcs_linux.output import OutputOptions, console_for, emit_stub, output_options
+from dcs_linux.probes import probe
+from dcs_linux.report import as_json_payload, render_table
+from dcs_linux.system import RealSystem
 
 app = typer.Typer(
     name="dcs-linux",
@@ -42,7 +48,17 @@ def global_options(
 @app.command()
 def check(ctx: typer.Context) -> None:
     """Check whether this machine is ready to run DCS."""
-    emit_stub(ctx)
+    options = output_options(ctx)
+    environment = probe(RealSystem())
+    results = run_checks(environment)
+
+    if options.json_output:
+        typer.echo(json.dumps(as_json_payload(environment, results), indent=2))
+    else:
+        render_table(console_for(options), results)
+
+    if has_blocking_failure(results):
+        raise typer.Exit(code=1)
 
 
 @app.command()
