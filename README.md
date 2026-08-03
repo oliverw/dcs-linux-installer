@@ -2,7 +2,7 @@
 
 Install [DCS World](https://www.digitalcombatsimulator.com/) **Standalone** on Linux, and keep it working.
 
-> **Status: pre-alpha.** `dcs-linux check` works; everything else is a stub.
+> **Status: pre-alpha.** `dcs-linux check` works, including finding the DCS installs you already have; everything else is a stub.
 > The design is settled and the work is broken down in [issue #1](https://github.com/oliverw/dcs-linux-installer/issues/1). There is no usable release yet. Everything below describes the intended tool.
 
 ---
@@ -79,6 +79,35 @@ It reports your distro and whether its base system is immutable, your GPU and dr
 Once DCS is installed it also checks the things that break it in ways the logs never mention — DLSS upscaling, the missing Segoe fonts the AH-64D needs, `d3dcompiler_47`, and whether the game and your saved games really do live outside the disposable prefix.
 
 Paths default to `~/dcs-linux` and `~/.cache/dcs-linux/toolchain`; override with `DCS_LINUX_ROOT` and `DCS_LINUX_TOOLCHAIN`.
+
+#### The DCS installs you already have
+
+`check` also lists every DCS install on the machine — from Lutris, Heroic, Steam, or this tool — with its game directory, prefix, Proton build, edition and DCS version:
+
+```
+2 DCS installs
+┏━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃   ┃ ID       ┃ Install                                                     ┃
+┡━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ → │ 778d8145 │ steam · Steam edition · DCS 2.9.28.26385 · GE-Proton9-20    │
+│   │          │ game:   /mnt/games/SteamLibrary/steamapps/common/DCSWorld   │
+│   │          │ prefix: /mnt/games/SteamLibrary/steamapps/compatdata/223750 │
+│   │ 7976590f │ lutris · Standalone edition · DCS 2.9.30.1000 · ge-proton   │
+│   │          │ game:   /games/DCS World                                    │
+│   │          │ prefix: /games/prefixes/dcs                                 │
+└───┴──────────┴─────────────────────────────────────────────────────────────┘
+```
+
+Nothing is written while discovering — your launchers can be running.
+
+The **ID** is how you name one install to a command, and it is derived from the game directory, so it does not change when the prefix is rebuilt:
+
+```sh
+dcs-linux check --install 7976590f   # report on that install
+dcs-linux check --install 7976       # any unambiguous prefix works
+```
+
+With one install found, or one of ours, it is used automatically.
 
 ## Design
 

@@ -1,21 +1,36 @@
 """`dcs-linux check` end to end, with the machine replaced by a fixture."""
 
 import json
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
 from dcs_linux import cli
 from dcs_linux.checks import GIB
+from dcs_linux.installs import DcsInstall, Edition, Launcher, select
 from dcs_linux.probes import Environment, InstallState, Umu
 from dcs_linux.system import DiskUsage
-from tests.environments import STEAMOS, bare_environment, healthy_environment
+from tests.environments import (
+    OWN_INSTALL,
+    STEAMOS,
+    bare_environment,
+    healthy_environment,
+)
 
 runner = CliRunner()
 
 
 def use(monkeypatch: pytest.MonkeyPatch, environment: Environment) -> None:
-    monkeypatch.setattr(cli, "probe", lambda system: environment)
+    """Replace the machine with a fixture, honouring --install as probe does."""
+
+    def fake_probe(system: object, identifier: str | None = None) -> Environment:
+        if identifier is None:
+            return environment
+        return replace(environment, targeted=select(environment.installs, identifier))
+
+    monkeypatch.setattr(cli, "probe", fake_probe)
 
 
 def test_healthy_machine_exits_zero(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -96,8 +111,68 @@ def test_no_color_output_has_no_ansi(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_every_failure_is_shown_with_its_fix(monkeypatch: pytest.MonkeyPatch) -> None:
     use(
         monkeypatch,
-        bare_environment(install=InstallState(prefix_exists=True), umu=Umu(None, False, None)),
+        bare_environment(
+            install_state=InstallState(prefix_exists=True), umu=Umu(None, False, None)
+        ),
     )
     result = runner.invoke(cli.app, ["check"])
     assert result.exit_code != 0
     assert "blocking problem" in result.stdout
+
+
+STEAM_INSTALL = DcsInstall(
+    game=Path("/mnt/games/SteamLibrary/steamapps/common/DCSWorld"),
+    launcher=Launcher.STEAM,
+    prefix=Path("/mnt/games/SteamLibrary/steamapps/compatdata/223750/pfx"),
+    runtime="GE-Proton11-3",
+    edition=Edition.STEAM,
+    version="2.9.28.26385",
+)
+
+
+def several_installs() -> Environment:
+    """Two installs and nothing chosen — the state `--install` exists for."""
+    installs = (OWN_INSTALL, STEAM_INSTALL)
+    return healthy_environment(installs=installs, targeted=None)
+
+
+class TestDiscoveryOutput:
+    def test_every_install_is_listed_with_its_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        use(monkeypatch, several_installs())
+        result = runner.invoke(cli.app, ["--no-color", "check"])
+        for install in (OWN_INSTALL, STEAM_INSTALL):
+            assert install.install_id in result.stdout
+        assert "steam" in result.stdout
+        assert "lutris" not in result.stdout
+
+    def test_no_installs_says_so_without_failing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A machine with no DCS is the normal starting point, not a fault."""
+        use(monkeypatch, healthy_environment(installs=(), targeted=None))
+        result = runner.invoke(cli.app, ["--no-color", "check"])
+        assert result.exit_code == 0
+        assert "No DCS install found" in result.stdout
+
+    def test_an_install_can_be_targeted_by_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        use(monkeypatch, several_installs())
+        result = runner.invoke(cli.app, ["--json", "check", "--install", STEAM_INSTALL.install_id])
+        assert result.exit_code == 0
+        selected = [i for i in json.loads(result.stdout)["installs"] if i["targeted"]]
+        assert [i["id"] for i in selected] == [STEAM_INSTALL.install_id]
+
+    def test_an_unknown_id_is_a_usage_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        use(monkeypatch, several_installs())
+        result = runner.invoke(cli.app, ["check", "--install", "nosuchid"])
+        assert result.exit_code == 2
+
+    def test_json_reports_every_install(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        use(monkeypatch, several_installs())
+        payload = json.loads(runner.invoke(cli.app, ["--json", "check"]).stdout)
+        steam = payload["installs"][1]
+        assert steam["id"] == STEAM_INSTALL.install_id
+        assert steam["launcher"] == "steam"
+        assert steam["edition"] == "steam"
+        assert steam["version"] == "2.9.28.26385"
+        assert steam["runtime"] == "GE-Proton11-3"
+        assert steam["game"] == str(STEAM_INSTALL.game)
+        assert steam["prefix"] == str(STEAM_INSTALL.prefix)
+        assert steam["targeted"] is False

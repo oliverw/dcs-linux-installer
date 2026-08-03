@@ -2,6 +2,8 @@ from pathlib import Path
 
 from dcs_linux.paths import Layout, resolve_layout
 from dcs_linux.probes import (
+    InstallState,
+    find_prefix_saved_games,
     has_dll_override,
     probe,
     probe_gpus,
@@ -10,14 +12,21 @@ from dcs_linux.probes import (
     probe_proton_builds,
     probe_umu,
     read_upscaling,
+    target_paths,
 )
 from dcs_linux.system import CommandResult, DiskUsage, filesystem_type_from_mounts
 from tests.fakes import FakeSystem
 
 LAYOUT = Layout(root=Path("/data/dcs"), toolchain=Path("/data/toolchain"))
 
+
 # What `winetricks d3dcompiler_47` actually writes into the prefix.
 DLL_OVERRIDE = '[Software\\\\Wine\\\\DllOverrides] 1700000000\n"d3dcompiler_47"="native,builtin"\n'
+
+
+def state_of(system: FakeSystem) -> InstallState:
+    """The install state of our own layout, which is where these fixtures live."""
+    return probe_install(system, target_paths(system, LAYOUT, None))
 
 
 def gpu_files(vendor_id: str, driver: str) -> dict[str, str]:
@@ -190,9 +199,8 @@ class TestExternalTools:
 
 class TestInstallState:
     def test_bare_machine_has_nothing(self) -> None:
-        state = probe_install(FakeSystem(), LAYOUT)
+        state = state_of(FakeSystem())
         assert not state.prefix_exists
-        assert not state.game_exists
         assert state.upscaling is None
 
     def test_healthy_install_is_recognised(self) -> None:
@@ -208,13 +216,11 @@ class TestInstallState:
             },
             symlinks={"/data/dcs/prefix/drive_c/users/steamuser/Saved Games"},
         )
-        state = probe_install(system, LAYOUT)
+        state = state_of(system)
         assert state.prefix_exists
-        assert state.game_exists
         assert state.missing_segoe_fonts == ()
         assert state.d3dcompiler_installed
         assert state.saved_games_mapped
-        assert not state.game_under_drive_c
         assert state.upscaling == "OFF"
 
     def test_corefonts_alone_leaves_every_segoe_font_missing(self) -> None:
@@ -225,7 +231,7 @@ class TestInstallState:
                 "/data/dcs/prefix/drive_c/windows/Fonts/times.ttf": "",
             }
         )
-        state = probe_install(system, LAYOUT)
+        state = state_of(system)
         assert state.missing_segoe_fonts == ("segoeui.ttf", "seguisb.ttf", "seguisym.ttf")
 
     def test_font_names_are_matched_case_insensitively(self) -> None:
@@ -237,16 +243,7 @@ class TestInstallState:
                 "/data/dcs/prefix/drive_c/windows/Fonts/SEGUISYM.TTF": "",
             }
         )
-        assert probe_install(system, LAYOUT).missing_segoe_fonts == ()
-
-    def test_install_under_drive_c_is_spotted(self) -> None:
-        system = FakeSystem(
-            files={
-                "/data/dcs/prefix/system.reg": "",
-                "/data/dcs/prefix/drive_c/Program Files/Eagle Dynamics/DCS World/bin/DCS.exe": "",
-            }
-        )
-        assert probe_install(system, LAYOUT).game_under_drive_c
+        assert state_of(system).missing_segoe_fonts == ()
 
     def test_saved_games_left_as_a_real_directory_is_not_mapped(self) -> None:
         system = FakeSystem(
@@ -255,7 +252,32 @@ class TestInstallState:
                 "/data/dcs/prefix/drive_c/users/steamuser/Saved Games/DCS/Config/options.lua": "",
             }
         )
-        assert not probe_install(system, LAYOUT).saved_games_mapped
+        assert not state_of(system).saved_games_mapped
+
+
+class TestPrefixSavedGames:
+    def test_a_prefix_that_names_the_user_directory_after_the_user(self) -> None:
+        """Lutris and Heroic prefixes have no `steamuser` — umu creates that."""
+        system = FakeSystem(
+            files={"/games/prefix/drive_c/users/Public/Documents/keep": ""},
+            symlinks={"/games/prefix/drive_c/users/pilot/Saved Games"},
+        )
+        found = find_prefix_saved_games(system, Path("/games/prefix"))
+        assert found == Path("/games/prefix/drive_c/users/pilot/Saved Games")
+
+    def test_steamuser_wins_when_both_exist(self) -> None:
+        system = FakeSystem(
+            directories={
+                "/games/prefix/drive_c/users/pilot/Saved Games",
+                "/games/prefix/drive_c/users/steamuser/Saved Games",
+            }
+        )
+        found = find_prefix_saved_games(system, Path("/games/prefix"))
+        assert found.parent.name == "steamuser"
+
+    def test_falls_back_to_steamuser_before_the_prefix_exists(self) -> None:
+        found = find_prefix_saved_games(FakeSystem(), Path("/games/prefix"))
+        assert found == Path("/games/prefix/drive_c/users/steamuser/Saved Games")
 
 
 class TestD3dcompiler:
@@ -268,20 +290,20 @@ class TestD3dcompiler:
                 "/data/dcs/prefix/user.reg": "[Software\\\\Wine\\\\DllOverrides] 1700000000\n",
             }
         )
-        assert not probe_install(system, LAYOUT).d3dcompiler_installed
+        assert not state_of(system).d3dcompiler_installed
 
     def test_the_native_override_is_what_counts(self) -> None:
         system = FakeSystem(
             files={"/data/dcs/prefix/system.reg": "", "/data/dcs/prefix/user.reg": DLL_OVERRIDE}
         )
-        assert probe_install(system, LAYOUT).d3dcompiler_installed
+        assert state_of(system).d3dcompiler_installed
 
     def test_a_builtin_override_does_not_count(self) -> None:
         reg = '[Software\\\\Wine\\\\DllOverrides] 1700000000\n"d3dcompiler_47"="builtin"\n'
         system = FakeSystem(
             files={"/data/dcs/prefix/system.reg": "", "/data/dcs/prefix/user.reg": reg}
         )
-        assert not probe_install(system, LAYOUT).d3dcompiler_installed
+        assert not state_of(system).d3dcompiler_installed
 
     def test_no_user_reg_at_all(self) -> None:
         assert not has_dll_override(None, "d3dcompiler_47")
@@ -307,9 +329,15 @@ class TestUpscaling:
         system = FakeSystem(
             files={"/data/dcs/prefix/system.reg": "", inside: '["Upscaling"] = "DLSS"'}
         )
-        assert probe_install(system, LAYOUT).upscaling == "DLSS"
+        assert state_of(system).upscaling == "DLSS"
 
-    def test_the_mapped_location_wins_when_both_exist(self) -> None:
+    def test_the_prefixs_own_copy_wins_when_both_exist(self) -> None:
+        """The setting that matters is the one the running prefix reads.
+
+        Mapped out, the two are the same file. Unmapped — or targeting an
+        install that is not ours — they are not, and our own saved games say
+        nothing about that prefix.
+        """
         inside = "/data/dcs/prefix/drive_c/users/steamuser/Saved Games/DCS/Config/options.lua"
         system = FakeSystem(
             files={
@@ -318,7 +346,7 @@ class TestUpscaling:
                 inside: '["Upscaling"] = "DLSS"',
             }
         )
-        assert probe_install(system, LAYOUT).upscaling == "OFF"
+        assert state_of(system).upscaling == "DLSS"
 
 
 class TestFilesystemType:
@@ -361,4 +389,4 @@ def test_probe_assembles_the_whole_environment() -> None:
     assert environment.missing_tools == ("tar", "bwrap")
     assert environment.filesystem == "btrfs"
     assert environment.layout.game == Path("/data/dcs/game")
-    assert not environment.install.prefix_exists
+    assert not environment.install_state.prefix_exists

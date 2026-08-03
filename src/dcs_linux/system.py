@@ -42,6 +42,9 @@ class System(Protocol):
 
     def is_symlink(self, path: Path) -> bool: ...
 
+    def resolve(self, path: Path) -> Path:
+        """The path with symlinks followed, or unchanged if it cannot be."""
+
     def list_dir(self, path: Path) -> list[str]:
         """Entry names, sorted. Empty if the directory is missing."""
 
@@ -77,6 +80,12 @@ class RealSystem:
 
     def is_symlink(self, path: Path) -> bool:
         return path.is_symlink()
+
+    def resolve(self, path: Path) -> Path:
+        try:
+            return path.resolve()
+        except OSError:
+            return path
 
     def list_dir(self, path: Path) -> list[str]:
         try:

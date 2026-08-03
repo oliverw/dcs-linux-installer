@@ -31,6 +31,7 @@ from tests.environments import (
     BAZZITE,
     FEDORA,
     LAYOUT,
+    OWN_INSTALL,
     STEAMOS,
     bare_environment,
     healthy_environment,
@@ -185,7 +186,7 @@ class TestFilesystemRow:
 
 class TestUpscalingRow:
     def test_dlss_blocks_and_says_where_to_turn_it_off(self) -> None:
-        environment = healthy_environment(install=replace(InstallState(), upscaling="DLSS"))
+        environment = healthy_environment(install_state=replace(InstallState(), upscaling="DLSS"))
         result = check_upscaling(environment)
         assert result.status is Status.FAIL
         assert result.remediation is not None
@@ -203,7 +204,7 @@ class TestPrefixRows:
         install = replace(
             InstallState(prefix_exists=True), missing_segoe_fonts=("segoeui.ttf", "seguisb.ttf")
         )
-        result = check_segoe_fonts(healthy_environment(install=install))
+        result = check_segoe_fonts(healthy_environment(install_state=install))
         assert result.status is Status.FAIL
         assert "AH-64D" in result.detail
 
@@ -211,7 +212,7 @@ class TestPrefixRows:
         assert check_segoe_fonts(bare_environment()).status is Status.SKIP
 
     def test_missing_d3dcompiler_blocks(self) -> None:
-        environment = healthy_environment(install=InstallState(prefix_exists=True))
+        environment = healthy_environment(install_state=InstallState(prefix_exists=True))
         result = check_d3dcompiler(environment)
         assert result.status is Status.FAIL
         assert result.remediation == "umu-run winetricks d3dcompiler_47"
@@ -222,7 +223,7 @@ class TestPrefixRows:
 
 class TestLifetimeRows:
     def test_unmapped_saved_games_blocks(self) -> None:
-        environment = healthy_environment(install=InstallState(prefix_exists=True))
+        environment = healthy_environment(install_state=InstallState(prefix_exists=True))
         result = check_saved_games_mapping(environment)
         assert result.status is Status.FAIL
         assert result.remediation is not None
@@ -232,16 +233,25 @@ class TestLifetimeRows:
         assert check_saved_games_mapping(healthy_environment()).status is Status.PASS
 
     def test_game_under_drive_c_blocks(self) -> None:
-        install = InstallState(prefix_exists=True, game_exists=True, game_under_drive_c=True)
-        result = check_game_location(healthy_environment(install=install))
+        inside = replace(OWN_INSTALL, game=LAYOUT.prefix / "drive_c" / "DCS World")
+        result = check_game_location(healthy_environment(targeted=inside, installs=(inside,)))
         assert result.status is Status.FAIL
-        assert "drive_c" in result.detail
+        assert str(inside.game) in result.detail
 
     def test_game_outside_the_prefix_passes(self) -> None:
         assert check_game_location(healthy_environment()).status is Status.PASS
 
-    def test_skipped_with_no_prefix(self) -> None:
-        assert check_game_location(bare_environment()).status is Status.SKIP
+    def test_skipped_with_no_install(self) -> None:
+        result = check_game_location(bare_environment())
+        assert result.status is Status.SKIP
+        assert result.detail == "no DCS install found"
+
+    def test_several_installs_and_none_chosen_says_so(self) -> None:
+        """Picking between somebody's installs is their decision, not ours."""
+        installs = (OWN_INSTALL, replace(OWN_INSTALL, game=LAYOUT.game / "DCS World 2"))
+        result = check_game_location(bare_environment(installs=installs))
+        assert result.status is Status.SKIP
+        assert "--install" in result.detail
 
 
 class TestWholeReport:
@@ -263,7 +273,7 @@ class TestWholeReport:
             bare_environment(distro=BAZZITE, missing_tools=("bwrap",), gpus=()),
             bare_environment(distro=STEAMOS, missing_tools=("curl", "tar")),
             healthy_environment(
-                install=InstallState(prefix_exists=True, upscaling="DLSS"),
+                install_state=InstallState(prefix_exists=True, upscaling="DLSS"),
                 disk=DiskUsage(total=100 * GIB, free=10 * GIB),
                 filesystem="ext4",
             ),

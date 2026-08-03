@@ -1,7 +1,10 @@
-"""Where the three lifetimes and the toolchain live on disk.
+"""Where this tool puts the three lifetimes and the toolchain.
 
 The prefix, the game directory and saved games have independent lifetimes
 (ADR-0001), so they are three separate paths, never nested in one another.
+
+This is our layout only. Paths inside somebody else's prefix belong to the
+install that was discovered there — see `dcs_linux.probes.Target`.
 """
 
 from __future__ import annotations
@@ -67,34 +70,6 @@ class Layout:
             / "compatibilitytools.d",
             Path("/usr/share/steam/compatibilitytools.d"),
         )
-
-    @property
-    def prefix_fonts(self) -> Path:
-        return self.prefix / "drive_c" / "windows" / "Fonts"
-
-    @property
-    def prefix_system32(self) -> Path:
-        return self.prefix / "drive_c" / "windows" / "system32"
-
-    @property
-    def prefix_saved_games(self) -> Path:
-        """Where wine puts Saved Games unless it is mapped out (ADR-0001)."""
-        return self.prefix / "drive_c" / "users" / "steamuser" / "Saved Games"
-
-    @property
-    def user_reg(self) -> Path:
-        return self.prefix / "user.reg"
-
-    @property
-    def options_lua_candidates(self) -> tuple[Path, ...]:
-        """Where `options.lua` may be, mapped out or not.
-
-        An install whose saved games was never mapped out keeps it inside the
-        prefix — and that is precisely the install the DLSS check exists for,
-        so looking only at the mapped location would miss it.
-        """
-        config = Path("DCS") / "Config" / "options.lua"
-        return (self.saved_games / config, self.prefix_saved_games / config)
 
 
 def resolve_layout(system: System) -> Layout:

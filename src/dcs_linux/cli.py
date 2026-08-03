@@ -8,9 +8,10 @@ import typer
 
 from dcs_linux import __version__
 from dcs_linux.checks import has_blocking_failure, run_checks
+from dcs_linux.installs import AmbiguousInstall, InstallNotFound
 from dcs_linux.output import OutputOptions, console_for, emit_stub, output_options
 from dcs_linux.probes import probe
-from dcs_linux.report import as_json_payload, render_table
+from dcs_linux.report import as_json_payload, render_installs, render_table
 from dcs_linux.system import RealSystem
 
 app = typer.Typer(
@@ -46,19 +47,40 @@ def global_options(
 
 
 @app.command()
-def check(ctx: typer.Context) -> None:
-    """Check whether this machine is ready to run DCS."""
+def check(
+    ctx: typer.Context,
+    install: str | None = typer.Option(
+        None,
+        "--install",
+        metavar="ID",
+        help="Report on one discovered install, by id or game path.",
+    ),
+) -> None:
+    """Check whether this machine is ready to run DCS, and list the installs found."""
     options = output_options(ctx)
-    environment = probe(RealSystem())
+    try:
+        environment = probe(RealSystem(), install)
+    except AmbiguousInstall:
+        raise _bad_install(f"{install!r} matches more than one install") from None
+    except InstallNotFound:
+        raise _bad_install(f"no install matches {install!r}") from None
     results = run_checks(environment)
 
     if options.json_output:
         typer.echo(json.dumps(as_json_payload(environment, results), indent=2))
     else:
-        render_table(console_for(options), results)
+        console = console_for(options)
+        render_table(console, results)
+        render_installs(console, environment)
 
     if has_blocking_failure(results):
         raise typer.Exit(code=1)
+
+
+def _bad_install(message: str) -> typer.Exit:
+    """A bad --install is the user's mistake, not a failed check (exit 2)."""
+    typer.echo(f"{message}; run `dcs-linux check` to list them", err=True)
+    return typer.Exit(code=2)
 
 
 @app.command()

@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from dcs_linux.distro import Distro, detect_distro
+from dcs_linux.installs import DcsInstall, Launcher, default_install, select
+from dcs_linux.launchers import discover
 from dcs_linux.paths import Layout, resolve_layout
 from dcs_linux.system import DiskUsage, System
 
@@ -54,19 +56,56 @@ class Umu:
 
 
 @dataclass(frozen=True)
+class TargetPaths:
+    """Where to read the targeted install's state.
+
+    Discovery finds installs; these are the paths of the one being reported
+    on. With no DCS anywhere they fall back to where this tool would put
+    things, so a bare machine still has coherent paths to answer against.
+    """
+
+    game: Path
+    prefix: Path
+    prefix_saved_games: Path
+    # Only known for an install of ours. Somebody else's saved games are
+    # wherever they mapped them, which we cannot know (ADR-0007).
+    saved_games: Path | None
+
+    @property
+    def fonts(self) -> Path:
+        return self.prefix / "drive_c" / "windows" / "Fonts"
+
+    @property
+    def user_reg(self) -> Path:
+        return self.prefix / "user.reg"
+
+    @property
+    def options_lua_candidates(self) -> tuple[Path, ...]:
+        """Where this install's `options.lua` may be, mapped out or not.
+
+        The in-prefix path comes first because it is the one this prefix
+        actually reads — mapped out, it resolves to the durable copy anyway.
+        Our own durable path is a fallback only for our own install: for
+        anyone else's, it is a different install's settings entirely.
+        """
+        config = Path("DCS") / "Config" / "options.lua"
+        durable = (self.saved_games / config,) if self.saved_games else ()
+        return (self.prefix_saved_games / config, *durable)
+
+
+@dataclass(frozen=True)
 class InstallState:
-    """What, if anything, is already installed.
+    """The condition of the targeted install.
 
     Every field is optional-by-absence: with no DCS installed the directories
     simply do not exist, and the checks that depend on them are skipped.
     """
 
     prefix_exists: bool = False
-    game_exists: bool = False
     missing_segoe_fonts: tuple[str, ...] = ()
     d3dcompiler_installed: bool = False
     saved_games_mapped: bool = False
-    game_under_drive_c: bool = False
+    saved_games_target: Path | None = None
     upscaling: str | None = None
 
 
@@ -76,29 +115,74 @@ class Environment:
 
     layout: Layout
     distro: Distro
+    paths: TargetPaths
     gpus: tuple[Gpu, ...] = ()
     umu: Umu = Umu(path=None, usable=False, version=None)
     proton_builds: tuple[str, ...] = ()
     missing_tools: tuple[str, ...] = ()
     disk: DiskUsage | None = None
     filesystem: str | None = None
-    install: InstallState = field(default_factory=InstallState)
+    installs: tuple[DcsInstall, ...] = ()
+    targeted: DcsInstall | None = None
+    install_state: InstallState = field(default_factory=InstallState)
 
 
-def probe(system: System) -> Environment:
-    """Read the whole machine."""
+def probe(system: System, identifier: str | None = None) -> Environment:
+    """Read the whole machine, reporting on the install `identifier` names.
+
+    Raises `InstallNotFound` or `AmbiguousInstall` if it names none.
+    """
     layout = resolve_layout(system)
+    installs = discover(system, layout)
+    targeted = select(installs, identifier) if identifier else default_install(installs)
+    paths = target_paths(system, layout, targeted)
     return Environment(
         layout=layout,
         distro=detect_distro(system),
+        paths=paths,
         gpus=probe_gpus(system),
         umu=probe_umu(system, layout),
         proton_builds=probe_proton_builds(system, layout),
         missing_tools=probe_missing_tools(system),
-        disk=system.disk_usage(layout.game),
-        filesystem=system.filesystem_type(layout.game),
-        install=probe_install(system, layout),
+        disk=system.disk_usage(paths.game),
+        filesystem=system.filesystem_type(paths.game),
+        installs=installs,
+        targeted=targeted,
+        install_state=probe_install(system, paths),
     )
+
+
+def target_paths(system: System, layout: Layout, targeted: DcsInstall | None) -> TargetPaths:
+    """The paths the install-dependent checks read."""
+    ours = targeted is None or targeted.launcher is Launcher.DCS_LINUX
+    game = targeted.game if targeted is not None else layout.game
+    prefix = targeted.prefix if targeted is not None and targeted.prefix else layout.prefix
+    return TargetPaths(
+        game=game,
+        prefix=prefix,
+        saved_games=layout.saved_games if ours else None,
+        prefix_saved_games=find_prefix_saved_games(system, prefix),
+    )
+
+
+def find_prefix_saved_games(system: System, prefix: Path) -> Path:
+    """Where DCS puts `Saved Games` inside a given prefix.
+
+    umu creates a `steamuser`, but a Lutris or Heroic prefix names the user
+    directory after the actual user, so the name cannot be assumed. The
+    steamuser path is still the answer when the prefix does not exist yet:
+    it is where this tool's own prefix will put it.
+    """
+    users = prefix / "drive_c" / "users"
+    # Public is wine's shared profile, never the one holding Saved Games.
+    names = [name for name in system.list_dir(users) if name != "Public"]
+    for name in ("steamuser", *names):
+        candidate = users / name / "Saved Games"
+        # A mapped-out Saved Games can be a symlink whose target is missing,
+        # which is a state worth reporting rather than one to skip past.
+        if system.exists(candidate) or system.is_symlink(candidate):
+            return candidate
+    return users / "steamuser" / "Saved Games"
 
 
 def probe_gpus(system: System) -> tuple[Gpu, ...]:
@@ -201,39 +285,30 @@ def probe_missing_tools(system: System) -> tuple[str, ...]:
     return tuple(tool for tool in REQUIRED_TOOLS if system.which(tool) is None)
 
 
-def probe_install(system: System, layout: Layout) -> InstallState:
-    """Read the state of an existing install, if there is one."""
-    prefix_exists = system.exists(layout.prefix)
-    fonts = set(system.list_dir(layout.prefix_fonts))
+def probe_install(system: System, paths: TargetPaths) -> InstallState:
+    """Read the state of the targeted install, if there is one."""
+    fonts = set(system.list_dir(paths.fonts))
+    user_reg = system.read_text(paths.user_reg)
+    mapped = system.is_symlink(paths.prefix_saved_games)
 
     return InstallState(
-        prefix_exists=prefix_exists,
-        game_exists=system.exists(layout.game),
+        prefix_exists=system.exists(paths.prefix),
         missing_segoe_fonts=tuple(
             name for name in SEGOE_FONTS if name.lower() not in {f.lower() for f in fonts}
         ),
-        d3dcompiler_installed=has_dll_override(system.read_text(layout.user_reg), D3DCOMPILER),
-        saved_games_mapped=system.is_symlink(layout.prefix_saved_games),
-        game_under_drive_c=_game_under_drive_c(system, layout),
-        upscaling=read_upscaling(_read_options_lua(system, layout)),
+        d3dcompiler_installed=has_dll_override(user_reg, D3DCOMPILER),
+        saved_games_mapped=mapped,
+        saved_games_target=system.resolve(paths.prefix_saved_games) if mapped else None,
+        upscaling=read_upscaling(_read_options_lua(system, paths)),
     )
 
 
-def _read_options_lua(system: System, layout: Layout) -> str | None:
-    for candidate in layout.options_lua_candidates:
+def _read_options_lua(system: System, paths: TargetPaths) -> str | None:
+    for candidate in paths.options_lua_candidates:
         text = system.read_text(candidate)
         if text is not None:
             return text
     return None
-
-
-def _game_under_drive_c(system: System, layout: Layout) -> bool:
-    """A DCS install inside the prefix dies on the next prefix rebuild."""
-    drive_c = layout.prefix / "drive_c"
-    for candidate in ("Program Files/Eagle Dynamics/DCS World", "DCS World", "Games/DCS World"):
-        if system.exists(drive_c / candidate):
-            return True
-    return False
 
 
 def has_dll_override(user_reg: str | None, dll: str) -> bool:

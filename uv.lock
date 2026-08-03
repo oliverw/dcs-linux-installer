@@ -69,6 +69,7 @@ wheels = [
 name = "dcs-linux-installer"
 source = { editable = "." }
 dependencies = [
+    { name = "pyyaml" },
     { name = "rich" },
     { name = "typer" },
 ]
@@ -77,13 +78,13 @@ dependencies = [
 dev = [
     { name = "mypy" },
     { name = "pytest" },
-    { name = "pyyaml" },
     { name = "ruff" },
     { name = "types-pyyaml" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "rich", specifier = ">=15.0.0" },
     { name = "typer", specifier = ">=0.27.0" },
 ]
@@ -92,7 +93,6 @@ requires-dist = [
 dev = [
     { name = "mypy", specifier = ">=2.3.0" },
     { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "ruff", specifier = ">=0.16.1" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20260724" },
 ]
