@@ -31,9 +31,10 @@ AUTOUPDATE_CFG = "autoupdate.cfg"
 DCS_EXE = Path("bin") / "DCS.exe"
 UPDATER_EXE = Path("bin") / "DCS_updater.exe"
 
-# How far above a launcher's configured executable the install root can be:
-# `<install>/bin/DCS.exe` is one level, and nothing legitimate is deeper.
-EXE_SEARCH_DEPTH = 3
+# How far above a launcher's configured executable the install root can be.
+# Every DCS binary a launcher points at lives in `<install>/bin`, so the
+# install is the executable's directory or the one above it.
+EXE_SEARCH_DEPTH = 2
 
 
 class Launcher(StrEnum):
@@ -144,11 +145,14 @@ def read_version(system: System, game: Path) -> str | None:
 def detect_edition(system: System, game: Path, launcher: Launcher) -> Edition:
     """Standalone or Steam.
 
-    Two signals are trustworthy without running anything: Steam's own app
-    manifest, and `DCS_updater.exe`, which the Steam edition does not ship
-    because Steam does its updating. With neither, the edition stays unknown
-    rather than being guessed — it decides whether `install` may hand off to
-    the updater at all.
+    Steam's app manifest for appid 223750 is proof. `DCS_updater.exe` is the
+    only other signal available statically: the standalone edition is updated
+    by it, and the Steam edition is updated by Steam. **Unverified** — no
+    Steam copy of DCS has been inspected, so a Steam install found through
+    some other launcher may be reported as standalone.
+
+    With neither signal the edition stays unknown rather than being guessed:
+    it decides whether `install` may hand off to the updater at all.
     """
     if launcher is Launcher.STEAM:
         return Edition.STEAM
@@ -176,11 +180,13 @@ def select(installs: Sequence[DcsInstall], identifier: str) -> DcsInstall:
 def default_install(installs: Sequence[DcsInstall]) -> DcsInstall | None:
     """The install to work on when the user named none.
 
-    Ours if we have one, since that is the install this tool built and the
-    one it can repair. Otherwise only an unambiguous single install: picking
-    between someone's several installs is a decision for them, not for us.
+    Ours if exactly one is ours, since that is the install this tool built and
+    the one it can repair. Otherwise only an unambiguous single install:
+    choosing between someone's several installs is their decision, not ours,
+    and the ambiguous case here is a real one — a game installed into our own
+    prefix's drive_c is a second install of ours, and the wrong one to pick.
     """
-    for found in installs:
-        if found.launcher is Launcher.DCS_LINUX:
-            return found
+    ours = [found for found in installs if found.launcher is Launcher.DCS_LINUX]
+    if len(ours) == 1:
+        return ours[0]
     return installs[0] if len(installs) == 1 else None

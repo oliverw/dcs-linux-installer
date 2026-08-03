@@ -72,16 +72,16 @@ def render_installs(console: Console, environment: Environment) -> None:
     table.add_column("Install", overflow="fold")
 
     for install in installs:
-        selected = install == environment.selected
+        targeted = install == environment.targeted
         table.add_row(
-            Text("→" if selected else "", style="cyan"),
-            Text(install.install_id, style="bold" if selected else ""),
+            Text("→" if targeted else "", style="cyan"),
+            Text(install.install_id, style="bold" if targeted else ""),
             _install_cell(install),
         )
 
     console.print(f"\n[bold]{len(installs)} DCS install{'s' if len(installs) > 1 else ''}[/bold]")
     console.print(table)
-    if environment.selected is None:
+    if environment.targeted is None:
         console.print(
             "[yellow]No install targeted[/yellow] — the rows above that describe an "
             "install were skipped. Pass [bold]--install ID[/bold] to choose one."
@@ -137,7 +137,7 @@ def as_json_payload(environment: Environment, results: list[CheckResult]) -> dic
                 "runtime": install.runtime,
                 "game": str(install.game),
                 "prefix": str(install.prefix) if install.prefix else None,
-                "selected": install == environment.selected,
+                "targeted": install == environment.targeted,
             }
             for install in environment.installs
         ],

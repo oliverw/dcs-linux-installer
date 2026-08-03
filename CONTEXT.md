@@ -43,8 +43,10 @@ loses the user's login and keybinds on every repair.
   `dcs-linux` for one of ours. Not a property of the install itself; the same
   directory can be claimed by two launchers.
 - **edition** — **Standalone** or **Steam**. Only two signals are trusted:
-  Steam's app manifest for appid `223750`, and `bin/DCS_updater.exe`, which the
-  Steam edition does not ship. Neither present means `unknown`, never a guess.
+  Steam's app manifest for appid `223750` (proof), and `bin/DCS_updater.exe`,
+  which the Steam edition is believed not to ship because Steam does its
+  updating — *unverified*, no Steam copy of DCS has been inspected. Neither
+  present means `unknown`, never a guess.
 - **install id** — the stable handle `--install` takes, derived from the game
   directory alone, so it survives a prefix rebuild. An install *is* its game
   directory (ADR-0007).

@@ -28,7 +28,7 @@ def use(monkeypatch: pytest.MonkeyPatch, environment: Environment) -> None:
     def fake_probe(system: object, identifier: str | None = None) -> Environment:
         if identifier is None:
             return environment
-        return replace(environment, selected=select(environment.installs, identifier))
+        return replace(environment, targeted=select(environment.installs, identifier))
 
     monkeypatch.setattr(cli, "probe", fake_probe)
 
@@ -111,7 +111,9 @@ def test_no_color_output_has_no_ansi(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_every_failure_is_shown_with_its_fix(monkeypatch: pytest.MonkeyPatch) -> None:
     use(
         monkeypatch,
-        bare_environment(install=InstallState(prefix_exists=True), umu=Umu(None, False, None)),
+        bare_environment(
+            install_state=InstallState(prefix_exists=True), umu=Umu(None, False, None)
+        ),
     )
     result = runner.invoke(cli.app, ["check"])
     assert result.exit_code != 0
@@ -131,7 +133,7 @@ STEAM_INSTALL = DcsInstall(
 def several_installs() -> Environment:
     """Two installs and nothing chosen — the state `--install` exists for."""
     installs = (OWN_INSTALL, STEAM_INSTALL)
-    return healthy_environment(installs=installs, selected=None)
+    return healthy_environment(installs=installs, targeted=None)
 
 
 class TestDiscoveryOutput:
@@ -145,7 +147,7 @@ class TestDiscoveryOutput:
 
     def test_no_installs_says_so_without_failing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A machine with no DCS is the normal starting point, not a fault."""
-        use(monkeypatch, healthy_environment(installs=(), selected=None))
+        use(monkeypatch, healthy_environment(installs=(), targeted=None))
         result = runner.invoke(cli.app, ["--no-color", "check"])
         assert result.exit_code == 0
         assert "No DCS install found" in result.stdout
@@ -154,7 +156,7 @@ class TestDiscoveryOutput:
         use(monkeypatch, several_installs())
         result = runner.invoke(cli.app, ["--json", "check", "--install", STEAM_INSTALL.install_id])
         assert result.exit_code == 0
-        selected = [i for i in json.loads(result.stdout)["installs"] if i["selected"]]
+        selected = [i for i in json.loads(result.stdout)["installs"] if i["targeted"]]
         assert [i["id"] for i in selected] == [STEAM_INSTALL.install_id]
 
     def test_an_unknown_id_is_a_usage_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -173,4 +175,4 @@ class TestDiscoveryOutput:
         assert steam["runtime"] == "GE-Proton11-3"
         assert steam["game"] == str(STEAM_INSTALL.game)
         assert steam["prefix"] == str(STEAM_INSTALL.prefix)
-        assert steam["selected"] is False
+        assert steam["targeted"] is False

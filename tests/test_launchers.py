@@ -70,6 +70,18 @@ COMPAT_TOOL_MAPPING = """
 """
 
 
+# Copied from real prefixes on the development machine: line 1 is the same
+# bare version the `version` file holds, line 2 names the build's directory.
+CONFIG_INFO = """11.0-100
+/home/pilot/.local/share/Steam/steamapps/common/Proton - Experimental/files/share/fonts/
+/home/pilot/.local/share/Steam/steamapps/common/Proton - Experimental/files/lib/
+"""
+GE_CONFIG_INFO = """GE-Proton10-15
+/home/pilot/.local/share/Steam/compatibilitytools.d/GE-Proton10-15/files/share/fonts/
+/home/pilot/.local/share/Steam/compatibilitytools.d/GE-Proton10-15/files/lib/
+"""
+
+
 def steam_files(*, mapping: bool = True) -> dict[str, str]:
     files = {
         f"{STEAM_ROOT}/steamapps/libraryfolders.vdf": LIBRARY_FOLDERS,
@@ -92,12 +104,25 @@ class TestSteam:
         assert found.edition is Edition.STEAM
         assert found.version == "2.9.28.26385"
 
-    def test_runtime_falls_back_to_the_prefix_version_file(self) -> None:
+    def test_runtime_falls_back_to_what_built_the_prefix(self) -> None:
         """Steam only writes a CompatToolMapping when the tool was chosen by hand."""
         files = steam_files(mapping=False)
-        files[f"{STEAM_LIBRARY}/steamapps/compatdata/223750/version"] = "GE-Proton9-20\n"
+        files[f"{STEAM_LIBRARY}/steamapps/compatdata/223750/config_info"] = CONFIG_INFO
         (found,) = discover(FakeSystem(files=files, home=HOME), LAYOUT)
-        assert found.runtime == "GE-Proton9-20"
+        assert found.runtime == "Proton - Experimental"
+
+    def test_the_ge_shape_of_config_info_reads_too(self) -> None:
+        files = steam_files(mapping=False)
+        files[f"{STEAM_LIBRARY}/steamapps/compatdata/223750/config_info"] = GE_CONFIG_INFO
+        (found,) = discover(FakeSystem(files=files, home=HOME), LAYOUT)
+        assert found.runtime == "GE-Proton10-15"
+
+    def test_the_version_file_is_not_mistaken_for_a_build_name(self) -> None:
+        """It holds a bare version number (`11.0-100`) for official Proton."""
+        files = steam_files(mapping=False)
+        files[f"{STEAM_LIBRARY}/steamapps/compatdata/223750/version"] = "11.0-100\n"
+        (found,) = discover(FakeSystem(files=files, home=HOME), LAYOUT)
+        assert found.runtime is None
 
     def test_an_unknown_runtime_is_not_invented(self) -> None:
         (found,) = discover(FakeSystem(files=steam_files(mapping=False), home=HOME), LAYOUT)
@@ -294,8 +319,7 @@ class TestDiscovery:
         ]
         assert len({install.install_id for install in found}) == 3
 
-    def test_the_same_game_seen_twice_is_listed_once(self) -> None:
-        """`~/.steam/root` and `~/.local/share/Steam` are the same directory."""
+    def test_the_same_game_claimed_by_two_launchers_is_listed_once(self) -> None:
         files = {
             **steam_files(),
             f"{HOME}/.config/lutris/games/dcs.yml": (
@@ -304,6 +328,25 @@ class TestDiscovery:
         }
         found = discover(FakeSystem(files=files, home=HOME), LAYOUT)
         assert [install.launcher for install in found] == [Launcher.STEAM]
+
+    def test_symlinked_steam_roots_do_not_multiply_one_install(self) -> None:
+        """On most distros `.steam/root` and `.steam/steam` are the real thing.
+
+        All three spellings are searched, so without following the links one
+        physical install is reported three times, with three different ids.
+        """
+        real = f"{HOME}/.local/share/Steam"
+        game = f"{real}/steamapps/common/DCSWorld"
+        system = FakeSystem(
+            files={
+                f"{real}/steamapps/appmanifest_223750.acf": APP_MANIFEST,
+                **dcs_files(game, updater=False),
+            },
+            links={f"{HOME}/.steam/root": real, f"{HOME}/.steam/steam": real},
+            home=HOME,
+        )
+        found = discover(system, LAYOUT)
+        assert [install.game for install in found] == [Path(game)]
 
     def test_discovery_writes_nothing(self) -> None:
         system = FakeSystem(files={**steam_files(), **dcs_files(LUTRIS_GAME)}, home=HOME)

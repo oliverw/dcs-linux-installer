@@ -20,17 +20,30 @@ Every obvious handle is wrong in a way that costs the user data:
 
 ## Decision
 
-An install *is* its game directory. The identifier `--install` accepts is a
-truncated SHA-256 of that path, and the game directory is also the dedup key
-when two launchers report the same install — first source wins, ours first.
+An install *is* its game directory, with symlinks followed. The identifier
+`--install` accepts is a truncated SHA-256 of that resolved path, and the same
+path is the dedup key when two searches report one install — first source
+wins, ours first.
+
+Following symlinks is not a detail. On this machine `~/.steam/root` and
+`~/.steam/steam` are both links to `~/.local/share/Steam`, and all three are
+searched, so comparing the spellings reports one physical Steam install three
+times under three different ids.
 
 Discovery never writes. It reads other programs' configuration files while
 those programs may be running, and it must be safe to run at any time.
 
 Where a fact cannot be read, it is reported as unknown rather than guessed.
-Edition is the case that matters: Steam's app manifest and the presence of
-`bin/DCS_updater.exe` are trustworthy, nothing else is, and edition decides
-whether `install` may hand off to the updater at all.
+Edition is the case that matters: Steam's app manifest is proof, and
+`bin/DCS_updater.exe` is the only other static signal — *unverified*, since no
+Steam copy of DCS has been inspected. Edition decides whether `install` may
+hand off to the updater at all, so a third signal is worth finding.
+
+The same rule sank the obvious source for the Proton build behind a Steam
+prefix. `compatdata/<appid>/version` looks like the answer but holds a bare
+`11.0-100` for official Proton; only GE writes its build name there. The name
+comes from line 2 of `config_info`, which is a path through the build's own
+directory. Checked against seven prefixes on the development machine.
 
 ## Consequences
 

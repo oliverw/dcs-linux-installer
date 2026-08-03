@@ -12,7 +12,7 @@ from dcs_linux.probes import (
     probe_proton_builds,
     probe_umu,
     read_upscaling,
-    target_for,
+    target_paths,
 )
 from dcs_linux.system import CommandResult, DiskUsage, filesystem_type_from_mounts
 from tests.fakes import FakeSystem
@@ -26,7 +26,7 @@ DLL_OVERRIDE = '[Software\\\\Wine\\\\DllOverrides] 1700000000\n"d3dcompiler_47"=
 
 def state_of(system: FakeSystem) -> InstallState:
     """The install state of our own layout, which is where these fixtures live."""
-    return probe_install(system, target_for(system, LAYOUT, None))
+    return probe_install(system, target_paths(system, LAYOUT, None))
 
 
 def gpu_files(vendor_id: str, driver: str) -> dict[str, str]:
@@ -389,4 +389,4 @@ def test_probe_assembles_the_whole_environment() -> None:
     assert environment.missing_tools == ("tar", "bwrap")
     assert environment.filesystem == "btrfs"
     assert environment.layout.game == Path("/data/dcs/game")
-    assert not environment.install.prefix_exists
+    assert not environment.install_state.prefix_exists

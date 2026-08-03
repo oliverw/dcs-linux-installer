@@ -13,6 +13,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import Path
 
 from dcs_linux.installs import Launcher
 from dcs_linux.probes import REQUIRED_TOOLS, Environment
@@ -221,7 +222,7 @@ def check_external_tools(environment: Environment) -> CheckResult:
 
 def check_disk_space(environment: Environment) -> CheckResult:
     disk = environment.disk
-    game = environment.target.game
+    game = environment.paths.game
     if disk is None:
         return CheckResult(
             name=DISK_SPACE,
@@ -248,10 +249,10 @@ def check_disk_space(environment: Environment) -> CheckResult:
 
 
 def _free_space_hint(environment: Environment) -> str:
-    """Where to make room — only we can be pointed at another drive."""
-    selected = environment.selected
-    if selected is not None and selected.launcher is not Launcher.DCS_LINUX:
-        return f"free up space on the drive holding {environment.target.game}"
+    """Where to make room — only our own install can be pointed elsewhere."""
+    targeted = environment.targeted
+    if targeted is not None and targeted.launcher is not Launcher.DCS_LINUX:
+        return f"free up space on the drive holding {targeted.game}"
     return "free up space, or point the game directory at a larger drive with DCS_LINUX_ROOT"
 
 
@@ -262,7 +263,7 @@ def check_reflink_filesystem(environment: Environment) -> CheckResult:
         return CheckResult(
             name=FILESYSTEM,
             status=Status.WARN,
-            detail=f"could not determine the filesystem for {environment.target.game}",
+            detail=f"could not determine the filesystem for {environment.paths.game}",
         )
     if filesystem in REFLINK_FILESYSTEMS:
         return CheckResult(
@@ -284,7 +285,7 @@ def check_upscaling(environment: Environment) -> CheckResult:
     The highest-value check here: it presents exactly like a broken install,
     and users blame wine for it.
     """
-    upscaling = environment.install.upscaling
+    upscaling = environment.install_state.upscaling
     if upscaling is None:
         return CheckResult(
             name=UPSCALING,
@@ -313,7 +314,7 @@ def check_segoe_fonts(environment: Environment) -> CheckResult:
     `winetricks corefonts` installs 42 fonts and none of them are Segoe, so
     having run corefonts is not sufficient.
     """
-    install = environment.install
+    install = environment.install_state
     if not install.prefix_exists:
         return _no_prefix_yet(SEGOE_FONTS)
     missing = install.missing_segoe_fonts
@@ -330,9 +331,9 @@ def check_segoe_fonts(environment: Environment) -> CheckResult:
 
 
 def check_d3dcompiler(environment: Environment) -> CheckResult:
-    if not environment.install.prefix_exists:
+    if not environment.install_state.prefix_exists:
         return _no_prefix_yet(D3DCOMPILER)
-    if not environment.install.d3dcompiler_installed:
+    if not environment.install_state.d3dcompiler_installed:
         return CheckResult(
             name=D3DCOMPILER,
             status=Status.FAIL,
@@ -344,30 +345,31 @@ def check_d3dcompiler(environment: Environment) -> CheckResult:
 
 def check_saved_games_mapping(environment: Environment) -> CheckResult:
     """Saved games must live outside the disposable prefix (ADR-0001)."""
-    install = environment.install
+    install = environment.install_state
     if not install.prefix_exists:
         return _no_prefix_yet(SAVED_GAMES_MAPPING)
     if not install.saved_games_mapped:
+        # Where to map it to is only ours to say for our own install; for
+        # anyone else's, any durable directory outside the prefix will do.
+        durable = environment.paths.saved_games or Path("/a/directory/outside/the/prefix")
         return CheckResult(
             name=SAVED_GAMES_MAPPING,
             status=Status.FAIL,
             detail="Saved Games sits inside the prefix, so rebuilding the prefix would "
             "destroy the ED login and keybinds",
-            remediation=f"symlink it out: ln -sfn {environment.layout.saved_games} "
-            f'"{environment.target.prefix_saved_games}"',
+            remediation=f"symlink it out: ln -sfn {durable} "
+            f'"{environment.paths.prefix_saved_games}"',
         )
-    # Reading the symlink's target would take a write-capable view of the
-    # machine we deliberately do not have, so the row says only that it is out.
     return CheckResult(
         name=SAVED_GAMES_MAPPING,
         status=Status.PASS,
-        detail="mapped out of the prefix",
+        detail=f"mapped to {install.saved_games_target}",
     )
 
 
 def check_game_location(environment: Environment) -> CheckResult:
     """A game directory under drive_c dies on the next prefix rebuild."""
-    install = environment.selected
+    install = environment.targeted
     if install is None:
         return CheckResult(
             name=GAME_LOCATION,

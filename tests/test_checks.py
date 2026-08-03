@@ -186,7 +186,7 @@ class TestFilesystemRow:
 
 class TestUpscalingRow:
     def test_dlss_blocks_and_says_where_to_turn_it_off(self) -> None:
-        environment = healthy_environment(install=replace(InstallState(), upscaling="DLSS"))
+        environment = healthy_environment(install_state=replace(InstallState(), upscaling="DLSS"))
         result = check_upscaling(environment)
         assert result.status is Status.FAIL
         assert result.remediation is not None
@@ -204,7 +204,7 @@ class TestPrefixRows:
         install = replace(
             InstallState(prefix_exists=True), missing_segoe_fonts=("segoeui.ttf", "seguisb.ttf")
         )
-        result = check_segoe_fonts(healthy_environment(install=install))
+        result = check_segoe_fonts(healthy_environment(install_state=install))
         assert result.status is Status.FAIL
         assert "AH-64D" in result.detail
 
@@ -212,7 +212,7 @@ class TestPrefixRows:
         assert check_segoe_fonts(bare_environment()).status is Status.SKIP
 
     def test_missing_d3dcompiler_blocks(self) -> None:
-        environment = healthy_environment(install=InstallState(prefix_exists=True))
+        environment = healthy_environment(install_state=InstallState(prefix_exists=True))
         result = check_d3dcompiler(environment)
         assert result.status is Status.FAIL
         assert result.remediation == "umu-run winetricks d3dcompiler_47"
@@ -223,7 +223,7 @@ class TestPrefixRows:
 
 class TestLifetimeRows:
     def test_unmapped_saved_games_blocks(self) -> None:
-        environment = healthy_environment(install=InstallState(prefix_exists=True))
+        environment = healthy_environment(install_state=InstallState(prefix_exists=True))
         result = check_saved_games_mapping(environment)
         assert result.status is Status.FAIL
         assert result.remediation is not None
@@ -234,7 +234,7 @@ class TestLifetimeRows:
 
     def test_game_under_drive_c_blocks(self) -> None:
         inside = replace(OWN_INSTALL, game=LAYOUT.prefix / "drive_c" / "DCS World")
-        result = check_game_location(healthy_environment(selected=inside, installs=(inside,)))
+        result = check_game_location(healthy_environment(targeted=inside, installs=(inside,)))
         assert result.status is Status.FAIL
         assert str(inside.game) in result.detail
 
@@ -273,7 +273,7 @@ class TestWholeReport:
             bare_environment(distro=BAZZITE, missing_tools=("bwrap",), gpus=()),
             bare_environment(distro=STEAMOS, missing_tools=("curl", "tar")),
             healthy_environment(
-                install=InstallState(prefix_exists=True, upscaling="DLSS"),
+                install_state=InstallState(prefix_exists=True, upscaling="DLSS"),
                 disk=DiskUsage(total=100 * GIB, free=10 * GIB),
                 filesystem="ext4",
             ),

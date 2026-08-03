@@ -12,6 +12,10 @@ class FakeSystem:
 
     `files` maps a path to its contents; directories are implied by the files
     inside them, and `directories` adds empty ones.
+
+    `symlinks` records which paths are links; `links` additionally says where
+    a link points, which is what makes two spellings of one directory —
+    `~/.steam/root` and `~/.local/share/Steam` — resolve to the same place.
     """
 
     def __init__(
@@ -20,6 +24,7 @@ class FakeSystem:
         files: dict[str, str] | None = None,
         directories: set[str] | None = None,
         symlinks: set[str] | None = None,
+        links: dict[str, str] | None = None,
         executables: dict[str, str] | None = None,
         commands: dict[str, CommandResult] | None = None,
         disk: DiskUsage | None = None,
@@ -29,7 +34,8 @@ class FakeSystem:
     ) -> None:
         self.files = {Path(path): text for path, text in (files or {}).items()}
         self.directories = {Path(path) for path in (directories or set())}
-        self.symlinks = {Path(path) for path in (symlinks or set())}
+        self.links = {Path(source): Path(target) for source, target in (links or {}).items()}
+        self.symlinks = {Path(path) for path in (symlinks or set())} | set(self.links)
         self.executables = executables or {}
         self.commands = commands or {}
         self.disk = disk
@@ -38,17 +44,28 @@ class FakeSystem:
         self._home = Path(home)
 
     def read_text(self, path: Path) -> str | None:
-        return self.files.get(path)
+        return self.files.get(self.resolve(path))
 
     def exists(self, path: Path) -> bool:
+        path = self.resolve(path)
         if path in self.files or path in self.directories or path in self.symlinks:
             return True
         return any(path in known.parents for known in self._all_paths())
 
     def is_symlink(self, path: Path) -> bool:
+        # Deliberately not resolved: the question is about this path itself.
         return path in self.symlinks
 
+    def resolve(self, path: Path) -> Path:
+        for source, target in self.links.items():
+            if path == source:
+                return target
+            if source in path.parents:
+                return target / path.relative_to(source)
+        return path
+
     def list_dir(self, path: Path) -> list[str]:
+        path = self.resolve(path)
         names = {
             known.relative_to(path).parts[0] for known in self._all_paths() if path in known.parents
         }

@@ -49,11 +49,14 @@ DRIVE_C_CANDIDATES = (
 def discover(system: System, layout: Layout) -> tuple[DcsInstall, ...]:
     """Every DCS install on this machine, ours first.
 
-    Two launchers can point at the same game directory — `~/.steam/root` and
-    `~/.local/share/Steam` are usually the same place, and adopting an
-    existing install leaves it managed by both. The game directory is the
-    identity of an install, so the first launcher to claim one wins and the
-    duplicate is dropped.
+    Several searches routinely land on one physical install: `~/.steam/root`,
+    `~/.steam/steam` and `~/.local/share/Steam` are the same directory on most
+    distros, and adopting an existing install leaves it managed by two
+    launchers. Symlinks are followed before comparing, so those all collapse
+    to the single install they are — comparing the spellings would not.
+
+    The game directory is the identity of an install (ADR-0007), so the first
+    launcher to claim one wins and the duplicates are dropped.
     """
     home = system.home()
     found: dict[Path, DcsInstall] = {}
@@ -64,16 +67,20 @@ def discover(system: System, layout: Layout) -> tuple[DcsInstall, ...]:
         _heroic_installs(system, home),
     )
     for install in (install for source in sources for install in source):
-        found.setdefault(install.game, install)
-    return tuple(_describe(system, install) for install in found.values())
+        described = _describe(system, install)
+        found.setdefault(described.game, described)
+    return tuple(found.values())
 
 
 def _describe(system: System, install: DcsInstall) -> DcsInstall:
     """Fill in what the install itself knows, whichever launcher found it."""
+    game = system.resolve(install.game)
     return replace(
         install,
-        edition=detect_edition(system, install.game, install.launcher),
-        version=read_version(system, install.game),
+        game=game,
+        prefix=system.resolve(install.prefix) if install.prefix else None,
+        edition=detect_edition(system, game, install.launcher),
+        version=read_version(system, game),
     )
 
 
@@ -149,9 +156,8 @@ def _steam_libraries(system: System, root: Path) -> list[Path]:
 def _steam_runtime(system: System, root: Path, compatdata: Path) -> str | None:
     """Which Proton build Steam runs DCS with.
 
-    The mapping only exists once a compatibility tool has been chosen by
-    hand, so the prefix's own `version` file is the fallback — it records
-    what actually built the prefix.
+    `CompatToolMapping` only has an entry once a tool has been chosen by hand,
+    so the prefix's own record of what built it is the fallback.
     """
     config = _read_vdf(system, root / "config" / "config.vdf")
     chosen = dig(
@@ -164,7 +170,27 @@ def _steam_runtime(system: System, root: Path, compatdata: Path) -> str | None:
         STEAM_APP_ID,
         "name",
     )
-    return chosen or _first_line(system.read_text(compatdata / "version"))
+    return chosen or _proton_from_config_info(system.read_text(compatdata / "config_info"))
+
+
+def _proton_from_config_info(config_info: str | None) -> str | None:
+    """The Proton build named by a prefix's `config_info`.
+
+    Not the neighbouring `version` file: for official Proton that holds a bare
+    version number (`11.0-100`) and only GE writes its build name there.
+    `config_info` line 2 is a path into the build's own directory —
+
+        .../steamapps/common/Proton - Experimental/files/share/fonts/
+        .../compatibilitytools.d/GE-Proton10-15/files/share/fonts/
+
+    — whose directory above `files` is the build. Read off seven prefixes on
+    the development machine; both shapes appear there.
+    """
+    lines = (config_info or "").splitlines()
+    if len(lines) < 2:
+        return None
+    head, separator, _ = lines[1].partition("/files/")
+    return Path(head).name if separator else None
 
 
 def _read_vdf(system: System, path: Path) -> KeyValues:
@@ -191,15 +217,16 @@ def _lutris_installs(system: System, home: Path) -> Iterator[DcsInstall]:
             game = config.get("game")
             if not isinstance(game, dict):
                 continue
+            prefix = _as_path(game.get("prefix"))
             # Lutris records the binary to run, not the game that is
             # installed, so the executable is also how we tell this is DCS.
-            root = _install_above(system, game.get("exe"))
+            root = _install_above(system, game.get("exe"), relative_to=prefix)
             if root is None:
                 continue
             yield DcsInstall(
                 game=root,
                 launcher=Launcher.LUTRIS,
-                prefix=_as_path(game.get("prefix")),
+                prefix=prefix,
                 runtime=_as_text(_dig_mapping(config, "wine", "version")),
             )
 
@@ -227,6 +254,11 @@ def _heroic_dirs(home: Path) -> tuple[Path, ...]:
 
 def _heroic_installs(system: System, home: Path) -> Iterator[DcsInstall]:
     for directory in _heroic_dirs(home):
+        # A game left on Heroic's global settings has no per-game config at
+        # all, so the defaults are where its prefix and runtime come from.
+        defaults = _read_json(system, directory / "config.json").get("defaultSettings")
+        defaults = defaults if isinstance(defaults, dict) else {}
+
         # DCS is on no store Heroic supports, so it can only be a sideloaded
         # app there — added by the user, pointing at an existing install.
         library = _read_json(system, directory / "sideload_apps" / "library.json")
@@ -244,8 +276,11 @@ def _heroic_installs(system: System, home: Path) -> Iterator[DcsInstall]:
             yield DcsInstall(
                 game=root,
                 launcher=Launcher.HEROIC,
-                prefix=_as_path(game_config.get("winePrefix")),
-                runtime=_as_text(_dig_mapping(game_config, "wineVersion", "name")),
+                prefix=_as_path(game_config.get("winePrefix") or defaults.get("winePrefix")),
+                runtime=_as_text(
+                    _dig_mapping(game_config, "wineVersion", "name")
+                    or _dig_mapping(defaults, "wineVersion", "name")
+                ),
             )
 
 
@@ -263,11 +298,21 @@ def _read_json(system: System, path: Path) -> dict[str, object]:
 # --- Shared ----------------------------------------------------------------
 
 
-def _install_above(system: System, executable: object) -> Path | None:
-    """The DCS install holding a launcher's configured executable, if any."""
+def _install_above(
+    system: System, executable: object, relative_to: Path | None = None
+) -> Path | None:
+    """The DCS install holding a launcher's configured executable, if any.
+
+    A relative executable is resolved against the prefix, which is what
+    Lutris does with one.
+    """
     path = _as_path(executable)
-    if path is None or not path.is_absolute():
+    if path is None:
         return None
+    if not path.is_absolute():
+        if relative_to is None:
+            return None
+        path = relative_to / path
     return install_root_for_exe(system, path)
 
 
@@ -287,7 +332,3 @@ def _as_text(value: object) -> str | None:
 def _as_path(value: object) -> Path | None:
     text = _as_text(value)
     return Path(text) if text is not None else None
-
-
-def _first_line(text: str | None) -> str | None:
-    return _as_text(text.strip().splitlines()[0].strip()) if text and text.strip() else None
