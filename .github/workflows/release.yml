@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dcs-linux-installer
+
+    permissions:
+      # PyPI trusted publishing: the OIDC token replaces a stored API token.
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # hatch-vcs reads the version from the tag, so it needs the tags.
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+
+      - name: Build
+        run: uv build
+
+      - name: Check the tag and the package agree
+        run: uv run --no-project python scripts/check-version.py "${{ github.ref }}" dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
