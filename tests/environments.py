@@ -5,11 +5,29 @@ from pathlib import Path
 
 from dcs_linux.checks import GIB
 from dcs_linux.distro import Distro, Family, Immutability
+from dcs_linux.installs import DcsInstall, Launcher
 from dcs_linux.paths import Layout
-from dcs_linux.probes import Environment, Gpu, InstallState, Umu
+from dcs_linux.probes import Environment, Gpu, InstallState, Target, Umu
 from dcs_linux.system import DiskUsage
 
 LAYOUT = Layout(root=Path("/data/dcs"), toolchain=Path("/data/toolchain"))
+
+OWN_INSTALL = DcsInstall(
+    game=LAYOUT.game / "DCS World",
+    launcher=Launcher.DCS_LINUX,
+    prefix=LAYOUT.prefix,
+    runtime="GE-Proton11-3",
+    version="2.9.28.26385",
+)
+
+TARGET = Target(
+    game=OWN_INSTALL.game,
+    prefix=LAYOUT.prefix,
+    saved_games=LAYOUT.saved_games,
+    prefix_saved_games=LAYOUT.prefix / "drive_c" / "users" / "steamuser" / "Saved Games",
+)
+
+BARE_TARGET = replace(TARGET, game=LAYOUT.game)
 
 FEDORA = Distro(
     id="fedora",
@@ -33,19 +51,20 @@ def healthy_environment(**overrides: object) -> Environment:
     base = Environment(
         layout=LAYOUT,
         distro=FEDORA,
+        target=TARGET,
         gpus=(Gpu(vendor="NVIDIA", kernel_driver="nvidia", driver_version="610.43.03"),),
         umu=Umu(path=LAYOUT.umu_run, usable=True, version="1.4.4"),
         proton_builds=("GE-Proton11-3",),
         missing_tools=(),
         disk=DiskUsage(total=2000 * GIB, free=600 * GIB),
         filesystem="btrfs",
+        installs=(OWN_INSTALL,),
+        selected=OWN_INSTALL,
         install=InstallState(
             prefix_exists=True,
-            game_exists=True,
             missing_segoe_fonts=(),
             d3dcompiler_installed=True,
             saved_games_mapped=True,
-            game_under_drive_c=False,
             upscaling="OFF",
         ),
     )
@@ -57,6 +76,9 @@ def bare_environment(**overrides: object) -> Environment:
     defaults: dict[str, object] = {
         "umu": Umu(path=None, usable=False, version=None),
         "proton_builds": (),
+        "target": BARE_TARGET,
+        "installs": (),
+        "selected": None,
         "install": InstallState(),
     }
     return healthy_environment(**{**defaults, **overrides})

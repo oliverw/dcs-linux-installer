@@ -20,3 +20,6 @@ spikes/runs/*/commands.log
 
 # ED credential blob -- must never be committed or shipped in a bug report
 authdata.bin
+
+# Work trees for issue branches
+.worktrees/

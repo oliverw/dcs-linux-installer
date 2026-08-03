@@ -14,6 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 
+from dcs_linux.installs import Launcher
 from dcs_linux.probes import REQUIRED_TOOLS, Environment
 
 GIB = 1024**3
@@ -220,7 +221,7 @@ def check_external_tools(environment: Environment) -> CheckResult:
 
 def check_disk_space(environment: Environment) -> CheckResult:
     disk = environment.disk
-    game = environment.layout.game
+    game = environment.target.game
     if disk is None:
         return CheckResult(
             name=DISK_SPACE,
@@ -234,8 +235,7 @@ def check_disk_space(environment: Environment) -> CheckResult:
             name=DISK_SPACE,
             status=Status.FAIL,
             detail=f"{free}, below the {REQUIRED_FREE_BYTES // GIB} GiB a base install needs",
-            remediation=f"free up space, or point {game.name} at a larger drive with "
-            "DCS_LINUX_ROOT",
+            remediation=_free_space_hint(environment),
         )
     if disk.free < RECOMMENDED_FREE_BYTES:
         return CheckResult(
@@ -247,6 +247,14 @@ def check_disk_space(environment: Environment) -> CheckResult:
     return CheckResult(name=DISK_SPACE, status=Status.PASS, detail=free)
 
 
+def _free_space_hint(environment: Environment) -> str:
+    """Where to make room — only we can be pointed at another drive."""
+    selected = environment.selected
+    if selected is not None and selected.launcher is not Launcher.DCS_LINUX:
+        return f"free up space on the drive holding {environment.target.game}"
+    return "free up space, or point the game directory at a larger drive with DCS_LINUX_ROOT"
+
+
 def check_reflink_filesystem(environment: Environment) -> CheckResult:
     """btrfs/xfs make a gold snapshot free; other filesystems still work."""
     filesystem = environment.filesystem
@@ -254,7 +262,7 @@ def check_reflink_filesystem(environment: Environment) -> CheckResult:
         return CheckResult(
             name=FILESYSTEM,
             status=Status.WARN,
-            detail=f"could not determine the filesystem for {environment.layout.game}",
+            detail=f"could not determine the filesystem for {environment.target.game}",
         )
     if filesystem in REFLINK_FILESYSTEMS:
         return CheckResult(
@@ -346,36 +354,43 @@ def check_saved_games_mapping(environment: Environment) -> CheckResult:
             detail="Saved Games sits inside the prefix, so rebuilding the prefix would "
             "destroy the ED login and keybinds",
             remediation=f"symlink it out: ln -sfn {environment.layout.saved_games} "
-            f'"{environment.layout.prefix_saved_games}"',
+            f'"{environment.target.prefix_saved_games}"',
         )
+    # Reading the symlink's target would take a write-capable view of the
+    # machine we deliberately do not have, so the row says only that it is out.
     return CheckResult(
         name=SAVED_GAMES_MAPPING,
         status=Status.PASS,
-        detail=f"mapped to {environment.layout.saved_games}",
+        detail="mapped out of the prefix",
     )
 
 
 def check_game_location(environment: Environment) -> CheckResult:
     """A game directory under drive_c dies on the next prefix rebuild."""
-    install = environment.install
-    if not install.prefix_exists:
-        return _no_prefix_yet(GAME_LOCATION)
-    if install.game_under_drive_c:
-        return CheckResult(
-            name=GAME_LOCATION,
-            status=Status.FAIL,
-            detail="DCS is installed under drive_c, inside the disposable prefix",
-            remediation=f"move the install to {environment.layout.game} and map it as D: "
-            "— rebuilding the prefix would otherwise delete it",
-        )
-    if not install.game_exists:
+    install = environment.selected
+    if install is None:
         return CheckResult(
             name=GAME_LOCATION,
             status=Status.SKIP,
-            detail="no game directory yet",
+            detail=_nothing_selected(environment),
+        )
+    if install.under_prefix:
+        return CheckResult(
+            name=GAME_LOCATION,
+            status=Status.FAIL,
+            detail=f"{install.game} is inside the prefix at {install.prefix}",
+            remediation=f"move the install out of the prefix and map it as D: "
+            f"— rebuilding {install.prefix} would otherwise delete it",
         )
     return CheckResult(
         name=GAME_LOCATION,
         status=Status.PASS,
-        detail=f"{environment.layout.game} (outside the prefix)",
+        detail=f"{install.game} (outside the prefix)",
     )
+
+
+def _nothing_selected(environment: Environment) -> str:
+    """Why no install is being reported on: there are none, or there are several."""
+    if not environment.installs:
+        return "no DCS install found"
+    return f"{len(environment.installs)} installs found; pass --install ID to choose one"

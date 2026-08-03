@@ -31,6 +31,7 @@ from tests.environments import (
     BAZZITE,
     FEDORA,
     LAYOUT,
+    OWN_INSTALL,
     STEAMOS,
     bare_environment,
     healthy_environment,
@@ -232,16 +233,25 @@ class TestLifetimeRows:
         assert check_saved_games_mapping(healthy_environment()).status is Status.PASS
 
     def test_game_under_drive_c_blocks(self) -> None:
-        install = InstallState(prefix_exists=True, game_exists=True, game_under_drive_c=True)
-        result = check_game_location(healthy_environment(install=install))
+        inside = replace(OWN_INSTALL, game=LAYOUT.prefix / "drive_c" / "DCS World")
+        result = check_game_location(healthy_environment(selected=inside, installs=(inside,)))
         assert result.status is Status.FAIL
-        assert "drive_c" in result.detail
+        assert str(inside.game) in result.detail
 
     def test_game_outside_the_prefix_passes(self) -> None:
         assert check_game_location(healthy_environment()).status is Status.PASS
 
-    def test_skipped_with_no_prefix(self) -> None:
-        assert check_game_location(bare_environment()).status is Status.SKIP
+    def test_skipped_with_no_install(self) -> None:
+        result = check_game_location(bare_environment())
+        assert result.status is Status.SKIP
+        assert result.detail == "no DCS install found"
+
+    def test_several_installs_and_none_chosen_says_so(self) -> None:
+        """Picking between somebody's installs is their decision, not ours."""
+        installs = (OWN_INSTALL, replace(OWN_INSTALL, game=LAYOUT.game / "DCS World 2"))
+        result = check_game_location(bare_environment(installs=installs))
+        assert result.status is Status.SKIP
+        assert "--install" in result.detail
 
 
 class TestWholeReport:

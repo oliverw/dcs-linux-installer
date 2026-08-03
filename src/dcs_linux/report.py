@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.text import Text
 
 from dcs_linux.checks import CheckResult, Status
+from dcs_linux.installs import DcsInstall, Edition
 from dcs_linux.probes import Environment
 
 _MARKER = {
@@ -16,6 +17,12 @@ _MARKER = {
     Status.WARN: ("warn", "yellow"),
     Status.FAIL: ("FAIL", "red"),
     Status.SKIP: ("skip", "dim"),
+}
+
+_EDITION = {
+    Edition.STANDALONE: "Standalone",
+    Edition.STEAM: "Steam",
+    Edition.UNKNOWN: "unknown",
 }
 
 
@@ -46,6 +53,57 @@ def render_table(console: Console, results: list[CheckResult]) -> None:
         console.print("\n[green]No blocking problems.[/green]")
 
 
+def render_installs(console: Console, environment: Environment) -> None:
+    """Every DCS install found, with the id other commands take to target one."""
+    installs = environment.installs
+    if not installs:
+        console.print(
+            "\nNo DCS install found. "
+            "[bold]dcs-linux install[/bold] creates one; existing Lutris, Heroic and "
+            "Steam installs are adopted automatically."
+        )
+        return
+
+    table = Table(show_header=True, header_style="bold", expand=False)
+    table.add_column("")
+    table.add_column("ID")
+    # Paths are the point of this table, so they get a column of their own and
+    # fold rather than being truncated away in a narrow terminal.
+    table.add_column("Install", overflow="fold")
+
+    for install in installs:
+        selected = install == environment.selected
+        table.add_row(
+            Text("→" if selected else "", style="cyan"),
+            Text(install.install_id, style="bold" if selected else ""),
+            _install_cell(install),
+        )
+
+    console.print(f"\n[bold]{len(installs)} DCS install{'s' if len(installs) > 1 else ''}[/bold]")
+    console.print(table)
+    if environment.selected is None:
+        console.print(
+            "[yellow]No install targeted[/yellow] — the rows above that describe an "
+            "install were skipped. Pass [bold]--install ID[/bold] to choose one."
+        )
+
+
+def _install_cell(install: DcsInstall) -> Text:
+    """What the install is, then where it is."""
+    facts = " · ".join(
+        (
+            str(install.launcher),
+            f"{_EDITION[install.edition]} edition",
+            f"DCS {install.version}" if install.version else "DCS version unknown",
+            install.runtime or "runtime unknown",
+        )
+    )
+    cell = Text(facts)
+    cell.append(f"\ngame:   {install.game}", style="dim")
+    cell.append(f"\nprefix: {install.prefix or 'unknown'}", style="dim")
+    return cell
+
+
 def as_json_payload(environment: Environment, results: list[CheckResult]) -> dict[str, Any]:
     """The same results, machine-readable."""
     distro = environment.distro
@@ -69,5 +127,18 @@ def as_json_payload(environment: Environment, results: list[CheckResult]) -> dic
                 "remediation": result.remediation,
             }
             for result in results
+        ],
+        "installs": [
+            {
+                "id": install.install_id,
+                "launcher": install.launcher.value,
+                "edition": install.edition.value,
+                "version": install.version,
+                "runtime": install.runtime,
+                "game": str(install.game),
+                "prefix": str(install.prefix) if install.prefix else None,
+                "selected": install == environment.selected,
+            }
+            for install in environment.installs
         ],
     }
