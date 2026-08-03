@@ -291,9 +291,24 @@ edit, so the widely-cited voice-chat fix appears unnecessary on current
 versions — worth confirming before applying it, since that edit touches a
 hashed file and carries integrity-check risk.
 
-**Not tested:** the TADS/PNVS sight. Reports of MFD/sight texture corruption
-concern sight views specifically, and this run never slewed the TADS. Treat
-the texture-conversion workaround as unverified rather than unnecessary.
+**The TADS sight is broken.** Enabling TADS in the CPG seat brings back the
+flicker even with DLSS off -- a second, independent cause. The log shows the
+sight's display texture failing to resolve at the moment it is enabled:
+
+```
+texture 'TEDAC_LCD_AH64' not found          <- TADS Electronic Display And Control
+texture 'MFD_LCD_AH64_{LEFT,RIGHT}_{PLT,CPG}' not found
+render target 'mainDepthBuffer' not found
+render target 'uiTargetColor' / 'uiTargetDepth' not found
+```
+
+So the MFD/sight texture workaround is **required**, not optional. It is the
+⚠️ integrity-check-risky one, so it must stay opt-in with a multiplayer
+warning -- but it cannot be dropped.
+
+Note this is invisible from the pilot's seat on the ground: the EUFD, MFDs,
+HMD and Keyboard Unit all render correctly, and only the sight fails. Testing
+"does the cockpit look right" is not sufficient to clear it.
 
 ---
 
