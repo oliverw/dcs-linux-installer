@@ -1,0 +1,13 @@
+{
+  "notes": "TADS/sight session. Two distinct flicker causes separated here. (1) DLSS upscaling: ['Upscaling']='DLSS' flickers violently from launch and never settles; setting it OFF fixes it with no other change -- bisected as a single variable. (2) Enabling TADS in the CPG seat flickers for a few seconds then settles, and the sight image renders correctly -- first-use shader compilation, not corruption. TEDAC_LCD_AH64, MFD_LCD_AH64_* and the mainDepthBuffer/uiTargetColor/uiTargetDepth render targets are runtime names, not shipped files, and the sight works despite them. So the IC-risky MFD/sight texture conversion patch appears unnecessary on 2.9.28.26385.",
+  "verdict": "pass",
+  "versions": {
+    "captured_at": "2026-08-03T07:47:06.821052+00:00",
+    "gameid": "umu-223750",
+    "ge_proton_version": "GE-Proton11-3",
+    "gpu_driver": "610.43.03",
+    "kernel": "7.1.4-202.fc44.x86_64",
+    "python": "3.11.15",
+    "umu_version": "umu-launcher version 1.4.4 (3.11.15 (main, Jun 23 2026, 15:19:43) [Clang 22.1.3 ])"
+  }
+}
