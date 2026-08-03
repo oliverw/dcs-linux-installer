@@ -246,6 +246,28 @@ minutes, not a 250 GB download.
 
 ---
 
+## Graphics settings that break under Proton
+
+**Turn DLSS upscaling OFF.** With `["Upscaling"] = "DLSS"` the picture flickers
+violently — bad enough to look like a broken install or a failed GPU driver.
+Setting Upscaling to `OFF` fixes it completely; nothing else needed.
+
+Bisected on the machine below: DLSS on → severe flicker, DLSS off → clean,
+with no other change. `["AA"] = "DLAA"` was left enabled and caused no
+problem on its own.
+
+This matters because the failure has nothing to do with wine, Proton or the
+installer, but presents exactly like a broken install. Check it before
+debugging anything else:
+
+```bash
+grep -E '"(Upscaling|AA|Scaling)"' \
+  "$SAVED/DCS/Config/options.lua"
+```
+
+Note DCS rewrites `options.lua` when it exits, so change this in the in-game
+menu rather than by editing the file while the game is running.
+
 ## Known log signatures
 
 From a verified-good startup — these are normal, not faults:
