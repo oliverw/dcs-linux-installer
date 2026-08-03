@@ -13,6 +13,9 @@ runner = CliRunner()
 
 SUBCOMMANDS = ["check", "install", "patch", "verify", "report"]
 
+# `check` is implemented, so it is no longer a stub. See test_check_command.py.
+STUB_SUBCOMMANDS = [name for name in SUBCOMMANDS if name != "check"]
+
 
 def test_version_flag_prints_version_and_exits_zero() -> None:
     result = runner.invoke(app, ["--version"])
@@ -34,14 +37,14 @@ def test_bare_invocation_shows_help() -> None:
         assert name in result.stdout
 
 
-@pytest.mark.parametrize("name", SUBCOMMANDS)
+@pytest.mark.parametrize("name", STUB_SUBCOMMANDS)
 def test_subcommand_runs_as_a_stub(name: str) -> None:
     result = runner.invoke(app, [name])
     assert result.exit_code == 0
     assert "not implemented" in result.stdout
 
 
-@pytest.mark.parametrize("name", SUBCOMMANDS)
+@pytest.mark.parametrize("name", STUB_SUBCOMMANDS)
 def test_json_flag_is_accepted_and_emits_json(name: str) -> None:
     result = runner.invoke(app, ["--json", name])
     assert result.exit_code == 0
@@ -50,13 +53,13 @@ def test_json_flag_is_accepted_and_emits_json(name: str) -> None:
 
 
 def test_no_color_flag_is_accepted_and_strips_ansi() -> None:
-    result = runner.invoke(app, ["--no-color", "check"])
+    result = runner.invoke(app, ["--no-color", "report"])
     assert result.exit_code == 0
     assert "\x1b[" not in result.stdout
 
 
 def test_output_has_no_ansi_codes_off_tty_even_without_no_color_flag() -> None:
-    result = runner.invoke(app, ["check"])
+    result = runner.invoke(app, ["report"])
     assert result.exit_code == 0
     assert "\x1b[" not in result.stdout
 

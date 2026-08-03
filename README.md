@@ -2,8 +2,8 @@
 
 Install [DCS World](https://www.digitalcombatsimulator.com/) **Standalone** on Linux, and keep it working.
 
-> **Status: pre-alpha. Nothing is implemented yet.**
-> The design is settled and the work is broken down in [issue #1](https://github.com/oliverw/dcs-linux-installer/issues/1). There is no usable release. Everything below describes the intended tool.
+> **Status: pre-alpha.** `dcs-linux check` works; everything else is a stub.
+> The design is settled and the work is broken down in [issue #1](https://github.com/oliverw/dcs-linux-installer/issues/1). There is no usable release yet. Everything below describes the intended tool.
 
 ---
 
@@ -64,6 +64,21 @@ dcs-linux report     # diagnostics bundle for a bug report
 ```
 
 Requires [uv](https://docs.astral.sh/uv/). It installs to your home directory without root, so this works on immutable distros too.
+
+### `dcs-linux check`
+
+The one command that works today. It needs no DCS install — it is the first thing to run — and reports a pass/fail row per check, each failure carrying the command that fixes it, chosen for your distro:
+
+```sh
+dcs-linux check          # exits non-zero if anything blocking is wrong
+dcs-linux --json check   # same results, machine-readable
+```
+
+It reports your distro and whether its filesystem is immutable, your GPU and driver version, umu-launcher and the available GE-Proton builds, missing external tools, free disk space against what a DCS install actually needs, and whether your filesystem supports reflink snapshots.
+
+Once DCS is installed it also checks the things that break it in ways the logs never mention — DLSS upscaling, the missing Segoe fonts the AH-64D needs, `d3dcompiler_47`, and whether the game and your saved games really do live outside the disposable prefix.
+
+Paths default to `~/dcs-linux` and `~/.cache/dcs-linux/toolchain`; override with `DCS_LINUX_ROOT` and `DCS_LINUX_TOOLCHAIN`.
 
 ## Design
 

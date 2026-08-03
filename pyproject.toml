@@ -61,4 +61,4 @@ files = ["src", "tests", "scripts"]
 testpaths = ["tests"]
 # scripts/ holds release tooling, not library code, so it is importable by the
 # tests without being part of the shipped package.
-pythonpath = ["scripts"]
+pythonpath = ["scripts", "."]
