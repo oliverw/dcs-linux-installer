@@ -2,7 +2,7 @@
 
 Install [DCS World](https://www.digitalcombatsimulator.com/) **Standalone** on Linux, and keep it working.
 
-> **Status: pre-alpha.** `dcs-linux check` works, including finding the DCS installs you already have; everything else is a stub.
+> **Status: pre-alpha.** `dcs-linux check` and `dcs-linux report` work, including finding the DCS installs you already have; everything else is a stub.
 > The design is settled and the work is broken down in [issue #1](https://github.com/oliverw/dcs-linux-installer/issues/1). There is no usable release yet. Everything below describes the intended tool.
 
 ---
@@ -109,6 +109,21 @@ dcs-linux check --install 7976       # any unambiguous prefix works
 
 With one install found, or one of ours, it is used automatically.
 
+### `dcs-linux report`
+
+A diagnostics bundle, as markdown, ready to paste into an issue or a forum thread:
+
+```sh
+dcs-linux report                  # to stdout
+dcs-linux report --install 7976   # about one install
+```
+
+It carries the tool version, your distro and kernel, GPU and driver, umu and the Proton builds present, every install found, the graphics block of `options.lua`, and the parts of `dcs.log` worth reading — the header, any known-fatal signature, errors with the known-benign noise filtered out, and the tail.
+
+It is **safe to post in public**: home paths, user names, email addresses, machine identifiers and routable IP addresses are redacted, and the ED credential (`Saved Games/DCS/Config/authdata.bin`) is never read at all. `--no-redact` turns that off, for a bundle you are keeping to yourself.
+
+It is bounded — a healthy DCS log is 150 KB with several hundred ERROR lines, so it is excerpted rather than dumped — and it works on a machine where everything is broken and nothing is installed, which is exactly when it is needed.
+
 ## Design
 
 | Area | Decision |
@@ -127,7 +142,7 @@ Full reasoning is in [issue #1](https://github.com/oliverw/dcs-linux-installer/i
 
 ## Contributing
 
-The tool targets many distros, GPUs and launcher layouts, but is developed on one machine. **Bug reports are how coverage happens** — once `dcs-linux report` exists, its output is the most useful thing you can attach.
+The tool targets many distros, GPUs and launcher layouts, but is developed on one machine. **Bug reports are how coverage happens** — the output of `dcs-linux report` is the most useful thing you can attach.
 
 Work is tracked as issues under [#1](https://github.com/oliverw/dcs-linux-installer/issues/1). Anything labelled `ready-for-agent` with no open blockers is available to pick up.
 
