@@ -291,24 +291,28 @@ edit, so the widely-cited voice-chat fix appears unnecessary on current
 versions — worth confirming before applying it, since that edit touches a
 hashed file and carries integrity-check risk.
 
-**The TADS sight is broken.** Enabling TADS in the CPG seat brings back the
-flicker even with DLSS off -- a second, independent cause. The log shows the
-sight's display texture failing to resolve at the moment it is enabled:
+**The TADS sight works.** Enabling TADS in the CPG seat causes a burst of
+flicker for a few seconds, then it settles and the sight image renders
+correctly. That is first-use shader compilation, not corruption -- wait it
+out before concluding anything is broken.
+
+The log emits these as the sight comes up. They are **benign**:
 
 ```
-texture 'TEDAC_LCD_AH64' not found          <- TADS Electronic Display And Control
+texture 'TEDAC_LCD_AH64' not found          <- runtime render-target name
 texture 'MFD_LCD_AH64_{LEFT,RIGHT}_{PLT,CPG}' not found
 render target 'mainDepthBuffer' not found
 render target 'uiTargetColor' / 'uiTargetDepth' not found
 ```
 
-So the MFD/sight texture workaround is **required**, not optional. It is the
-⚠️ integrity-check-risky one, so it must stay opt-in with a multiplayer
-warning -- but it cannot be dropped.
+None are shipped files -- the AH-64D texture archive is intact and contains
+no such names. They are render targets DCS creates at runtime, and the sight
+renders correctly despite them.
 
-Note this is invisible from the pilot's seat on the ground: the EUFD, MFDs,
-HMD and Keyboard Unit all render correctly, and only the sight fails. Testing
-"does the cockpit look right" is not sufficient to clear it.
+So on this version the ⚠️ integrity-check-risky MFD/sight texture conversion
+workaround appears **unnecessary**. Verified with DLSS off. Do not confuse
+this transient shader-compile flicker with the permanent DLSS flicker above:
+the first settles on its own, the second never does.
 
 ---
 
