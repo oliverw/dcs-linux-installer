@@ -33,7 +33,7 @@ source = "vcs"
 packages = ["src/dcs_linux"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "README.md", "LICENSE"]
+include = ["src", "tests", "scripts", "README.md", "LICENSE"]
 
 [dependency-groups]
 dev = [
@@ -53,8 +53,12 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.mypy]
 python_version = "3.11"
+mypy_path = "scripts"
 strict = true
-files = ["src", "tests"]
+files = ["src", "tests", "scripts"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# scripts/ holds release tooling, not library code, so it is importable by the
+# tests without being part of the shipped package.
+pythonpath = ["scripts"]

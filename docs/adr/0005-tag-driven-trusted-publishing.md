@@ -25,8 +25,10 @@ Two ways it goes wrong quietly:
 - Publishing is triggered by **pushing a `v*` tag**, and by nothing else.
 - Publishing uses **PyPI trusted publishing** (OIDC, `id-token: write`). No
   token exists in the repository or in CI secrets.
-- Before the upload, `scripts/check-version.py` asserts the built artefacts and
-  the tag agree, and fails the job if they do not.
+- Everything that can fail runs **before** the upload: lint, types, the test
+  suite, `scripts/check_version.py` (which asserts the built artefacts and the
+  tag agree), and a `uvx` smoke test of the built wheel — the same way a user
+  gets it. A PyPI version can never be replaced, only superseded.
 
 ## Consequences
 
