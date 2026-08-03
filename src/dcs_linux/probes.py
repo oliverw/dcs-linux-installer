@@ -17,6 +17,7 @@ from dcs_linux.paths import Layout, resolve_layout
 from dcs_linux.system import DiskUsage, System
 
 DRM_ROOT = Path("/sys/class/drm")
+KERNEL_RELEASE = Path("/proc/sys/kernel/osrelease")
 NVIDIA_MODULE_VERSION = Path("/sys/module/nvidia/version")
 NVIDIA_PROC_VERSION = Path("/proc/driver/nvidia/version")
 
@@ -107,6 +108,10 @@ class InstallState:
     saved_games_mapped: bool = False
     saved_games_target: Path | None = None
     upscaling: str | None = None
+    # The `["graphics"]` table from options.lua, verbatim. Read for `report`:
+    # graphics settings are the first thing anyone asks a bug reporter for,
+    # and the rest of options.lua is neither cheap nor non-sensitive.
+    graphics_options: str | None = None
 
 
 @dataclass(frozen=True)
@@ -116,6 +121,7 @@ class Environment:
     layout: Layout
     distro: Distro
     paths: TargetPaths
+    kernel: str | None = None
     gpus: tuple[Gpu, ...] = ()
     umu: Umu = Umu(path=None, usable=False, version=None)
     proton_builds: tuple[str, ...] = ()
@@ -140,6 +146,7 @@ def probe(system: System, identifier: str | None = None) -> Environment:
         layout=layout,
         distro=detect_distro(system),
         paths=paths,
+        kernel=probe_kernel(system),
         gpus=probe_gpus(system),
         umu=probe_umu(system, layout),
         proton_builds=probe_proton_builds(system, layout),
@@ -281,6 +288,16 @@ def probe_proton_builds(system: System, layout: Layout) -> tuple[str, ...]:
     return tuple(sorted(found))
 
 
+def probe_kernel(system: System) -> str | None:
+    """The running kernel release.
+
+    Read from /proc rather than `uname` so it costs nothing and cannot fail
+    on a machine where the checks are already in trouble.
+    """
+    release = system.read_text(KERNEL_RELEASE)
+    return release.strip() or None if release else None
+
+
 def probe_missing_tools(system: System) -> tuple[str, ...]:
     return tuple(tool for tool in REQUIRED_TOOLS if system.which(tool) is None)
 
@@ -290,6 +307,7 @@ def probe_install(system: System, paths: TargetPaths) -> InstallState:
     fonts = set(system.list_dir(paths.fonts))
     user_reg = system.read_text(paths.user_reg)
     mapped = system.is_symlink(paths.prefix_saved_games)
+    options_lua = _read_options_lua(system, paths)
 
     return InstallState(
         prefix_exists=system.exists(paths.prefix),
@@ -299,7 +317,8 @@ def probe_install(system: System, paths: TargetPaths) -> InstallState:
         d3dcompiler_installed=has_dll_override(user_reg, D3DCOMPILER),
         saved_games_mapped=mapped,
         saved_games_target=system.resolve(paths.prefix_saved_games) if mapped else None,
-        upscaling=read_upscaling(_read_options_lua(system, paths)),
+        upscaling=read_upscaling(options_lua),
+        graphics_options=read_graphics_block(options_lua),
     )
 
 
@@ -327,6 +346,34 @@ def has_dll_override(user_reg: str | None, dll: str) -> bool:
         flags=re.MULTILINE | re.IGNORECASE,
     )
     return match is not None and "native" in match.group(1).lower()
+
+
+def read_graphics_block(options_lua: str | None) -> str | None:
+    """The `["graphics"]` table of options.lua, verbatim, braces and all.
+
+    Matched by counting braces rather than by regex: the table nests, and a
+    non-greedy match would stop at the first inner `}`. Everything outside
+    the graphics table is left where it is — options.lua also holds plugin
+    and account-adjacent settings that have no place in a public paste.
+    """
+    if options_lua is None:
+        return None
+    match = re.search(r'\[\s*"graphics"\s*\]\s*=\s*\{', options_lua)
+    if match is None:
+        return None
+
+    depth = 0
+    for index in range(match.end() - 1, len(options_lua)):
+        character = options_lua[index]
+        if character == "{":
+            depth += 1
+        elif character == "}":
+            depth -= 1
+            if depth == 0:
+                return options_lua[match.start() : index + 1]
+    # Truncated mid-write, or hand-edited into something unbalanced. Unknown
+    # beats a half-table that reads as complete.
+    return None
 
 
 def read_upscaling(options_lua: str | None) -> str | None:

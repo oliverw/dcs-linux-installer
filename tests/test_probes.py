@@ -8,9 +8,11 @@ from dcs_linux.probes import (
     probe,
     probe_gpus,
     probe_install,
+    probe_kernel,
     probe_missing_tools,
     probe_proton_builds,
     probe_umu,
+    read_graphics_block,
     read_upscaling,
     target_paths,
 )
@@ -390,3 +392,60 @@ def test_probe_assembles_the_whole_environment() -> None:
     assert environment.filesystem == "btrfs"
     assert environment.layout.game == Path("/data/dcs/game")
     assert not environment.install_state.prefix_exists
+
+
+class TestKernel:
+    def test_the_kernel_release_is_read(self) -> None:
+        system = FakeSystem(files={"/proc/sys/kernel/osrelease": "6.17.4-202.fc44.x86_64\n"})
+        assert probe_kernel(system) == "6.17.4-202.fc44.x86_64"
+
+    def test_no_proc_is_not_a_crash(self) -> None:
+        assert probe_kernel(FakeSystem()) is None
+
+
+GRAPHICS_OPTIONS = """options = {
+    ["graphics"] = {
+        ["messagesFontScale"] = 1,
+        ["Upscaling"] = "DLSS",
+        ["shadows"] = 4,
+        ["multiMonitorSetup"] = "1camera",
+    },
+    ["plugins"] = {
+        ["secret"] = "keep out",
+    },
+}
+"""
+
+
+class TestGraphicsBlock:
+    def test_the_graphics_table_is_extracted_whole(self) -> None:
+        block = read_graphics_block(GRAPHICS_OPTIONS)
+        assert block is not None
+        assert '["Upscaling"] = "DLSS"' in block
+        assert '["shadows"] = 4' in block
+
+    def test_nothing_outside_graphics_comes_with_it(self) -> None:
+        """Only the graphics table is cheap and non-sensitive; the rest is not."""
+        block = read_graphics_block(GRAPHICS_OPTIONS)
+        assert block is not None
+        assert "keep out" not in block
+
+    def test_a_nested_table_does_not_end_the_block_early(self) -> None:
+        options = 'a = {["graphics"] = {["x"] = {["y"] = 1}, ["z"] = 2}, ["w"] = 3}'
+        block = read_graphics_block(options)
+        assert block is not None
+        assert '["z"] = 2' in block
+        assert '["w"] = 3' not in block
+
+    def test_an_unterminated_table_is_not_guessed_at(self) -> None:
+        assert read_graphics_block('["graphics"] = {["x"] = 1') is None
+
+    def test_no_graphics_table(self) -> None:
+        assert read_graphics_block('["plugins"] = {}') is None
+        assert read_graphics_block(None) is None
+
+    def test_the_probe_picks_it_up(self) -> None:
+        inside = "/data/dcs/prefix/drive_c/users/steamuser/Saved Games/DCS/Config/options.lua"
+        system = FakeSystem(files={"/data/dcs/prefix/system.reg": "", inside: GRAPHICS_OPTIONS})
+        graphics = state_of(system).graphics_options
+        assert graphics is not None and "Upscaling" in graphics

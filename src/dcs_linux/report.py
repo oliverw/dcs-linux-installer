@@ -9,7 +9,7 @@ from rich.table import Table
 from rich.text import Text
 
 from dcs_linux.checks import CheckResult, Status
-from dcs_linux.installs import DcsInstall, Edition
+from dcs_linux.installs import EDITION_LABELS, DcsInstall
 from dcs_linux.probes import Environment
 
 _MARKER = {
@@ -17,12 +17,6 @@ _MARKER = {
     Status.WARN: ("warn", "yellow"),
     Status.FAIL: ("FAIL", "red"),
     Status.SKIP: ("skip", "dim"),
-}
-
-_EDITION = {
-    Edition.STANDALONE: "Standalone",
-    Edition.STEAM: "Steam",
-    Edition.UNKNOWN: "unknown",
 }
 
 
@@ -93,7 +87,7 @@ def _install_cell(install: DcsInstall) -> Text:
     facts = " · ".join(
         (
             str(install.launcher),
-            f"{_EDITION[install.edition]} edition",
+            f"{EDITION_LABELS[install.edition]} edition",
             f"DCS {install.version}" if install.version else "DCS version unknown",
             install.runtime or "runtime unknown",
         )

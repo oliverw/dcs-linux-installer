@@ -54,6 +54,24 @@ loses the user's login and keybinds on every repair.
   or the only one found; with several and none named, install-dependent checks
   are skipped rather than guessing.
 
+## Diagnostics
+
+- **bundle** — what `report` prints: one markdown document, meant to be pasted
+  whole into an issue or a forum thread. It is the project's answer to being
+  written on one machine and run on every distro there is, so a bug reporter
+  becomes a test environment.
+- **redaction** — removing identifying data from a bundle while keeping its
+  shape: home paths become `~`, user names and addresses become placeholders,
+  but a path still reads as a path. `steamuser` is deliberately **kept** — it
+  identifies nobody, and which profile name a prefix uses says which launcher
+  built it. The **auth state** is excluded by never being read, not by being
+  scrubbed.
+- **excerpt** — the bounded quotation of `dcs.log` a bundle carries: header,
+  known-fatal signatures, errors with the benign signatures below filtered
+  out, and the tail. A healthy run's log is 150 KB with several hundred ERROR
+  lines, so quoting one whole is worse than quoting none: the reader stops
+  looking.
+
 ## Iteration
 
 - **gold** — a known-good snapshot of the game directory, taken with
@@ -103,7 +121,13 @@ loses the user's login and keybinds on every repair.
 
 ## Known failure signatures
 
-Recorded so `check` (#5) and `verify` (#12) can tell noise from faults.
+Recorded so `check` (#5), `report` (#7) and `verify` (#12) can tell noise from
+faults. The tables live in code as `dcs_linux.dcslog.FATAL_SIGNATURES` and
+`BENIGN_SIGNATURES`.
+
+The two font lines below differ only in the brackets, and that is the whole
+distinction: **empty brackets are fatal**, a bracketed path is not. Both say
+"Cannot create font", and both appear in the same run.
 
 **Fatal**
 
@@ -116,7 +140,7 @@ Recorded so `check` (#5) and `verify` (#12) can tell noise from faults.
 | Signature | Meaning |
 | --- | --- |
 | `DX11Renderer initialization (... shaderErrors:1)` | normal on a working start |
-| `Cannot load font [...\dxgui\skins\fonts\]` | path with no filename; harmless |
+| `Cannot create font [D:\DCS World\dxgui\skins\fonts\] size 0` | a *named* path with no filename on the end; harmless |
 | `texture 'TEDAC_LCD_AH64' / 'MFD_LCD_AH64_*' not found` | runtime render-target names, not shipped files |
 | `render target 'mainDepthBuffer' / 'uiTargetColor' not found` | same |
 | `texture 'KevinWakePattern...' / 'lightPalette.tif' / livery `RoughMet`` | cosmetic |
