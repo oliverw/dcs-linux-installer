@@ -4,7 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from dcs_linux import dcslog
-from dcs_linux.diagnostics import MAX_BUNDLE_CHARS, bundle, cell
+from dcs_linux.diagnostics import MAX_BUNDLE_CHARS, bundle, cell, escape
 from dcs_linux.installs import DcsInstall, Edition, Launcher
 from dcs_linux.probes import Environment, InstallState
 from dcs_linux.redaction import Redactor
@@ -75,10 +75,14 @@ class TestChecks:
 
     def test_a_pipe_in_a_cell_cannot_break_the_table(self) -> None:
         """Remediations are shell commands, and shell commands contain pipes."""
-        assert cell("dnf list | grep dcs") == r"dnf list \| grep dcs"
+        assert escape("dnf list | grep dcs") == r"dnf list \| grep dcs"
 
     def test_a_multi_line_cell_stays_on_one_row(self) -> None:
-        assert cell("first\nsecond") == "first<br>second"
+        assert escape("first\nsecond") == "first<br>second"
+
+    def test_every_cell_is_redacted_on_its_way_in(self) -> None:
+        """The single point every table value passes through."""
+        assert cell(REDACTOR, "/home/oliver/game") == "~/game"
 
 
 class TestInstalls:
@@ -91,10 +95,31 @@ class TestInstalls:
     def test_no_install_is_said_plainly(self) -> None:
         assert "No DCS install found" in built(bare_environment())
 
+    def test_several_installs_and_none_chosen_says_so(self) -> None:
+        """Otherwise the bundle reads as a report on an install nobody picked."""
+        text = built(healthy_environment(installs=(OWN_INSTALL, STEAM_INSTALL), targeted=None))
+        assert "No install targeted" in text
+        assert "--install ID" in text
+
+    def test_an_untargeted_bundle_does_not_claim_dcs_never_ran(self) -> None:
+        text = built(healthy_environment(installs=(OWN_INSTALL, STEAM_INSTALL), targeted=None))
+        assert "has not written one" not in text
+
 
 class TestRedaction:
     def test_no_home_path_survives(self) -> None:
         environment = healthy_environment(installs=(STEAM_INSTALL,), targeted=STEAM_INSTALL)
+        assert "/home/oliver" not in built(environment)
+
+    def test_launcher_supplied_values_are_scrubbed_too(self) -> None:
+        """Runtime and Proton names are directory names the user controls."""
+        nosy = replace(STEAM_INSTALL, runtime="proton-/home/oliver-build")
+        environment = healthy_environment(
+            installs=(nosy,),
+            targeted=nosy,
+            proton_builds=("GE-Proton11-3-/home/oliver",),
+            kernel="6.17.4-oliver",
+        )
         assert "/home/oliver" not in built(environment)
 
     def test_the_log_is_redacted_too(self) -> None:

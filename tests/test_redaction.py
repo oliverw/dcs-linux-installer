@@ -25,6 +25,24 @@ class TestHomePaths:
         elsewhere = Redactor(home=Path("/mnt/users/oliver"), user="oliver")
         assert elsewhere.scrub("/mnt/users/oliver/game") == "~/game"
 
+    def test_a_similarly_named_home_is_not_half_eaten(self) -> None:
+        """It is a different user's home, so it redacts as one — not as `~-old`."""
+        assert REDACTOR.scrub("/home/oliver-old/backup") == "/home/<user>/backup"
+
+    def test_a_wine_spelling_of_a_home_path_is_redacted(self) -> None:
+        """DCS logs wine paths, and Z: is the whole filesystem."""
+        assert REDACTOR.scrub(r"Z:\home\jenny\dcs") == r"Z:\home\<user>\dcs"
+
+    def test_a_removable_drive_mount_is_redacted(self) -> None:
+        """udisks mounts under the user's name, and that is where DCS often is."""
+        assert REDACTOR.scrub("/run/media/jenny/Games/DCS") == "/run/media/<user>/Games/DCS"
+        assert REDACTOR.scrub("/media/jenny/Games") == "/media/<user>/Games"
+
+    def test_a_short_username_is_still_removed_from_paths(self) -> None:
+        short = Redactor(home=Path("/home/jo"), user="jo")
+        assert short.scrub("/run/media/jo/Games") == "/run/media/<user>/Games"
+        assert short.scrub(r"Z:\home\jo\dcs") == r"Z:\home\<user>\dcs"
+
     def test_paths_are_redacted_as_paths(self) -> None:
         assert REDACTOR.path(Path("/home/oliver/dcs-linux/prefix")) == "~/dcs-linux/prefix"
 
@@ -59,6 +77,10 @@ class TestIdentifiers:
     def test_uuids_go(self) -> None:
         text = 'ID: "{0.0.0.00000000}.{f3884136-6970-469b-aac8-e2895969c000}"'
         assert "f3884136" not in REDACTOR.scrub(text)
+
+    def test_a_steam_account_id_goes(self) -> None:
+        text = "/home/oliver/.steam/steam/userdata/76561198012345678/config"
+        assert "76561198012345678" not in REDACTOR.scrub(text)
 
     def test_a_routable_address_goes(self) -> None:
         assert REDACTOR.scrub("interface 0: 192.168.1.42") == "interface 0: <ip>"

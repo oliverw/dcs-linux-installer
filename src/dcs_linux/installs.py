@@ -52,6 +52,16 @@ class Edition(StrEnum):
     UNKNOWN = "unknown"
 
 
+# How an edition is written for a human. Kept beside the enum so the two
+# places that render it — `check`'s table and the diagnostics bundle — cannot
+# drift into calling the same edition two different things.
+EDITION_LABELS = {
+    Edition.STANDALONE: "Standalone",
+    Edition.STEAM: "Steam",
+    Edition.UNKNOWN: "unknown",
+}
+
+
 class InstallNotFound(LookupError):
     """No install matched the identifier the user gave."""
 

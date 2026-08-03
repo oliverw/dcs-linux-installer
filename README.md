@@ -120,7 +120,9 @@ dcs-linux report --install 7976   # about one install
 
 It carries the tool version, your distro and kernel, GPU and driver, umu and the Proton builds present, every install found, the graphics block of `options.lua`, and the parts of `dcs.log` worth reading — the header, any known-fatal signature, errors with the known-benign noise filtered out, and the tail.
 
-It is **safe to post in public**: home paths, user names, email addresses, machine identifiers and routable IP addresses are redacted, and the ED credential (`Saved Games/DCS/Config/authdata.bin`) is never read at all. `--no-redact` turns that off, for a bundle you are keeping to yourself.
+It is meant to be **safe to post in public**: home and removable-drive paths, wine profile names, email addresses, Steam account ids, GUIDs and routable IP addresses are all replaced, keeping the shape of the path so it still reads as one. The ED credential (`Saved Games/DCS/Config/authdata.bin`) is never read at all. `--no-redact` turns redaction off, for a bundle you are keeping to yourself.
+
+Redaction is pattern-based, so give the output a glance before you post it — and open an issue if something identifying gets through.
 
 It is bounded — a healthy DCS log is 150 KB with several hundred ERROR lines, so it is excerpted rather than dumped — and it works on a machine where everything is broken and nothing is installed, which is exactly when it is needed.
 

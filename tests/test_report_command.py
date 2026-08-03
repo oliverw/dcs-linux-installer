@@ -8,9 +8,13 @@ import pytest
 from typer.testing import CliRunner
 
 from dcs_linux import cli, dcslog
+from dcs_linux.dcslog import read_log
+from dcs_linux.diagnostics import bundle
 from dcs_linux.installs import DcsInstall, Launcher, select
-from dcs_linux.probes import Environment
+from dcs_linux.probes import Environment, probe
+from dcs_linux.redaction import Redactor
 from tests.environments import OWN_INSTALL, bare_environment, healthy_environment
+from tests.fakes import FakeSystem
 
 runner = CliRunner()
 
@@ -118,3 +122,57 @@ def test_the_markdown_is_not_wrapped_or_coloured(monkeypatch: pytest.MonkeyPatch
     result = runner.invoke(cli.app, ["report"])
     assert "\x1b[" not in result.stdout
     assert all(len(line) < 300 for line in result.stdout.splitlines())
+
+
+class RecordingSystem(FakeSystem):
+    """A `FakeSystem` that remembers every file it was asked to read."""
+
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+        self.reads: list[Path] = []
+
+    def read_text(self, path: Path) -> str | None:
+        self.reads.append(path)
+        return super().read_text(path)
+
+
+SECRET = "ED-CREDENTIAL-BLOB"
+SAVED_GAMES = "/data/dcs/saved-games/DCS"
+
+
+def machine_with_an_install() -> RecordingSystem:
+    """A whole DCS install, credential and all, as files."""
+    return RecordingSystem(
+        files={
+            "/etc/os-release": 'ID=fedora\nPRETTY_NAME="Fedora Linux 44"\n',
+            "/data/dcs/game/DCS World/autoupdate.cfg": '{"version": "2.9.28.26385"}',
+            "/data/dcs/game/DCS World/bin/DCS_updater.exe": "",
+            "/data/dcs/prefix/system.reg": "",
+            f"{SAVED_GAMES}/Config/authdata.bin": SECRET,
+            f"{SAVED_GAMES}/Config/options.lua": '["graphics"] = {["Upscaling"] = "OFF"}',
+            f"{SAVED_GAMES}/Logs/dcs.log": LOG_TEXT,
+        },
+        env={"DCS_LINUX_ROOT": "/data/dcs", "DCS_LINUX_TOOLCHAIN": "/data/toolchain"},
+    )
+
+
+def test_the_ed_credential_is_never_even_read() -> None:
+    """The rule from #2: authdata.bin must not reach a diagnostics bundle.
+
+    Asserted as "never opened" rather than "not in the output", because
+    redacting a credential after reading it is one bug away from posting it.
+    """
+    system = machine_with_an_install()
+    environment = probe(system)
+    log = read_log(system, environment.paths)
+
+    # The fixture has to be a machine where there was something to read.
+    assert environment.installs and log is not None
+    assert not any("authdata" in str(path) for path in system.reads)
+    text = bundle(
+        environment=environment,
+        log=log,
+        redactor=Redactor(home=Path("/home/oliver"), user="oliver"),
+        version="1.2.3",
+    )
+    assert SECRET not in text

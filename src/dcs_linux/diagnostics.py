@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dcs_linux.checks import CheckResult, Status, run_checks
 from dcs_linux.dcslog import DcsLog
-from dcs_linux.installs import DcsInstall, Edition
+from dcs_linux.installs import EDITION_LABELS, DcsInstall
 from dcs_linux.probes import Environment
 from dcs_linux.redaction import Redactor
 from dcs_linux.system import DiskUsage
@@ -49,12 +49,6 @@ _MARKER = {
     Status.SKIP: "skip",
 }
 
-_EDITION = {
-    Edition.STANDALONE: "Standalone",
-    Edition.STEAM: "Steam",
-    Edition.UNKNOWN: "unknown",
-}
-
 
 def bundle(
     environment: Environment,
@@ -69,18 +63,30 @@ def bundle(
         _checks(environment, redactor),
         _installs(environment, redactor),
         _graphics(environment, redactor),
-        _log(log, redactor),
+        _log(environment, log, redactor),
     ]
     return _clamp("\n\n".join(parts) + "\n")
 
 
-def cell(text: str) -> str:
-    """One table cell: pipes escaped, line breaks folded into the row.
+def escape(text: str) -> str:
+    """Make text safe to sit in a markdown table cell.
 
-    Remediations are shell commands and paths, so both happen in practice and
-    either one silently wrecks a markdown table.
+    Remediations are shell commands and check details run to several lines, so
+    both a pipe and a newline happen in practice, and either one silently
+    wrecks the table.
     """
     return text.replace("|", r"\|").replace("\n", "<br>")
+
+
+def cell(redactor: Redactor, text: str) -> str:
+    """One table cell: redacted, then escaped.
+
+    Redaction lives here, at the single point every cell passes through,
+    rather than at each call site. Values reach these tables from launcher
+    config, directory names and the kernel — all user-controlled — so a table
+    that scrubs most cells and forgets one is the failure mode to design out.
+    """
+    return escape(redactor.scrub(text))
 
 
 def _machine(environment: Environment, redactor: Redactor, version: str) -> str:
@@ -98,7 +104,7 @@ def _machine(environment: Environment, redactor: Redactor, version: str) -> str:
         ("Game directory", _game_directory(environment, redactor)),
         ("External tools", f"missing: {missing}" if missing else "all present"),
     ]
-    rows = "\n".join(f"| {name} | {cell(value)} |" for name, value in facts)
+    rows = "\n".join(f"| {name} | {cell(redactor, value)} |" for name, value in facts)
     return f"## Machine\n\n| | |\n| --- | --- |\n{rows}"
 
 
@@ -131,9 +137,8 @@ def _checks(environment: Environment, redactor: Redactor) -> str:
 
 
 def _check_row(result: CheckResult, redactor: Redactor) -> str:
-    detail = cell(redactor.scrub(result.detail))
-    fix = cell(redactor.scrub(result.remediation)) if result.remediation else ""
-    return f"| {_MARKER[result.status]} | {result.name} | {detail} | {fix} |"
+    fix = cell(redactor, result.remediation) if result.remediation else ""
+    return f"| {_MARKER[result.status]} | {result.name} | {cell(redactor, result.detail)} | {fix} |"
 
 
 def _installs(environment: Environment, redactor: Redactor) -> str:
@@ -147,7 +152,23 @@ def _installs(environment: Environment, redactor: Redactor) -> str:
         _install_row(install, redactor, targeted=install == environment.targeted)
         for install in environment.installs
     )
-    return f"## Installs\n\n{header}\n{rows}"
+    return f"## Installs\n\n{header}\n{rows}{_nothing_targeted_note(environment)}"
+
+
+def _nothing_targeted_note(environment: Environment) -> str:
+    """Say when several installs were found and none was chosen.
+
+    Without this the bundle reads as a report about the one install, when in
+    fact every install-dependent row was skipped and the paths shown are this
+    tool's own defaults rather than anything on the machine.
+    """
+    if environment.targeted is not None:
+        return ""
+    return (
+        "\n\n**No install targeted** — the rows above that describe one install were "
+        "skipped, and the paths in *Machine* are this tool's defaults, not a real "
+        "install. Re-run with `--install ID` to report on one of these."
+    )
 
 
 def _install_row(install: DcsInstall, redactor: Redactor, *, targeted: bool) -> str:
@@ -155,13 +176,13 @@ def _install_row(install: DcsInstall, redactor: Redactor, *, targeted: bool) -> 
         "->" if targeted else "",
         install.install_id,
         str(install.launcher),
-        _EDITION[install.edition],
+        EDITION_LABELS[install.edition],
         install.version or "unknown",
         install.runtime or "unknown",
-        redactor.path(install.game),
-        redactor.path(install.prefix),
+        str(install.game),
+        str(install.prefix) if install.prefix else "unknown",
     )
-    return "| " + " | ".join(cell(field) for field in fields) + " |"
+    return "| " + " | ".join(cell(redactor, field) for field in fields) + " |"
 
 
 def _graphics(environment: Environment, redactor: Redactor) -> str:
@@ -169,24 +190,39 @@ def _graphics(environment: Environment, redactor: Redactor) -> str:
     options = environment.install_state.graphics_options
     if options is None:
         return "## Graphics options\n\nNo options.lua yet."
-    lines = redactor.scrub(options).splitlines()[:MAX_GRAPHICS_LINES]
-    return "## Graphics options\n\n```lua\n" + "\n".join(lines) + "\n```"
+    all_lines = redactor.scrub(options).splitlines()
+    lines = all_lines[:MAX_GRAPHICS_LINES]
+    cut = len(all_lines) - len(lines)
+    note = f"\n\n_{cut} further line(s) omitted._" if cut else ""
+    return "## Graphics options\n\n```lua\n" + "\n".join(lines) + f"\n```{note}"
 
 
-def _log(log: DcsLog | None, redactor: Redactor) -> str:
+def _log(environment: Environment, log: DcsLog | None, redactor: Redactor) -> str:
     if log is None:
-        return "## dcs.log\n\nNo dcs.log found — DCS has not written one for this install yet."
+        return f"## dcs.log\n\n{_no_log_reason(environment)}"
     blocks = [f"## dcs.log\n\n`{redactor.path(log.path)}`"]
     for excerpt in log.excerpts:
         body = "\n".join(redactor.scrub(line) for line in excerpt.lines)
-        note = f"\n\n_{excerpt.omitted} further line(s) omitted._" if excerpt.omitted else ""
-        blocks.append(f"### {excerpt.title}\n\n```\n{body}\n```{note}")
+        # Faults are deduplicated before they are capped, so what was dropped
+        # is distinct faults, not lines — several thousand lines can hide
+        # behind a handful of them.
+        note = f"\n\n_{excerpt.omitted} further distinct entries omitted._"
+        blocks.append(f"### {excerpt.title}\n\n```\n{body}\n```{note if excerpt.omitted else ''}")
     return "\n\n".join(blocks)
+
+
+def _no_log_reason(environment: Environment) -> str:
+    """Why there is no log — which is not always "DCS never ran"."""
+    if environment.targeted is None and environment.installs:
+        return "No install targeted, so no dcs.log was read. Re-run with `--install ID`."
+    return "No dcs.log found — DCS has not written one for this install yet."
 
 
 def _clamp(text: str) -> str:
     if len(text) <= MAX_BUNDLE_CHARS:
         return text
-    # Closing the fence keeps the truncation note readable rather than
-    # swallowed by whatever code block the cut landed in.
-    return text[:MAX_BUNDLE_CHARS] + f"\n```\n\n_Bundle truncated at {MAX_BUNDLE_CHARS} chars._\n"
+    cut = text[:MAX_BUNDLE_CHARS]
+    # Close the fence only if the cut landed inside one; appending it blindly
+    # would open a block that swallows the truncation note.
+    fence = "\n```" if cut.count("```") % 2 else ""
+    return f"{cut}{fence}\n\n_Bundle truncated at {MAX_BUNDLE_CHARS} chars._\n"
