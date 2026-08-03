@@ -64,6 +64,11 @@ loses the user's login and keybinds on every repair.
 - **patch** — a single named fix with a check / apply / revert triple, backed
   by a state file outside the install.
 
+- **patch-update channel** — the PyPI release pipeline. Patches ship bundled
+  inside the package and `uvx` resolves the latest version on every
+  invocation, so **publishing a release is how a fix reaches users**. There is
+  no second delivery path. See ADR-0005.
+
 ## Toolchain
 
 - **umu** — `umu-launcher`, the runtime that drives Proton. **Not on PyPI**;

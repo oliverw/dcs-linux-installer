@@ -1,6 +1,6 @@
 [project]
 name = "dcs-linux-installer"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Install DCS World Standalone on Linux, and keep it working."
 readme = "README.md"
 license = "MIT"
@@ -21,17 +21,27 @@ Issues = "https://github.com/oliverw/dcs-linux-installer/issues"
 dcs-linux = "dcs_linux.cli:run"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+# The version is the git tag, so a release can never ship a number that
+# disagrees with the tag it was cut from.
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dcs_linux"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "scripts", "README.md", "LICENSE"]
 
 [dependency-groups]
 dev = [
     "mypy>=2.3.0",
     "pytest>=9.1.1",
+    "pyyaml>=6.0.3",
     "ruff>=0.16.1",
+    "types-pyyaml>=6.0.12.20260724",
 ]
 
 [tool.ruff]
@@ -43,8 +53,12 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.mypy]
 python_version = "3.11"
+mypy_path = "scripts"
 strict = true
-files = ["src", "tests"]
+files = ["src", "tests", "scripts"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# scripts/ holds release tooling, not library code, so it is importable by the
+# tests without being part of the shipped package.
+pythonpath = ["scripts"]

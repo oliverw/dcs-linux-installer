@@ -87,6 +87,17 @@ The tool targets many distros, GPUs and launcher layouts, but is developed on on
 
 Work is tracked as issues under [#1](https://github.com/oliverw/dcs-linux-installer/issues/1). Anything labelled `ready-for-agent` with no open blockers is available to pick up.
 
+### Releasing
+
+Push a version tag; that is the whole process.
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The version number comes from the tag itself, so the tag and the published package can never disagree. Uploads use [PyPI trusted publishing](https://docs.pypi.org/trusted-publishers/) — there is no API token in the repository or in CI. See [ADR-0005](docs/adr/0005-tag-driven-trusted-publishing.md).
+
 ## Credit
 
 This project stands on work the DCS Linux community did first:

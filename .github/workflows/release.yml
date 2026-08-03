@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dcs-linux-installer
+
+    permissions:
+      contents: read
+      # PyPI trusted publishing: the OIDC token replaces a stored API token.
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # hatch-vcs reads the version from the tag, so it needs the tags.
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      # The PyPI upload is irreversible, so everything that could fail runs first.
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format check
+        run: uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy
+
+      - name: Test
+        run: uv run pytest
+
+      - name: Build
+        run: uv build
+
+      - name: Check the tag and the package agree
+        run: uv run --no-project python scripts/check_version.py "${{ github.ref }}" dist
+
+      - name: Smoke test the artefact the way a user gets it
+        run: uvx --from ./dist/*.whl dcs-linux --version
+
+      - name: Publish to PyPI
+        run: uv publish --trusted-publishing always
