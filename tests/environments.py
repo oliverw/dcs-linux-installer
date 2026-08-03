@@ -35,14 +35,13 @@ def healthy_environment(**overrides: object) -> Environment:
         distro=FEDORA,
         gpus=(Gpu(vendor="NVIDIA", kernel_driver="nvidia", driver_version="610.43.03"),),
         umu=Umu(path=LAYOUT.umu_run, usable=True, version="1.4.4"),
-        ge_proton_versions=("GE-Proton11-3",),
+        proton_builds=("GE-Proton11-3",),
         missing_tools=(),
         disk=DiskUsage(total=2000 * GIB, free=600 * GIB),
         filesystem="btrfs",
         install=InstallState(
             prefix_exists=True,
             game_exists=True,
-            saved_games_exists=True,
             missing_segoe_fonts=(),
             d3dcompiler_installed=True,
             saved_games_mapped=True,
@@ -57,7 +56,7 @@ def bare_environment(**overrides: object) -> Environment:
     """A machine with no DCS at all — the first thing a new user runs."""
     defaults: dict[str, object] = {
         "umu": Umu(path=None, usable=False, version=None),
-        "ge_proton_versions": (),
+        "proton_builds": (),
         "install": InstallState(),
     }
     return healthy_environment(**{**defaults, **overrides})

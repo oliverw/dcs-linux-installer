@@ -74,7 +74,7 @@ dcs-linux check          # exits non-zero if anything blocking is wrong
 dcs-linux --json check   # same results, machine-readable
 ```
 
-It reports your distro and whether its filesystem is immutable, your GPU and driver version, umu-launcher and the available GE-Proton builds, missing external tools, free disk space against what a DCS install actually needs, and whether your filesystem supports reflink snapshots.
+It reports your distro and whether its base system is immutable, your GPU and driver version, umu-launcher and the available GE-Proton builds, missing external tools, free disk space against what a DCS install actually needs, and whether your filesystem supports reflink snapshots.
 
 Once DCS is installed it also checks the things that break it in ways the logs never mention — DLSS upscaling, the missing Segoe fonts the AH-64D needs, `d3dcompiler_47`, and whether the game and your saved games really do live outside the disposable prefix.
 

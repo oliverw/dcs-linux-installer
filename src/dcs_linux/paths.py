@@ -46,6 +46,28 @@ class Layout:
     def ge_proton(self) -> Path:
         return self.toolchain / "ge-proton"
 
+    def proton_search_path(self, home: Path) -> tuple[Path, ...]:
+        """Everywhere a Proton build may already be unpacked.
+
+        Gaming-first distros such as Bazzite and SteamOS ship Steam with
+        compatibility tools already in place, so looking only in our own
+        toolchain would report a build the user plainly has as missing.
+        """
+        return (
+            self.ge_proton,
+            home / ".local" / "share" / "umu" / "compatibilitytools",
+            home / ".steam" / "root" / "compatibilitytools.d",
+            home / ".local" / "share" / "Steam" / "compatibilitytools.d",
+            home
+            / ".var"
+            / "app"
+            / "com.valvesoftware.Steam"
+            / "data"
+            / "Steam"
+            / "compatibilitytools.d",
+            Path("/usr/share/steam/compatibilitytools.d"),
+        )
+
     @property
     def prefix_fonts(self) -> Path:
         return self.prefix / "drive_c" / "windows" / "Fonts"
@@ -60,8 +82,19 @@ class Layout:
         return self.prefix / "drive_c" / "users" / "steamuser" / "Saved Games"
 
     @property
-    def options_lua(self) -> Path:
-        return self.saved_games / "DCS" / "Config" / "options.lua"
+    def user_reg(self) -> Path:
+        return self.prefix / "user.reg"
+
+    @property
+    def options_lua_candidates(self) -> tuple[Path, ...]:
+        """Where `options.lua` may be, mapped out or not.
+
+        An install whose saved games was never mapped out keeps it inside the
+        prefix — and that is precisely the install the DLSS check exists for,
+        so looking only at the mapped location would miss it.
+        """
+        config = Path("DCS") / "Config" / "options.lua"
+        return (self.saved_games / config, self.prefix_saved_games / config)
 
 
 def resolve_layout(system: System) -> Layout:

@@ -24,11 +24,18 @@ system resists writes. Three cases:
 | ostree (Bazzite, Silverblue, Bluefin, …) | `rpm-ostree install <pkg>`, noting it takes effect after a reboot |
 | read-only (SteamOS) | never a package manager — get the tool from a `distrobox` container |
 
-An unrecognised distro gets generic prose, never an invented command.
+`rpm-ostree` is Fedora-side only, so an ostree system whose family we cannot
+place falls through to the container advice. An unrecognised distro gets
+generic prose, never an invented command, and names the *package* rather than
+the binary (`bubblewrap`, not `bwrap`).
 
-Detection: `ID` in `/etc/os-release` for the family, `/run/ostree-booted` or a
-read-only `/usr` mount for immutability, plus a small list of IDs known to be
-read-only.
+Detection: `ID` in `/etc/os-release` for the family. Immutability is decided by
+name first — a list of known image-based IDs (`bazzite`, `bluefin`, …) and
+Fedora's atomic `VARIANT_ID`s (`silverblue`, `kinoite`, …) — and only then by
+runtime evidence (`/run/ostree-booted`, `rpm-ostree` on PATH, a read-only
+`/usr`). Name-first matters: if the runtime marker were ever missed on Bazzite,
+the fallback would be `sudo dnf install`, which is exactly the advice this ADR
+exists to prevent.
 
 ## Consequences
 

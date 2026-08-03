@@ -40,7 +40,5 @@ def emit_stub(ctx: typer.Context) -> None:
         typer.echo(json.dumps({"command": command, "status": "not_implemented"}))
         return
 
-    # Passing no_color=None (rather than False) lets Rich fall back to the
-    # NO_COLOR env var when the --no-color flag itself wasn't given.
     console = console_for(options)
     console.print(f"[yellow]dcs-linux {command}[/yellow] is not implemented yet.")

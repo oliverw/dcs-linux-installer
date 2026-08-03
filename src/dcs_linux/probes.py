@@ -32,7 +32,7 @@ REQUIRED_TOOLS = ("curl", "tar", "bwrap")
 # them are Segoe, so "corefonts is installed" proves nothing here.
 SEGOE_FONTS = ("segoeui.ttf", "seguisb.ttf", "seguisym.ttf")
 
-D3DCOMPILER_DLL = "d3dcompiler_47.dll"
+D3DCOMPILER = "d3dcompiler_47"
 
 
 @dataclass(frozen=True)
@@ -63,7 +63,6 @@ class InstallState:
 
     prefix_exists: bool = False
     game_exists: bool = False
-    saved_games_exists: bool = False
     missing_segoe_fonts: tuple[str, ...] = ()
     d3dcompiler_installed: bool = False
     saved_games_mapped: bool = False
@@ -79,7 +78,7 @@ class Environment:
     distro: Distro
     gpus: tuple[Gpu, ...] = ()
     umu: Umu = Umu(path=None, usable=False, version=None)
-    ge_proton_versions: tuple[str, ...] = ()
+    proton_builds: tuple[str, ...] = ()
     missing_tools: tuple[str, ...] = ()
     disk: DiskUsage | None = None
     filesystem: str | None = None
@@ -94,7 +93,7 @@ def probe(system: System) -> Environment:
         distro=detect_distro(system),
         gpus=probe_gpus(system),
         umu=probe_umu(system, layout),
-        ge_proton_versions=probe_ge_proton(system, layout),
+        proton_builds=probe_proton_builds(system, layout),
         missing_tools=probe_missing_tools(system),
         disk=system.disk_usage(layout.game),
         filesystem=system.filesystem_type(layout.game),
@@ -122,7 +121,9 @@ def probe_gpus(system: System) -> tuple[Gpu, ...]:
                 driver_version=_driver_version(system, vendor),
             )
         )
-    return tuple(gpus)
+    # On a hybrid machine card0 is usually the integrated GPU, but DCS renders
+    # on the discrete one, so that is the card the report must lead with.
+    return tuple(sorted(gpus, key=lambda gpu: gpu.vendor == "Intel"))
 
 
 def _uevent_field(text: str | None, key: str) -> str | None:
@@ -177,18 +178,23 @@ def probe_umu(system: System, layout: Layout) -> Umu:
         return Umu(path=None, usable=False, version=None)
 
     result = system.run([str(path), "--version"])
-    if result is None or result.returncode != 0:
+    if result is None:
+        # Could not be executed at all: not executable, or the wrong
+        # architecture. A non-zero exit only means this build does not answer
+        # --version, which is not a reason to call a present umu broken.
         return Umu(path=path, usable=False, version=None)
-    return Umu(path=path, usable=True, version=result.stdout.strip() or None)
+    version = result.stdout.strip() if result.returncode == 0 else ""
+    return Umu(path=path, usable=True, version=version or None)
 
 
-def probe_ge_proton(system: System, layout: Layout) -> tuple[str, ...]:
-    """GE-Proton builds unpacked into the toolchain directory."""
-    return tuple(
-        name
-        for name in system.list_dir(layout.ge_proton)
-        if system.exists(layout.ge_proton / name / "proton")
-    )
+def probe_proton_builds(system: System, layout: Layout) -> tuple[str, ...]:
+    """Proton builds already unpacked, ours or Steam's."""
+    found: list[str] = []
+    for directory in layout.proton_search_path(system.home()):
+        for name in system.list_dir(directory):
+            if name not in found and system.exists(directory / name / "proton"):
+                found.append(name)
+    return tuple(sorted(found))
 
 
 def probe_missing_tools(system: System) -> tuple[str, ...]:
@@ -203,15 +209,22 @@ def probe_install(system: System, layout: Layout) -> InstallState:
     return InstallState(
         prefix_exists=prefix_exists,
         game_exists=system.exists(layout.game),
-        saved_games_exists=system.exists(layout.saved_games),
         missing_segoe_fonts=tuple(
             name for name in SEGOE_FONTS if name.lower() not in {f.lower() for f in fonts}
         ),
-        d3dcompiler_installed=system.exists(layout.prefix_system32 / D3DCOMPILER_DLL),
+        d3dcompiler_installed=has_dll_override(system.read_text(layout.user_reg), D3DCOMPILER),
         saved_games_mapped=system.is_symlink(layout.prefix_saved_games),
         game_under_drive_c=_game_under_drive_c(system, layout),
-        upscaling=read_upscaling(system.read_text(layout.options_lua)),
+        upscaling=read_upscaling(_read_options_lua(system, layout)),
     )
+
+
+def _read_options_lua(system: System, layout: Layout) -> str | None:
+    for candidate in layout.options_lua_candidates:
+        text = system.read_text(candidate)
+        if text is not None:
+            return text
+    return None
 
 
 def _game_under_drive_c(system: System, layout: Layout) -> bool:
@@ -221,6 +234,24 @@ def _game_under_drive_c(system: System, layout: Layout) -> bool:
         if system.exists(drive_c / candidate):
             return True
     return False
+
+
+def has_dll_override(user_reg: str | None, dll: str) -> bool:
+    """Whether the prefix overrides `dll` to the native implementation.
+
+    The file's presence proves nothing: wine's default prefix already ships
+    `d3dcompiler_47.dll` as a builtin stub. What `winetricks d3dcompiler_47`
+    actually changes is the DllOverrides entry in `user.reg`, so that is what
+    distinguishes a patched prefix from a fresh one.
+    """
+    if user_reg is None:
+        return False
+    match = re.search(
+        rf'^"{re.escape(dll)}"\s*=\s*"([^"]*)"',
+        user_reg,
+        flags=re.MULTILINE | re.IGNORECASE,
+    )
+    return match is not None and "native" in match.group(1).lower()
 
 
 def read_upscaling(options_lua: str | None) -> str | None:

@@ -121,3 +121,48 @@ def test_package_names_are_translated_per_family() -> None:
 def test_install_hint_covers_several_packages_at_once() -> None:
     hint = detect_distro(system_for("fedora")).install_hint("curl", "tar", "bwrap")
     assert hint == "sudo dnf install curl tar bubblewrap"
+
+
+class TestImmutableDistrosWeMustNotGetWrong:
+    """Bazzite is the case that matters: it is a target, not an edge case.
+
+    Getting it wrong is not a cosmetic error — it hands an image-based system
+    a `sudo dnf install`, which is the one thing ADR-0006 forbids.
+    """
+
+    def test_bazzite_is_ostree_from_its_name_alone(self) -> None:
+        """The runtime marker is a bonus, not the thing we rely on."""
+        assert detect_distro(system_for("bazzite")).immutability is Immutability.OSTREE
+
+    def test_bazzite_is_told_to_layer_even_with_no_marker(self) -> None:
+        hint = detect_distro(system_for("bazzite")).install_hint("bwrap")
+        assert hint.startswith("rpm-ostree install bubblewrap")
+        assert "dnf" not in hint
+
+    def test_fedora_atomic_desktops_are_recognised_by_variant(self) -> None:
+        """Silverblue and Kinoite keep ID=fedora and differ only in VARIANT_ID."""
+        kinoite = 'ID=fedora\nPRETTY_NAME="Fedora Linux 44 (Kinoite)"\nVARIANT_ID=kinoite\n'
+        system = FakeSystem(files={"/etc/os-release": kinoite})
+        assert detect_distro(system).immutability is Immutability.OSTREE
+
+    def test_rpm_ostree_on_path_implies_an_image_based_system(self) -> None:
+        system = FakeSystem(
+            files={"/etc/os-release": os_release("fedora")},
+            executables={"rpm-ostree": "/usr/bin/rpm-ostree"},
+        )
+        assert detect_distro(system).immutability is Immutability.OSTREE
+
+    def test_an_ostree_distro_we_cannot_place_gets_prose_not_rpm_ostree(self) -> None:
+        """rpm-ostree is Fedora-side only; never invent it for an unknown ID."""
+        system = FakeSystem(
+            files={"/etc/os-release": 'ID=someatomic\nPRETTY_NAME="Some Atomic"\n'},
+            directories={"/run/ostree-booted"},
+        )
+        hint = detect_distro(system).install_hint("bwrap")
+        assert "rpm-ostree" not in hint
+        assert "distrobox" in hint
+
+    def test_an_unplaceable_distro_names_the_package_not_the_binary(self) -> None:
+        hint = detect_distro(FakeSystem()).install_hint("bwrap")
+        assert "bubblewrap" in hint
+        assert "bwrap" not in hint

@@ -2,11 +2,12 @@ from pathlib import Path
 
 from dcs_linux.paths import Layout, resolve_layout
 from dcs_linux.probes import (
+    has_dll_override,
     probe,
-    probe_ge_proton,
     probe_gpus,
     probe_install,
     probe_missing_tools,
+    probe_proton_builds,
     probe_umu,
     read_upscaling,
 )
@@ -14,6 +15,9 @@ from dcs_linux.system import CommandResult, DiskUsage, filesystem_type_from_moun
 from tests.fakes import FakeSystem
 
 LAYOUT = Layout(root=Path("/data/dcs"), toolchain=Path("/data/toolchain"))
+
+# What `winetricks d3dcompiler_47` actually writes into the prefix.
+DLL_OVERRIDE = '[Software\\\\Wine\\\\DllOverrides] 1700000000\n"d3dcompiler_47"="native,builtin"\n'
 
 
 def gpu_files(vendor_id: str, driver: str) -> dict[str, str]:
@@ -116,14 +120,21 @@ class TestUmu:
         )
         assert probe_umu(system, LAYOUT).path == Path("/usr/bin/umu-run")
 
-    def test_present_but_broken_is_not_usable(self) -> None:
-        system = FakeSystem(
-            files={"/data/toolchain/umu/umu-run": ""},
-            commands={"/data/toolchain/umu/umu-run --version": CommandResult(127, "")},
-        )
+    def test_present_but_unrunnable_is_not_usable(self) -> None:
+        """Not executable, or the wrong architecture: the command never runs."""
+        system = FakeSystem(files={"/data/toolchain/umu/umu-run": ""})
         umu = probe_umu(system, LAYOUT)
         assert umu.path is not None
         assert not umu.usable
+
+    def test_a_build_that_does_not_answer_version_is_still_usable(self) -> None:
+        system = FakeSystem(
+            files={"/data/toolchain/umu/umu-run": ""},
+            commands={"/data/toolchain/umu/umu-run --version": CommandResult(2, "")},
+        )
+        umu = probe_umu(system, LAYOUT)
+        assert umu.usable
+        assert umu.version is None
 
     def test_absent(self) -> None:
         umu = probe_umu(FakeSystem(), LAYOUT)
@@ -140,10 +151,29 @@ class TestGeProton:
                 "/data/toolchain/ge-proton/half-extracted/README": "",
             }
         )
-        assert probe_ge_proton(system, LAYOUT) == ("GE-Proton10-9", "GE-Proton11-3")
+        assert probe_proton_builds(system, LAYOUT) == ("GE-Proton10-9", "GE-Proton11-3")
+
+    def test_steams_compatibilitytools_are_searched_too(self) -> None:
+        """Bazzite and SteamOS ship Steam with builds already in place."""
+        system = FakeSystem(
+            files={
+                "/home/pilot/.steam/root/compatibilitytools.d/GE-Proton11-3/proton": "",
+                "/usr/share/steam/compatibilitytools.d/GE-Proton10-9/proton": "",
+            }
+        )
+        assert probe_proton_builds(system, LAYOUT) == ("GE-Proton10-9", "GE-Proton11-3")
+
+    def test_the_same_build_in_two_places_is_listed_once(self) -> None:
+        system = FakeSystem(
+            files={
+                "/data/toolchain/ge-proton/GE-Proton11-3/proton": "",
+                "/home/pilot/.steam/root/compatibilitytools.d/GE-Proton11-3/proton": "",
+            }
+        )
+        assert probe_proton_builds(system, LAYOUT) == ("GE-Proton11-3",)
 
     def test_none_unpacked(self) -> None:
-        assert probe_ge_proton(FakeSystem(), LAYOUT) == ()
+        assert probe_proton_builds(FakeSystem(), LAYOUT) == ()
 
 
 class TestExternalTools:
@@ -172,7 +202,7 @@ class TestInstallState:
                 "/data/dcs/prefix/drive_c/windows/Fonts/segoeui.ttf": "",
                 "/data/dcs/prefix/drive_c/windows/Fonts/seguisb.ttf": "",
                 "/data/dcs/prefix/drive_c/windows/Fonts/seguisym.ttf": "",
-                "/data/dcs/prefix/drive_c/windows/system32/d3dcompiler_47.dll": "",
+                "/data/dcs/prefix/user.reg": DLL_OVERRIDE,
                 "/data/dcs/game/DCS World/bin/DCS.exe": "",
                 "/data/dcs/saved-games/DCS/Config/options.lua": '["Upscaling"] = "OFF",',
             },
@@ -228,6 +258,35 @@ class TestInstallState:
         assert not probe_install(system, LAYOUT).saved_games_mapped
 
 
+class TestD3dcompiler:
+    def test_the_dll_being_present_is_not_enough(self) -> None:
+        """Wine's default prefix already ships the file as a builtin stub."""
+        system = FakeSystem(
+            files={
+                "/data/dcs/prefix/system.reg": "",
+                "/data/dcs/prefix/drive_c/windows/system32/d3dcompiler_47.dll": "",
+                "/data/dcs/prefix/user.reg": "[Software\\\\Wine\\\\DllOverrides] 1700000000\n",
+            }
+        )
+        assert not probe_install(system, LAYOUT).d3dcompiler_installed
+
+    def test_the_native_override_is_what_counts(self) -> None:
+        system = FakeSystem(
+            files={"/data/dcs/prefix/system.reg": "", "/data/dcs/prefix/user.reg": DLL_OVERRIDE}
+        )
+        assert probe_install(system, LAYOUT).d3dcompiler_installed
+
+    def test_a_builtin_override_does_not_count(self) -> None:
+        reg = '[Software\\\\Wine\\\\DllOverrides] 1700000000\n"d3dcompiler_47"="builtin"\n'
+        system = FakeSystem(
+            files={"/data/dcs/prefix/system.reg": "", "/data/dcs/prefix/user.reg": reg}
+        )
+        assert not probe_install(system, LAYOUT).d3dcompiler_installed
+
+    def test_no_user_reg_at_all(self) -> None:
+        assert not has_dll_override(None, "d3dcompiler_47")
+
+
 class TestUpscaling:
     def test_reads_the_dlss_setting(self) -> None:
         options = 'options = {["graphics"] = {["Upscaling"] = "DLSS", ["AA"] = "DLAA"}}'
@@ -241,6 +300,25 @@ class TestUpscaling:
 
     def test_no_file(self) -> None:
         assert read_upscaling(None) is None
+
+    def test_found_inside_the_prefix_when_saved_games_was_never_mapped_out(self) -> None:
+        """The unmapped install is exactly the one the DLSS check exists for."""
+        inside = "/data/dcs/prefix/drive_c/users/steamuser/Saved Games/DCS/Config/options.lua"
+        system = FakeSystem(
+            files={"/data/dcs/prefix/system.reg": "", inside: '["Upscaling"] = "DLSS"'}
+        )
+        assert probe_install(system, LAYOUT).upscaling == "DLSS"
+
+    def test_the_mapped_location_wins_when_both_exist(self) -> None:
+        inside = "/data/dcs/prefix/drive_c/users/steamuser/Saved Games/DCS/Config/options.lua"
+        system = FakeSystem(
+            files={
+                "/data/dcs/prefix/system.reg": "",
+                "/data/dcs/saved-games/DCS/Config/options.lua": '["Upscaling"] = "OFF"',
+                inside: '["Upscaling"] = "DLSS"',
+            }
+        )
+        assert probe_install(system, LAYOUT).upscaling == "OFF"
 
 
 class TestFilesystemType:

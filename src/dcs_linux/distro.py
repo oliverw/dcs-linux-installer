@@ -42,12 +42,25 @@ class Immutability(StrEnum):
 # Distros whose base image is read-only with no supported layering.
 _READ_ONLY_IDS = frozenset({"steamos"})
 
+# Image-based distros, recognised by name rather than only by the runtime
+# marker. Bazzite is the case that matters: if the marker were ever missed we
+# would hand an ostree system a `sudo dnf install`, which is exactly the
+# advice ADR-0006 exists to prevent.
+_OSTREE_IDS = frozenset({"bazzite", "bluefin", "aurora", "fedora-coreos", "fedora-iot"})
+
+# Fedora's atomic desktops keep ID=fedora and identify themselves here.
+_OSTREE_VARIANT_IDS = frozenset(
+    {"silverblue", "kinoite", "sericea", "onyx", "cosmic-atomic", "base-atomic", "iot"}
+)
+
 _FAMILY_BY_ID = {
     "fedora": Family.FEDORA,
     "rhel": Family.FEDORA,
     "centos": Family.FEDORA,
     "nobara": Family.FEDORA,
     "bazzite": Family.FEDORA,
+    "bluefin": Family.FEDORA,
+    "aurora": Family.FEDORA,
     "debian": Family.DEBIAN,
     "ubuntu": Family.DEBIAN,
     "pop": Family.DEBIAN,
@@ -96,6 +109,14 @@ _PACKAGES: dict[str, dict[Family, str]] = {
     },
 }
 
+_DEFAULT_PACKAGE = {
+    "curl": "curl",
+    "tar": "tar",
+    "bwrap": "bubblewrap",
+    "glxinfo": "glxinfo",
+    "dejavu-fonts": "the DejaVu fonts",
+}
+
 _INSTALL_COMMAND = {
     Family.FEDORA: "sudo dnf install",
     Family.DEBIAN: "sudo apt install",
@@ -119,8 +140,12 @@ class Distro:
         return self.immutability is not Immutability.MUTABLE
 
     def package_for(self, key: str) -> str:
-        """The distro's name for one of the packages `check` may ask for."""
-        return _PACKAGES[key].get(self.family, key)
+        """The distro's name for one of the packages `check` may ask for.
+
+        An unplaceable distro gets the most widely used name rather than the
+        binary's name, which is rarely what the package is called.
+        """
+        return _PACKAGES[key].get(self.family) or _DEFAULT_PACKAGE[key]
 
     def install_hint(self, *keys: str) -> str:
         """A command that installs `keys`, or advice when no such command exists.
@@ -130,12 +155,14 @@ class Distro:
         """
         packages = " ".join(self.package_for(key) for key in keys)
 
-        if self.immutability is Immutability.OSTREE:
+        # rpm-ostree only exists on the Fedora side. An ostree system we cannot
+        # place gets prose, never an invented command (ADR-0006).
+        if self.immutability is Immutability.OSTREE and self.family is Family.FEDORA:
             return f"rpm-ostree install {packages}   # takes effect after a reboot"
 
-        if self.immutability is Immutability.READ_ONLY:
+        if self.immutability is Immutability.READ_ONLY or self.immutability is Immutability.OSTREE:
             return (
-                f"the base system is read-only; get {packages} from a container "
+                f"the base system is image-based; get {packages} from a container "
                 f"instead: distrobox create -n dcs && distrobox enter dcs"
             )
 
@@ -167,7 +194,7 @@ def detect_distro(system: System) -> Distro:
         name=fields.get("PRETTY_NAME") or distro_id,
         version=fields.get("VERSION_ID"),
         family=_family_for(distro_id, fields.get("ID_LIKE", "")),
-        immutability=_immutability(system, distro_id),
+        immutability=_immutability(system, distro_id, fields.get("VARIANT_ID", "")),
     )
 
 
@@ -197,10 +224,12 @@ def _family_for(distro_id: str, id_like: str) -> Family:
     return Family.UNKNOWN
 
 
-def _immutability(system: System, distro_id: str) -> Immutability:
+def _immutability(system: System, distro_id: str, variant_id: str) -> Immutability:
     if distro_id in _READ_ONLY_IDS:
         return Immutability.READ_ONLY
-    if system.exists(OSTREE_MARKER):
+    if distro_id in _OSTREE_IDS or variant_id in _OSTREE_VARIANT_IDS:
+        return Immutability.OSTREE
+    if system.exists(OSTREE_MARKER) or system.which("rpm-ostree") is not None:
         return Immutability.OSTREE
     if _usr_is_read_only(system):
         return Immutability.READ_ONLY

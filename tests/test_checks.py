@@ -14,8 +14,8 @@ from dcs_linux.checks import (
     check_distro,
     check_external_tools,
     check_game_location,
-    check_ge_proton,
     check_gpu,
+    check_proton_builds,
     check_reflink_filesystem,
     check_saved_games_mapping,
     check_segoe_fonts,
@@ -23,7 +23,6 @@ from dcs_linux.checks import (
     check_upscaling,
     has_blocking_failure,
     run_checks,
-    version_below,
 )
 from dcs_linux.distro import Family
 from dcs_linux.probes import Gpu, InstallState, Umu
@@ -43,12 +42,12 @@ class TestDistroRow:
         result = check_distro(healthy_environment())
         assert result.status is Status.PASS
         assert "Fedora Linux 44" in result.detail
-        assert "mutable filesystem" in result.detail
+        assert "mutable base system" in result.detail
 
     def test_reports_immutability_as_a_fact_not_a_fault(self) -> None:
         result = check_distro(healthy_environment(distro=BAZZITE))
         assert result.status is Status.PASS
-        assert "immutable filesystem" in result.detail
+        assert "immutable base system" in result.detail
 
     def test_unreadable_os_release_warns(self) -> None:
         unknown = replace(FEDORA, id="unknown", name="unknown", family=Family.UNKNOWN)
@@ -65,21 +64,27 @@ class TestGpuRow:
     def test_no_gpu_blocks(self) -> None:
         assert check_gpu(healthy_environment(gpus=())).status is Status.FAIL
 
-    def test_old_driver_warns_but_does_not_block(self) -> None:
+    def test_an_old_driver_is_reported_not_judged(self) -> None:
+        """One verified driver version is not a threshold; report the number."""
         old = (Gpu(vendor="NVIDIA", kernel_driver="nvidia", driver_version="470.03"),)
         result = check_gpu(healthy_environment(gpus=old))
-        assert result.status is Status.WARN
-        assert result.remediation is not None
+        assert result.status is Status.PASS
+        assert "470.03" in result.detail
+
+    def test_the_discrete_gpu_leads_and_the_igpu_is_still_named(self) -> None:
+        hybrid = (
+            Gpu(vendor="NVIDIA", kernel_driver="nvidia", driver_version="610.43.03"),
+            Gpu(vendor="Intel", kernel_driver="i915", driver_version=None),
+        )
+        result = check_gpu(healthy_environment(gpus=hybrid))
+        assert result.detail.startswith("NVIDIA")
+        assert "also Intel" in result.detail
 
     def test_unknown_mesa_version_suggests_glxinfo_for_the_distro(self) -> None:
         amd = (Gpu(vendor="AMD", kernel_driver="amdgpu", driver_version=None),)
         result = check_gpu(healthy_environment(gpus=amd))
         assert result.status is Status.WARN
         assert result.remediation == "sudo dnf install glx-utils"
-
-    def test_old_mesa_warns(self) -> None:
-        amd = (Gpu(vendor="AMD", kernel_driver="amdgpu", driver_version="22.3.5"),)
-        assert check_gpu(healthy_environment(gpus=amd)).status is Status.WARN
 
     def test_current_mesa_passes(self) -> None:
         amd = (Gpu(vendor="AMD", kernel_driver="amdgpu", driver_version="25.1.4"),)
@@ -104,11 +109,11 @@ class TestToolchainRows:
         assert "1.4.4" in result.detail
 
     def test_missing_ge_proton_blocks(self) -> None:
-        assert check_ge_proton(bare_environment()).status is Status.FAIL
+        assert check_proton_builds(bare_environment()).status is Status.FAIL
 
-    def test_available_ge_proton_versions_are_listed(self) -> None:
-        environment = healthy_environment(ge_proton_versions=("GE-Proton10-9", "GE-Proton11-3"))
-        result = check_ge_proton(environment)
+    def test_available_proton_builds_are_listed(self) -> None:
+        environment = healthy_environment(proton_builds=("GE-Proton10-9", "GE-Proton11-3"))
+        result = check_proton_builds(environment)
         assert result.status is Status.PASS
         assert result.detail == "GE-Proton10-9, GE-Proton11-3"
 
@@ -144,7 +149,7 @@ class TestDiskSpaceRow:
         environment = healthy_environment(disk=DiskUsage(total=200 * GIB, free=40 * GIB))
         result = check_disk_space(environment)
         assert result.status is Status.FAIL
-        assert "40 GiB free" in result.detail
+        assert "40 of 200 GiB free" in result.detail
 
     def test_marginal_headroom_warns(self) -> None:
         environment = healthy_environment(disk=DiskUsage(total=400 * GIB, free=150 * GIB))
@@ -247,7 +252,7 @@ class TestWholeReport:
     def test_bare_machine_reports_toolchain_gaps_and_skips_install_checks(self) -> None:
         results = {result.name: result for result in run_checks(bare_environment())}
         assert results["umu-launcher"].status is Status.FAIL
-        assert results["GE-Proton"].status is Status.FAIL
+        assert results["Proton builds"].status is Status.FAIL
         assert results["Segoe fonts"].status is Status.SKIP
         assert results["Upscaling"].status is Status.SKIP
         assert results["Game location"].status is Status.SKIP
@@ -279,24 +284,6 @@ class TestWholeReport:
         assert len(keys) == len(set(keys))
         assert "saved_games_mapping" in keys
         assert "d3dcompiler_47" in keys
-
-
-class TestVersionComparison:
-    @pytest.mark.parametrize(
-        ("version", "minimum", "expected"),
-        [
-            ("470.03", "535", True),
-            ("535", "535", False),
-            ("610.43.03", "535", False),
-            ("22.3.5", "23.1", True),
-            ("23.1.0", "23.1", False),
-            ("25.1.4-rc1", "23.1", False),
-        ],
-    )
-    def test_dotted_versions_compare_numerically(
-        self, version: str, minimum: str, expected: bool
-    ) -> None:
-        assert version_below(version, minimum) is expected
 
 
 def test_only_a_fail_blocks() -> None:
