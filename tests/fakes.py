@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
+from dcs_linux.runner import Completed
 from dcs_linux.system import CommandResult, DiskUsage
 
 
@@ -36,6 +38,7 @@ class FakeSystem:
         env: dict[str, str] | None = None,
         home: str = "/home/pilot",
     ) -> None:
+        self.executable_bits: set[Path] = set()
         self.files = {Path(path): text.encode() for path, text in (files or {}).items()}
         self.files.update({Path(path): data for path, data in (blobs or {}).items()})
         self.directories = {Path(path) for path in (directories or set())}
@@ -134,7 +137,88 @@ class FakeWriter:
         self.system.files.pop(path, None)
 
     def remove_tree(self, path: Path) -> None:
-        for known in [*self.system.files, *self.system.directories]:
+        for known in [*self.system.files, *self.system.directories, *self.system.symlinks]:
             if known == path or path in known.parents:
                 self.system.files.pop(known, None)
                 self.system.directories.discard(known)
+                self.system.symlinks.discard(known)
+                self.system.links.pop(known, None)
+
+    def symlink(self, path: Path, target: Path) -> None:
+        self.remove_tree(path)
+        self.make_dirs(path.parent)
+        self.system.symlinks.add(path)
+        self.system.links[path] = target
+
+    def make_executable(self, path: Path) -> None:
+        self.system.executable_bits.add(path)
+
+
+class FakeRunner:
+    """A `Runner` that records what it was asked to run.
+
+    Commands are keyed by their first argument — `""` for prefix creation,
+    `winetricks` for the verbs — because that is the whole vocabulary this
+    tool speaks to umu, and keying by the full command line would make every
+    test depend on the toolchain paths.
+    """
+
+    def __init__(
+        self,
+        *,
+        results: dict[str, Completed] | None = None,
+        effects: dict[str, Callable[[], None]] | None = None,
+    ) -> None:
+        self.results = results or {}
+        self.effects = effects or {}
+        self.calls: list[tuple[list[str], dict[str, str]]] = []
+
+    def run(
+        self, command: list[str], environment: dict[str, str], timeout: float = 0.0
+    ) -> Completed:
+        self.calls.append((command, environment))
+        key = self._key(command)
+        effect = self.effects.get(key)
+        if effect is not None:
+            effect()
+        return self.results.get(key, Completed(returncode=0))
+
+    def commands(self) -> list[str]:
+        return [self._key(command) for command, _ in self.calls]
+
+    @staticmethod
+    def _key(command: list[str]) -> str:
+        return command[1] if len(command) > 1 and command[1] else "prefix"
+
+
+class FakeFetcher:
+    """A `Fetcher` that unpacks fixtures instead of the network.
+
+    `payloads` maps a fragment of the URL to the files that archive contains,
+    relative to the destination — so a test can hand back a real-looking umu
+    zipapp, an empty archive, or nothing at all.
+    """
+
+    def __init__(
+        self,
+        system: FakeSystem,
+        *,
+        payloads: dict[str, dict[str, str]] | None = None,
+        failures: dict[str, str] | None = None,
+    ) -> None:
+        self.system = system
+        self.payloads = payloads or {}
+        self.failures = failures or {}
+        self.urls: list[str] = []
+
+    def fetch_archive(self, url: str, destination: Path) -> str | None:
+        self.urls.append(url)
+        for fragment, reason in self.failures.items():
+            if fragment in url:
+                return reason
+        self.system.directories.add(destination)
+        for fragment, files in self.payloads.items():
+            if fragment in url:
+                for relative, text in files.items():
+                    self.system.files[destination / relative] = text.encode()
+        return None

@@ -36,6 +36,19 @@ class Writer(Protocol):
     def remove_tree(self, path: Path) -> None:
         """Delete a directory and everything under it, if it exists."""
 
+    def symlink(self, path: Path, target: Path) -> None:
+        """Point `path` at `target`, replacing whatever is there.
+
+        Mapping the durable directories into the disposable prefix (ADR-0001)
+        is the only reason this exists, and it has to replace a *real*
+        directory as well as a stale link: a fresh wine profile creates
+        `Saved Games` for real, and leaving it would send the user's login
+        back inside the prefix.
+        """
+
+    def make_executable(self, path: Path) -> None:
+        """Give `path` the execute bit. A fetched zipapp may not carry one."""
+
 
 class RealWriter:
     """`Writer` backed by the actual filesystem."""
@@ -64,3 +77,14 @@ class RealWriter:
 
     def remove_tree(self, path: Path) -> None:
         shutil.rmtree(path, ignore_errors=True)
+
+    def symlink(self, path: Path, target: Path) -> None:
+        self.make_dirs(path.parent)
+        if path.is_symlink() or path.is_file():
+            path.unlink()
+        elif path.is_dir():
+            shutil.rmtree(path)
+        path.symlink_to(target)
+
+    def make_executable(self, path: Path) -> None:
+        path.chmod(0o755)

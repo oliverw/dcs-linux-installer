@@ -94,12 +94,19 @@ class Environment:
     patches: tuple[PatchState, ...] = ()
 
 
-def probe(system: System, identifier: str | None = None) -> Environment:
+def probe(
+    system: System, identifier: str | None = None, *, layout: Layout | None = None
+) -> Environment:
     """Read the whole machine, reporting on the install `identifier` names.
 
     Raises `InstallNotFound` or `AmbiguousInstall` if it names none.
+
+    `layout` overrides where this tool's own directories are. `install` passes
+    the layout it is about to build into, so that the disk-space and location
+    checks are answered about the directory the user chose rather than the
+    default one they are overriding.
     """
-    layout = resolve_layout(system)
+    layout = layout if layout is not None else resolve_layout(system)
     installs = discover(system, layout)
     targeted = select(installs, identifier) if identifier else default_install(installs)
     paths = target_paths(system, layout, targeted)
@@ -143,7 +150,11 @@ def patch_store_for(layout: Layout, targeted: DcsInstall) -> PatchStore:
 def target_paths(system: System, layout: Layout, targeted: DcsInstall | None) -> TargetPaths:
     """The paths the install-dependent checks read."""
     ours = targeted is None or targeted.launcher is Launcher.DCS_LINUX
-    game = targeted.game if targeted is not None else layout.game
+    # An explicitly chosen game directory outranks discovery. `install
+    # --game-dir /mnt/big` is a statement about where DCS is going, and
+    # answering the disk-space check about some *other* install found on the
+    # machine would measure the wrong drive and pass a full one.
+    game = layout.game if layout.game_dir else _discovered_game(layout, targeted)
     prefix = targeted.prefix if targeted is not None and targeted.prefix else layout.prefix
     return TargetPaths(
         game=game,
@@ -151,6 +162,11 @@ def target_paths(system: System, layout: Layout, targeted: DcsInstall | None) ->
         saved_games=layout.saved_games if ours else None,
         prefix_saved_games=find_prefix_saved_games(system, prefix),
     )
+
+
+def _discovered_game(layout: Layout, targeted: DcsInstall | None) -> Path:
+    """The targeted install's game directory, or where ours would go."""
+    return targeted.game if targeted is not None else layout.game
 
 
 def find_prefix_saved_games(system: System, prefix: Path) -> Path:

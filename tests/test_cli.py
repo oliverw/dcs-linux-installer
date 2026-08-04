@@ -14,8 +14,9 @@ runner = CliRunner()
 SUBCOMMANDS = ["check", "install", "patch", "verify", "report"]
 
 # These are implemented, so they are no longer stubs. See
-# test_check_command.py, test_report_command.py and test_patch_command.py.
-IMPLEMENTED = {"check", "report", "patch"}
+# test_check_command.py, test_report_command.py, test_patch_command.py and
+# test_install_command.py.
+IMPLEMENTED = {"check", "report", "patch", "install"}
 STUB_SUBCOMMANDS = [name for name in SUBCOMMANDS if name not in IMPLEMENTED]
 
 
