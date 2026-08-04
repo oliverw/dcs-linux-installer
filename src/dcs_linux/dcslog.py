@@ -6,7 +6,7 @@ This module holds the knowledge that separates signal from noise — the
 signatures in `CONTEXT.md`, established over 15 runs on real hardware — and
 uses it to produce a bounded excerpt.
 
-`verify` (#12) will judge a log; this module only quotes it. The signature
+`dcs_linux.verify` judges a log; this module only quotes it. The signature
 tables are the part both need, so they live here.
 """
 
@@ -54,14 +54,48 @@ HEADER_MARKERS = (
 
 _SEVERITY = re.compile(r"\b(?:ERROR(?:_ONCE)?|WARNING)\b")
 
+# The empty brackets are the whole distinction: a *named* font that cannot be
+# created is the benign path-with-no-filename case below.
+FONT_CRASH = re.compile(r"Cannot create font \[\]")
+ACCESS_VIOLATION = re.compile(r"C0000005 ACCESS_VIOLATION")
+
 # Fatal, and worth naming: these are what turned a run from "starts" into
-# "dies in a mission" (CONTEXT.md).
+# "dies in a mission" (CONTEXT.md). Named separately above because `verify`
+# judges on the same two patterns, and two copies of them would be two rules.
 FATAL_SIGNATURES: tuple[tuple[str, re.Pattern[str]], ...] = (
-    # The empty brackets are the whole distinction: a *named* font that cannot
-    # be created is the benign path-with-no-filename case below.
-    ("missing Segoe font", re.compile(r"Cannot create font \[\]")),
-    ("access violation", re.compile(r"C0000005 ACCESS_VIOLATION")),
+    ("missing Segoe font", FONT_CRASH),
+    ("access violation", ACCESS_VIOLATION),
 )
+
+# Recoverable: DCS rebuilds the shader and carries on, costing minutes. Absent
+# from both healthy captures and present on the run made before
+# `d3dcompiler_47` was in the prefix, so it discriminates — but it is also what
+# a deliberate shader-cache clear looks like on the next launch.
+SHADER_RECOMPILE = re.compile(r"Can't find precompiled shader for effect")
+
+# Authorization. The success line is on both captured logs, so its absence is a
+# fact about the run rather than about the DCS version.
+AUTH_SUCCESS = re.compile(r"Successfully got authorization data")
+AUTH_FAILURE = re.compile(
+    r"Login failed|failed to get auth|authorization failed|auth data.*failed", re.IGNORECASE
+)
+
+# **Unverified.** No clock-drift failure was captured on hardware, so unlike
+# everything else in this file these patterns are reasoned rather than
+# observed: a machine whose clock is wrong fails ED's TLS handshake, and TLS
+# says so in terms of validity dates. They are only ever matched *alongside*
+# `AUTH_FAILURE`, so at worst a real failure is described with the wrong cause
+# — never a healthy run flagged.
+CLOCK_DRIFT = re.compile(
+    r"certificate (?:is )?not yet valid|certificate has expired|CERT_NOT_YET_VALID"
+    r"|CERT_HAS_EXPIRED|certificate verify failed",
+    re.IGNORECASE,
+)
+
+# Written on every clean shutdown, in this order. A log that reaches the second
+# without the first is DCS unwinding after a crash.
+RENDER_THREAD_STOPPED = "render thread has stopped"
+LOG_CLOSED = "=== Log closed."
 
 # Appear on healthy runs. Quoting them sends readers chasing faults that are
 # not there, so the excerpt drops them.
@@ -96,9 +130,15 @@ class Excerpt:
 
 @dataclass(frozen=True)
 class DcsLog:
-    """The log that was found, and the parts of it worth quoting."""
+    """The log that was found, the whole of it, and the parts worth quoting.
+
+    `text` is carried because `verify` judges the log while `report` quotes it,
+    and reading a 150 KB file twice to do both would let the two disagree about
+    which run they are describing.
+    """
 
     path: Path
+    text: str
     excerpts: tuple[Excerpt, ...]
 
 
@@ -130,7 +170,7 @@ def read_log(system: System, paths: TargetPaths) -> DcsLog | None:
     text = system.read_text(path)
     if text is None:
         return None
-    return DcsLog(path=path, excerpts=excerpt(text))
+    return DcsLog(path=path, text=text, excerpts=excerpt(text))
 
 
 def excerpt(text: str) -> tuple[Excerpt, ...]:

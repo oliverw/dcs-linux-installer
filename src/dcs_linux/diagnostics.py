@@ -26,6 +26,7 @@ from dcs_linux.installs import EDITION_LABELS, DcsInstall
 from dcs_linux.probes import Environment
 from dcs_linux.redaction import Redactor
 from dcs_linux.system import DiskUsage
+from dcs_linux.verify import Finding, judge
 
 GIB = 1024**3
 
@@ -61,6 +62,7 @@ def bundle(
         f"# dcs-linux report\n\n_{CREDENTIAL_NOTE}_",
         _machine(environment, redactor, version),
         _checks(environment, redactor),
+        _findings(environment, log, redactor),
         _installs(environment, redactor),
         _graphics(environment, redactor),
         _log(environment, log, redactor),
@@ -139,6 +141,25 @@ def _checks(environment: Environment, redactor: Redactor) -> str:
 def _check_row(result: CheckResult, redactor: Redactor) -> str:
     fix = cell(redactor, result.remediation) if result.remediation else ""
     return f"| {_MARKER[result.status]} | {result.name} | {cell(redactor, result.detail)} | {fix} |"
+
+
+def _findings(environment: Environment, log: DcsLog | None, redactor: Redactor) -> str:
+    """What `verify` makes of the last run, without launching anything.
+
+    The same judgement `verify` reports, applied to the log already in hand, so
+    a bug report says *what went wrong* and not only what the log contains. It
+    launches nothing: `report` is what a user runs when DCS will not start.
+    """
+    findings = judge(environment, log)
+    rows = "\n".join(_finding_row(finding, redactor) for finding in findings)
+    header = "| | Finding | Result | Fix |\n| --- | --- | --- | --- |"
+    return f"## Last run\n\n{header}\n{rows}"
+
+
+def _finding_row(finding: Finding, redactor: Redactor) -> str:
+    fix = cell(redactor, finding.remediation) if finding.remediation else ""
+    marker = _MARKER[finding.status]
+    return f"| {marker} | {finding.name} | {cell(redactor, finding.detail)} | {fix} |"
 
 
 def _installs(environment: Environment, redactor: Redactor) -> str:

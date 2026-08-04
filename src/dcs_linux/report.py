@@ -22,6 +22,7 @@ from dcs_linux.patches import (
 from dcs_linux.prefix import BuildResult, Step, StepStatus
 from dcs_linux.probes import Environment
 from dcs_linux.updater import HandoffResult
+from dcs_linux.verify import Finding, Verification
 
 _MARKER = {
     Status.PASS: ("ok", "green"),
@@ -38,21 +39,30 @@ _PATCH_MARKER = {
 }
 
 
-def render_table(console: Console, results: list[CheckResult]) -> None:
-    """One row per check, with the fix for every failure alongside it."""
+def _status_table(console: Console, heading: str, rows: Sequence[CheckResult | Finding]) -> None:
+    """The layout `check` and `verify` share: marker, name, detail, fix.
+
+    One function rather than two, because a user reads both tables in the same
+    session and should not have to learn the second one.
+    """
     table = Table(show_header=True, header_style="bold", expand=False)
     table.add_column("")
-    table.add_column("Check")
-    table.add_column("Result")
+    table.add_column(heading)
+    table.add_column("Result", overflow="fold")
 
-    for result in results:
-        label, style = _MARKER[result.status]
-        detail = Text(result.detail)
-        if result.remediation:
-            detail.append(f"\n→ {result.remediation}", style="cyan")
-        table.add_row(Text(label, style=style), result.name, detail)
+    for row in rows:
+        label, style = _MARKER[row.status]
+        detail = Text(row.detail)
+        if row.remediation:
+            detail.append(f"\n→ {row.remediation}", style="cyan")
+        table.add_row(Text(label, style=style), row.name, detail)
 
     console.print(table)
+
+
+def render_table(console: Console, results: list[CheckResult]) -> None:
+    """One row per check, with the fix for every failure alongside it."""
+    _status_table(console, "Check", results)
 
     failures = [result for result in results if result.is_blocking]
     if failures:
@@ -261,6 +271,69 @@ def handoff_json(result: HandoffResult) -> dict[str, Any]:
 
 def _step_json(step: Step) -> dict[str, Any]:
     return {"name": step.name, "status": step.status.value, "detail": step.detail}
+
+
+def render_findings(console: Console, result: Verification) -> None:
+    """What the run was judged on, one row per finding, fix alongside.
+
+    The same table as `render_table`, on purpose: `check` and `verify` answer
+    "should this work" and "did it work", and a user reading both should not
+    have to learn two layouts to do it.
+    """
+    _status_table(console, "Finding", result.findings)
+
+    failures = [finding for finding in result.findings if finding.failed]
+    if not failures:
+        console.print(
+            "\n[green]DCS is working.[/green] Nothing in this run looks broken — "
+            "re-run [bold]dcs-linux verify[/bold] after every DCS update."
+        )
+        return
+    console.print(
+        f"\n[red]{len(failures)} problem{'s' if len(failures) > 1 else ''}[/red] — "
+        "fix the arrows above, then verify again."
+    )
+    _render_patch_hint(console, failures)
+
+
+def _render_patch_hint(console: Console, failures: Sequence[Finding]) -> None:
+    """Say when the fix is one command, because most of the time it is.
+
+    Every patch is named, not the first one: a hint that counts two failures
+    and then offers one command leaves the user believing they have run it.
+    """
+    patches = [finding.patch for finding in failures if finding.patch]
+    if not patches:
+        return
+    commands = "; ".join(f"dcs-linux patch apply {patch}" for patch in dict.fromkeys(patches))
+    console.print(
+        f"[cyan]{len(patches)} of these {'are' if len(patches) > 1 else 'is'} fixed by a "
+        f"patch this tool ships[/cyan]: [bold]{commands}[/bold]"
+    )
+
+
+def verify_json(result: Verification) -> dict[str, Any]:
+    """The same verification, machine-readable."""
+    return {
+        "command": "verify",
+        "ok": result.ok,
+        "log": str(result.log_path) if result.log_path else None,
+        "findings": findings_json(result.findings),
+    }
+
+
+def findings_json(findings: Sequence[Finding]) -> list[dict[str, Any]]:
+    """Findings for `--json`. `patch` is the id `patch apply` takes."""
+    return [
+        {
+            "name": finding.name,
+            "status": finding.status.value,
+            "detail": finding.detail,
+            "remediation": finding.remediation,
+            "patch": finding.patch,
+        }
+        for finding in findings
+    ]
 
 
 def render_cleared(console: Console, cleared: Cleared) -> None:

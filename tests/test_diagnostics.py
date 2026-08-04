@@ -26,6 +26,7 @@ STEAM_INSTALL = DcsInstall(
 
 CRASH_LOG = dcslog.DcsLog(
     path=Path("/home/oliver/dcs-linux/saved-games/DCS/Logs/dcs.log"),
+    text=CRASHED,
     excerpts=dcslog.excerpt(CRASHED),
 )
 
@@ -156,6 +157,21 @@ class TestGraphicsOptions:
             install_state=replace(healthy_environment().install_state, graphics_options=options)
         )
         assert options in built(environment)
+
+
+class TestWhatVerifyFound:
+    """`verify`'s judgement, on the log already in hand. Nothing is launched."""
+
+    def test_the_bundle_says_what_went_wrong_not_only_what_the_log_holds(self) -> None:
+        text = built(log=CRASH_LOG)
+        assert "## Last run" in text
+        assert "missing Segoe font" in text
+        assert "patch apply segoe-fonts" in text
+
+    def test_a_machine_that_has_never_run_dcs_reports_no_verdict_as_a_verdict(self) -> None:
+        text = built(bare_environment())
+        assert "## Last run" in text
+        assert "no dcs.log" in text
 
 
 def test_a_broken_machine_still_produces_a_bundle() -> None:

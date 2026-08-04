@@ -94,6 +94,31 @@ loses the user's login and keybinds on every repair.
   with a human verdict. Starting and running are different failures on Linux:
   the known breakages surface in a mission, not at the menu.
 
+## Verification
+
+- **verification** — what `verify` does: launch DCS, let the user fly it, then
+  read `dcs.log` and say whether it *worked*. The deep counterpart to `check`,
+  which stays fast and static and launches nothing. Both exist because they
+  answer different questions: `check` asks *should this work*, `verify` asks
+  *did it*.
+- **finding** — one thing a run was judged on, with the fix beside it and, where
+  one applies, the **patch** id that is the fix. Deliberately the same shape as
+  a `check` row, because the two are read together.
+- **quiet failure** — the reason `verify` exists. DCS reaches the main menu with
+  no symbols in the Apache, with garbage MFDs, or having never authorized, and
+  exits 0 through every one of them. Anything judging the exit code calls all
+  three a success. A DCS that started and is broken is a **failure**.
+- **freshness** — whether the log being judged is the one this launch wrote,
+  told by the `=== Log opened` stamp. The only way a verification could report
+  a healthy run that never happened is by judging the previous run's log.
+- **clock drift** — a system clock wrong enough that ED's TLS handshake fails,
+  so authorization is refused for reasons that look nothing like a bad
+  password. Reported as itself, with `timedatectl set-ntp true` as the fix.
+  **Unverified**: no clock-drift log was captured on hardware, so the
+  certificate-validity signatures in `dcs_linux.dcslog.CLOCK_DRIFT` are
+  reasoned rather than observed, and are matched only alongside an
+  authorization failure that has already been established.
+
 ## Patching
 
 - **IC risk** (integrity check) — DCS servers running pure-client enforcement
@@ -199,8 +224,9 @@ loses the user's login and keybinds on every repair.
 ## Known failure signatures
 
 Recorded so `check` (#5), `report` (#7) and `verify` (#12) can tell noise from
-faults. The tables live in code as `dcs_linux.dcslog.FATAL_SIGNATURES` and
-`BENIGN_SIGNATURES`.
+faults. Every signature lives in code in `dcs_linux.dcslog`, whether it is quoted by
+`report` or judged by `verify` — one home, so the two can never disagree about
+what a line means.
 
 The two font lines below differ only in the brackets, and that is the whole
 distinction: **empty brackets are fatal**, a bracketed path is not. Both say
@@ -211,6 +237,12 @@ distinction: **empty brackets are fatal**, a bracketed path is not. Both say
 | Signature | Meaning |
 | --- | --- |
 | `Cannot create font [] size 30` then `C0000005 ACCESS_VIOLATION` in `CockpitBase.dll` | missing Segoe font; AH-64D dies entering a mission |
+
+**Recoverable — slow, not broken**
+
+| Signature | Meaning |
+| --- | --- |
+| `Can't find precompiled shader for effect ...` | DCS rebuilds it and carries on, costing minutes. Normal once after a shader-cache clear; every launch means the prefix is missing `d3dcompiler_47`. Absent from both healthy captures |
 
 **Benign — appear on healthy runs**
 
