@@ -48,18 +48,39 @@ class TestLayout:
         assert layout.root == Path("/home/pilot/dcs-linux")
         assert layout.toolchain == Path("/home/pilot/.cache/dcs-linux/toolchain")
 
+    def test_the_patch_store_defaults_to_the_documented_xdg_path(self) -> None:
+        """The one path issue #8 names by hand, asserted rather than assumed."""
+        layout = resolve_layout(FakeSystem(home="/home/pilot"))
+        assert layout.state == Path("/home/pilot/.local/state/dcs-linux")
+        assert layout.patch_store("abc12345") == Path("/home/pilot/.local/state/dcs-linux/abc12345")
+
+    def test_the_patch_store_follows_xdg_state_home(self) -> None:
+        layout = resolve_layout(FakeSystem(env={"XDG_STATE_HOME": "/var/state"}))
+        assert layout.state == Path("/var/state/dcs-linux")
+
     def test_environment_overrides_win(self) -> None:
         system = FakeSystem(
-            env={"DCS_LINUX_ROOT": "/mnt/big/dcs", "DCS_LINUX_TOOLCHAIN": "/mnt/big/tools"}
+            env={
+                "DCS_LINUX_ROOT": "/mnt/big/dcs",
+                "DCS_LINUX_TOOLCHAIN": "/mnt/big/tools",
+                "DCS_LINUX_STATE": "/mnt/big/state",
+                # Our own override beats XDG, the way ROOT beats any default.
+                "XDG_STATE_HOME": "/var/state",
+            }
         )
         layout = resolve_layout(system)
         assert layout.root == Path("/mnt/big/dcs")
         assert layout.toolchain == Path("/mnt/big/tools")
+        assert layout.state == Path("/mnt/big/state")
 
     def test_the_three_lifetimes_are_siblings_not_nested(self) -> None:
         layout = resolve_layout(FakeSystem())
         assert layout.prefix not in layout.game.parents
         assert layout.prefix not in layout.saved_games.parents
+        # The patch store is a fourth: backups must survive a prefix wipe and
+        # a `DCS_updater repair` alike (ADR-0001, issue #8).
+        assert layout.prefix not in layout.state.parents
+        assert layout.root not in layout.state.parents
 
 
 class TestGpu:

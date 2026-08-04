@@ -146,6 +146,7 @@ def render_outcomes(console: Console, outcomes: list[Outcome]) -> None:
 
 
 def patches_json(states: tuple[PatchState, ...]) -> list[dict[str, Any]]:
+    """Patch standings for `--json`. `id` is what `patch apply` takes."""
     return [
         {
             "id": state.patch.id,
@@ -159,6 +160,10 @@ def patches_json(states: tuple[PatchState, ...]) -> list[dict[str, Any]]:
 
 
 def outcomes_json(outcomes: list[Outcome]) -> list[dict[str, Any]]:
+    """What apply or revert did, for `--json`.
+
+    `changed` separates a real application from an already-applied no-op.
+    """
     return [
         {
             "id": outcome.patch.id,

@@ -420,8 +420,9 @@ def check_patches(environment: Environment) -> CheckResult:
         return CheckResult(
             name=PATCHES,
             status=Status.SKIP,
+            # No remediation: a SKIP is not a problem, and `render_table`
+            # files every remediation under "fix the arrows above".
             detail=f"none applied, {len(states)} available",
-            remediation="dcs-linux patch --list",
         )
     return CheckResult(
         name=PATCHES,
