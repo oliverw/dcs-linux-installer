@@ -172,7 +172,7 @@ def install(
     """
     options = output_options(ctx)
     system = RealSystem()
-    writer = RealWriter()
+    writer, runner = RealWriter(), RealRunner()
     layout = _install_layout(system, game_dir)
 
     verbs = resolve_verbs(verb)
@@ -184,7 +184,7 @@ def install(
     result = build(
         system,
         writer,
-        RealRunner(),
+        runner,
         RealFetcher(),
         layout,
         verbs=verbs.verbs,
@@ -200,7 +200,7 @@ def install(
         handed_off = handoff(
             system,
             writer,
-            RealRunner(),
+            runner,
             layout,
             installer=installer,
             # To stderr, and not through the rich console: it is read while

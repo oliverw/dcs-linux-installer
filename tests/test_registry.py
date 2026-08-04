@@ -57,7 +57,9 @@ def test_a_damaged_register_reads_as_empty_rather_than_raising() -> None:
 
 def test_a_registered_install_is_found_without_being_searched_for() -> None:
     """The whole point: `--game-dir /mnt/big` is not somewhere discovery looks."""
-    system = FakeSystem(files={str(ELSEWHERE / "bin" / "DCS.exe"): "MZ"})
+    system = FakeSystem(
+        files={str(ELSEWHERE / "bin" / "DCS.exe"): "MZ", str(LAYOUT.prefix / "system.reg"): ""}
+    )
     register(system, FakeWriter(system), LAYOUT, game=ELSEWHERE, prefix=LAYOUT.prefix)
 
     installs = discover(system, LAYOUT)
@@ -81,3 +83,14 @@ def test_the_register_is_json_a_human_can_read() -> None:
     payload = json.loads(system.read_text(LAYOUT.installs_register) or "")
 
     assert payload["installs"] == [{"game": str(ELSEWHERE), "prefix": str(LAYOUT.prefix)}]
+
+
+def test_a_register_that_outlived_its_prefix_does_not_claim_one() -> None:
+    """The register survives a prefix rebuild; the prefix it named may not."""
+    system = FakeSystem(files={str(ELSEWHERE / "bin" / "DCS.exe"): "MZ"})
+    register(system, FakeWriter(system), LAYOUT, game=ELSEWHERE, prefix=LAYOUT.prefix)
+
+    installs = discover(system, LAYOUT)
+
+    assert [install.game for install in installs] == [ELSEWHERE]
+    assert installs[0].prefix is None

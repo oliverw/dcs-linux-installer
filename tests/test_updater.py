@@ -8,6 +8,7 @@ from pathlib import Path
 
 from dcs_linux.prefix import PREFIX_MARKER, Step, StepStatus
 from dcs_linux.registry import registered
+from dcs_linux.runner import Completed
 from dcs_linux.updater import (
     DOWNLOAD_PAGE,
     WEB_INSTALLER_NAME,
@@ -288,3 +289,52 @@ def test_the_briefing_for_a_resumed_install_says_it_resumes() -> None:
     installed(system, complete=False)
 
     assert "resume" in briefing(LAYOUT, progress(system, LAYOUT)).lower()
+
+
+def test_an_install_with_no_updater_of_its_own_is_not_driven_by_a_missing_exe() -> None:
+    """The Steam edition is believed to ship no `DCS_updater.exe` (ADR-0007)."""
+    system = with_installer(machine())
+    system.files[GAME_ROOT / "bin" / "DCS.exe"] = b"MZ"
+    runner = FakeRunner()
+    result = run(system, runner)
+
+    assert result.ok is False
+    assert runner.calls == []
+    assert "no bin/DCS_updater.exe" in step(result, "updater").detail
+
+
+def test_an_install_to_the_windows_drive_is_named_rather_than_called_abandoned() -> None:
+    """`C:\\` instead of `D:\\` leaves the game directory empty and 150 GB stuck."""
+    system = with_installer(machine())
+    inside = LAYOUT.prefix / "drive_c" / "Program Files" / "Eagle Dynamics" / "DCS World"
+
+    def install_to_c() -> None:
+        system.files[inside / "bin" / "DCS.exe"] = b"MZ"
+
+    result = run(system, FakeRunner(effects={str(INSTALLER): install_to_c}))
+
+    assert result.ok is False
+    detail = step(result, "DCS").detail
+    assert "C:\\" in detail
+    assert str(LAYOUT.game) in detail
+
+
+def test_a_finished_install_is_registered_even_if_the_updater_never_runs() -> None:
+    """Come back tomorrow: the download finished, the process did not."""
+    system = with_installer(machine())
+    installed(system)
+    runner = FakeRunner(results={str(GAME_ROOT / "bin" / "DCS_updater.exe"): Completed(None, "x")})
+    result = run(system, runner)
+
+    assert result.ok is False
+    assert [entry.game for entry in registered(system, LAYOUT)] == [GAME_ROOT]
+
+
+def test_an_updater_that_could_not_be_started_still_reports_what_is_on_disk() -> None:
+    system = with_installer(machine())
+    runner = FakeRunner(results={str(INSTALLER): Completed(None, "umu-run could not be executed")})
+    result = run(system, runner)
+
+    assert result.ok is False
+    assert "could not be executed" in step(result, "updater").detail
+    assert "nothing was installed" in step(result, "DCS").detail

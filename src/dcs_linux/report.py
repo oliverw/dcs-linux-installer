@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from rich.console import Console
@@ -180,6 +181,13 @@ _STEP_MARKER = {
 }
 
 
+def _render_step_lines(console: Console, steps: Sequence[Step]) -> None:
+    """One line per step. Both phases of `install` report in this shape."""
+    for step in steps:
+        label, style = _STEP_MARKER[step.status]
+        console.print(f"[{style}]{label:<4}[/{style}] {step.name}: {step.detail}")
+
+
 def render_steps(console: Console, result: BuildResult, *, dcs_next: bool = False) -> None:
     """What the install did, one line per step, then what to do next.
 
@@ -187,9 +195,7 @@ def render_steps(console: Console, result: BuildResult, *, dcs_next: bool = Fals
     closing line is left to `render_handoff` — telling the user DCS is not
     installed immediately before installing it would read as a failure.
     """
-    for step in result.steps:
-        label, style = _STEP_MARKER[step.status]
-        console.print(f"[{style}]{label:<4}[/{style}] {step.name}: {step.detail}")
+    _render_step_lines(console, result.steps)
 
     if not result.ok:
         console.print("\n[red]The install stopped.[/red] Fix the failure above and run it again.")
@@ -209,9 +215,7 @@ def render_handoff(console: Console, result: HandoffResult) -> None:
     install that starts and one that flies, and nothing else on screen says
     they exist.
     """
-    for step in result.steps:
-        label, style = _STEP_MARKER[step.status]
-        console.print(f"[{style}]{label:<4}[/{style}] {step.name}: {step.detail}")
+    _render_step_lines(console, result.steps)
 
     if not result.ok:
         console.print(

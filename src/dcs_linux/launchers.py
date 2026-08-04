@@ -103,7 +103,15 @@ def _own_installs(system: System, layout: Layout) -> Iterator[DcsInstall]:
         found = find_install_root(system, entry.game)
         if found is not None:
             yield DcsInstall(
-                game=found, launcher=Launcher.DCS_LINUX, prefix=entry.prefix, runtime=runtime
+                game=found,
+                launcher=Launcher.DCS_LINUX,
+                # A recorded prefix that has since been deleted is not a
+                # prefix. Reporting one would contradict the rule that
+                # deleting the prefix deletes the claim anything was
+                # installed into it — and a rebuild is exactly what the
+                # register is meant to survive.
+                prefix=entry.prefix if system.exists(entry.prefix) else None,
+                runtime=runtime,
             )
     for candidate in DRIVE_C_CANDIDATES:
         inside = layout.prefix / "drive_c" / candidate

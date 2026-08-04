@@ -31,7 +31,14 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from dcs_linux.installs import DCS_EXE, UPDATER_EXE, find_install_root, read_version
+from dcs_linux.installs import (
+    DCS_EXE,
+    UPDATER_EXE,
+    find_install_root,
+    is_dcs_install,
+    read_version,
+)
+from dcs_linux.launchers import DRIVE_C_CANDIDATES
 from dcs_linux.paths import Layout
 from dcs_linux.prefix import PREFIX_MARKER, Step, StepStatus, points_at, prefix_environment
 from dcs_linux.registry import register
@@ -62,8 +69,8 @@ HANDOFF_TIMEOUT = 14 * 24 * 60 * 60.0
 # What the install actually costs, from the runs behind this tool: a base
 # install plus a couple of modules against the 33-module install measured in
 # #2. Used for arithmetic only — see `briefing`.
-BASE_INSTALL_GIB = 150
-LARGE_INSTALL_GIB = 536
+BASE_INSTALL_GB = 150
+LARGE_INSTALL_GB = 536
 
 
 class Stage(StrEnum):
@@ -84,11 +91,12 @@ class Progress:
     stage: Stage
     game_root: Path | None = None
     version: str | None = None
-
-    @property
-    def updater(self) -> Path | None:
-        """The installed updater, which drives everything after bootstrap."""
-        return self.game_root / UPDATER_EXE if self.game_root else None
+    # The installed updater, which drives everything after bootstrap — and
+    # only if it is really there. An install can be found by `DCS.exe` or
+    # `autoupdate.cfg` alone, and the Steam edition is believed to ship no
+    # updater at all (`installs.detect_edition`), so deriving this path from
+    # the root would hand umu an executable that does not exist.
+    updater: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -136,8 +144,13 @@ def progress(system: System, layout: Layout) -> Progress:
     root = find_install_root(system, layout.game)
     if root is None:
         return Progress(stage=Stage.ABSENT)
-    stage = Stage.COMPLETE if system.exists(root / DCS_EXE) else Stage.PARTIAL
-    return Progress(stage=stage, game_root=root, version=read_version(system, root))
+    updater = root / UPDATER_EXE
+    return Progress(
+        stage=Stage.COMPLETE if system.exists(root / DCS_EXE) else Stage.PARTIAL,
+        game_root=root,
+        version=read_version(system, root),
+        updater=updater if system.exists(updater) else None,
+    )
 
 
 def find_installer(system: System, layout: Layout, given: Path | None = None) -> Path | None:
@@ -182,8 +195,12 @@ def verify_installer(system: System, path: Path) -> Verified:
 
 
 def hours_at(gigabytes: int, megabits: float) -> float:
-    """How long `gigabytes` takes at `megabits` per second, ideally."""
-    return gigabytes * 8 * 1024 / (megabits * 3600)
+    """How long `gigabytes` takes at `megabits` per second, ideally.
+
+    Decimal gigabytes, because that is what the sizes above are quoted in and
+    what the updater itself shows.
+    """
+    return gigabytes * 8 * 1000 / (megabits * 3600)
 
 
 def briefing(layout: Layout, current: Progress) -> str:
@@ -215,12 +232,12 @@ def briefing(layout: Layout, current: Progress) -> str:
         ]
     lines += [
         "",
-        f"Expect {BASE_INSTALL_GIB} GB or so for a base install, and up to "
-        f"{LARGE_INSTALL_GIB} GB fully loaded.",
+        f"Expect {BASE_INSTALL_GB} GB or so for a base install, and up to "
+        f"{LARGE_INSTALL_GB} GB fully loaded.",
         "This tool has not measured Eagle Dynamics' real-world rate, so the times below are",
         "arithmetic from a link speed, not measured — treat them as a floor:",
-        f"  100 Mbit/s → about {hours_at(BASE_INSTALL_GIB, 100):.0f} h for {BASE_INSTALL_GIB} GB",
-        f"  500 Mbit/s → about {hours_at(BASE_INSTALL_GIB, 500):.0f} h for {BASE_INSTALL_GIB} GB",
+        f"  100 Mbit/s → about {hours_at(BASE_INSTALL_GB, 100):.0f} h for {BASE_INSTALL_GB} GB",
+        f"  500 Mbit/s → about {hours_at(BASE_INSTALL_GB, 500):.0f} h for {BASE_INSTALL_GB} GB",
         "",
         "Interrupting is safe. Close the terminal, reboot, come back tomorrow and",
         "run the same command: the updater resumes where it stopped.",
@@ -264,16 +281,23 @@ def handoff(
         verified = _verified_installer(system, layout, installer)
         if not take(_installer_step(verified)):
             return stop()
+    elif current.stage is Stage.COMPLETE:
+        # Recorded before the updater opens, not only after. An install that
+        # finished in a session the user then killed is a finished install,
+        # and it must not stay invisible to `check` until somebody sits
+        # through the GUI again.
+        take(_register(system, writer, layout, current))
 
     announce(briefing(layout, current))
-    if not take(_run_updater(runner, layout, current, verified.installer)):
-        return stop()
+    # Deliberately not fatal. A timeout, or an updater that could not be
+    # started at all, still leaves whatever it left — and what is on disk is
+    # the honest answer either way, so the disk is read before anything is
+    # concluded.
+    take(_run_updater(runner, layout, current, verified.installer))
 
     current = progress(system, layout)
-    if not take(_completion(current)):
-        return HandoffResult(steps=tuple(steps), progress=current, installer=verified.installer)
-
-    take(_register(system, writer, layout, current))
+    if take(_completion(system, layout, current)):
+        take(_register(system, writer, layout, current))
     return HandoffResult(steps=tuple(steps), progress=current, installer=verified.installer)
 
 
@@ -355,7 +379,13 @@ def _run_updater(
     """
     command = _updater_command(layout, current, installer)
     if command is None:
-        return Step("updater", StepStatus.FAILED, "nothing to run the updater from")
+        return Step(
+            "updater",
+            StepStatus.FAILED,
+            f"there is an install in {current.game_root} but no {UPDATER_EXE} to drive it — "
+            "the Steam edition is updated by Steam, and this tool installs the standalone "
+            "edition only",
+        )
     completed = runner.run(command, prefix_environment(layout), HANDOFF_TIMEOUT)
     if not completed.started:
         return Step("updater", StepStatus.FAILED, f"the updater did not run: {completed.detail}")
@@ -376,7 +406,7 @@ def _updater_command(
     return [str(layout.umu_run), str(installer.path)] if installer else None
 
 
-def _completion(current: Progress) -> Step:
+def _completion(system: System, layout: Layout, current: Progress) -> Step:
     """Tell a finished install from an abandoned one, by what is on disk."""
     if current.stage is Stage.COMPLETE:
         version = f"DCS {current.version}" if current.version else "DCS"
@@ -388,12 +418,37 @@ def _completion(current: Progress) -> Step:
             f"the download in {current.game_root} is unfinished — no DCS.exe yet. Nothing "
             "is broken: run this command again and the updater resumes where it stopped",
         )
+    inside = _installed_inside_prefix(system, layout)
+    if inside is not None:
+        return Step(
+            "DCS",
+            StepStatus.FAILED,
+            f"DCS was installed to C:\\ — {inside} — which is inside the disposable prefix, "
+            f"so `--rebuild` would delete it. Move it to {layout.game} (it becomes D:\\ "
+            "inside the prefix) and run this command again, or re-run the updater and set "
+            "the install path to D:\\",
+        )
     return Step(
         "DCS",
         StepStatus.FAILED,
         "nothing was installed — the updater was closed before it started, or the login "
         "did not go through. Run this command again to try once more",
     )
+
+
+def _installed_inside_prefix(system: System, layout: Layout) -> Path | None:
+    """Where a `C:\\` install landed, if the user typed that instead of `D:\\`.
+
+    The one wrong answer in the GUI that looks like nothing happened: the game
+    directory stays empty, so without this the tool would report an abandoned
+    download while 150 GB sits in the prefix, waiting to be deleted by the
+    next repair (ADR-0001).
+    """
+    for candidate in DRIVE_C_CANDIDATES:
+        inside = layout.prefix / "drive_c" / candidate
+        if is_dcs_install(system, inside):
+            return inside
+    return None
 
 
 def _register(system: System, writer: Writer, layout: Layout, current: Progress) -> Step:
