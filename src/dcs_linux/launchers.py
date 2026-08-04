@@ -30,6 +30,7 @@ from dcs_linux.installs import (
     read_version,
 )
 from dcs_linux.paths import Layout
+from dcs_linux.registry import registered
 from dcs_linux.system import System
 from dcs_linux.vdf import KeyValues, dig, parse
 
@@ -94,6 +95,24 @@ def _own_installs(system: System, layout: Layout) -> Iterator[DcsInstall]:
         yield DcsInstall(
             game=root, launcher=Launcher.DCS_LINUX, prefix=layout.prefix, runtime=runtime
         )
+    # An install put somewhere else by `--game-dir` is in no launcher's config
+    # and under none of our default paths, so the register is the only record
+    # that it exists. Verified against the disk here rather than trusted: an
+    # entry naming a directory that has since been deleted is not an install.
+    for entry in registered(system, layout):
+        found = find_install_root(system, entry.game)
+        if found is not None:
+            yield DcsInstall(
+                game=found,
+                launcher=Launcher.DCS_LINUX,
+                # A recorded prefix that has since been deleted is not a
+                # prefix. Reporting one would contradict the rule that
+                # deleting the prefix deletes the claim anything was
+                # installed into it — and a rebuild is exactly what the
+                # register is meant to survive.
+                prefix=entry.prefix if system.exists(entry.prefix) else None,
+                runtime=runtime,
+            )
     for candidate in DRIVE_C_CANDIDATES:
         inside = layout.prefix / "drive_c" / candidate
         if is_dcs_install(system, inside):

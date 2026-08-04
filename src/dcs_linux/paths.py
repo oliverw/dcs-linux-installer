@@ -113,6 +113,17 @@ class Layout:
         """The unpacked directory of one pinned GE-Proton build."""
         return self.ge_proton / version
 
+    @property
+    def installs_register(self) -> Path:
+        """Where the installs this tool created are recorded.
+
+        Beside the patch stores rather than inside any install, for the same
+        reason they are: `DCS_updater repair` deletes what ED's manifest does
+        not list, and a record of the install kept inside it is a record the
+        updater throws away.
+        """
+        return self.state / "installs.json"
+
     def patch_store(self, install_id: str) -> Path:
         """Where one install's patch backups and patch state live."""
         return self.state / install_id

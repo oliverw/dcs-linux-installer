@@ -50,6 +50,13 @@ loses the user's login and keybinds on every repair.
 - **install id** — the stable handle `--install` takes, derived from the game
   directory alone, so it survives a prefix rebuild. An install *is* its game
   directory (ADR-0007).
+- **register** — `~/.local/state/dcs-linux/installs.json`: the game
+  directories this tool installed into. Our own installs are the only ones no
+  launcher config records — `--game-dir /mnt/big` is a choice nothing on the
+  machine remembers — so `install` writes one entry when a download finishes.
+  It says *where to look*, never *what is there*: every entry is re-verified
+  against the disk before it becomes an install, so a deleted directory simply
+  stops being reported.
 - **targeted install** — the one install a command acts on. Ours by default,
   or the only one found; with several and none named, install-dependent checks
   are skipped rather than guessing.
@@ -151,6 +158,20 @@ loses the user's login and keybinds on every repair.
 - **updater** — `DCS_updater.exe` inside the install. Distinct from the
   **web installer** (`DCS_World_web.exe`), which refuses to reuse a directory
   it has already bootstrapped.
+
+- **handoff** — the second half of `install`: opening the updater GUI so the
+  user can log in and choose modules, then reading the disk to find out what
+  happened. It cannot be automated — the login is a browser-session affair —
+  so what the tool controls is everything *around* it: the mapping is checked
+  before the window opens, because `D:\` pointing at the wrong place is how
+  150 GB lands inside the disposable prefix. The web installer bootstraps;
+  every run after that goes through the installed updater with `update`.
+
+- **stage** — how far the game directory has got: **absent**, **partial** or
+  **complete**, judged by `bin/DCS.exe`. `autoupdate.cfg` and the updater land
+  early, so neither says the game can be run. Partial and abandoned look
+  identical on disk, which is why re-running `install` resumes rather than
+  asking.
 
 - **pin** — the exact umu and GE-Proton versions `install` fetches, held as
   constants in `dcs_linux.prefix`. Never resolved from a release API, so two
