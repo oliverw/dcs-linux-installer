@@ -2,7 +2,7 @@
 
 Install [DCS World](https://www.digitalcombatsimulator.com/) **Standalone** on Linux, and keep it working.
 
-> **Status: pre-alpha.** `dcs-linux check`, `dcs-linux report`, `dcs-linux patch` and `dcs-linux install` work, including finding the DCS installs you already have; `install` stops at a ready prefix and does not yet fetch DCS itself, and `verify` is a stub.
+> **Status: pre-alpha.** `dcs-linux check`, `dcs-linux report`, `dcs-linux patch` and `dcs-linux install` work, including finding the DCS installs you already have and installing DCS itself through its own updater; `verify` is a stub.
 > The design is settled and the work is broken down in [issue #1](https://github.com/oliverw/dcs-linux-installer/issues/1). There is no usable release yet. Everything below describes the intended tool.
 
 ---
@@ -57,7 +57,7 @@ uvx --from dcs-linux-installer dcs-linux check
 uv tool install dcs-linux-installer
 
 dcs-linux check      # is this machine ready? what DCS installs exist?
-dcs-linux install    # build the prefix (then, later, hand off to the DCS updater)
+dcs-linux install    # build the prefix, then hand off to the DCS updater
 dcs-linux patch      # apply the Linux fixes (IC-safe ones by default)
 dcs-linux verify     # launch DCS and confirm it actually works
 dcs-linux report     # diagnostics bundle for a bug report
@@ -111,12 +111,13 @@ With one install found, or one of ours, it is used automatically.
 
 ### `dcs-linux install`
 
-Builds everything DCS needs *except* DCS: the umu-launcher zipapp, a pinned GE-Proton build, the Wine prefix, the winetricks verbs, and the mapping that keeps your game and your login outside that prefix.
+Two phases in one command. First everything DCS needs *except* DCS: the umu-launcher zipapp, a pinned GE-Proton build, the Wine prefix, the winetricks verbs, and the mapping that keeps your game and your login outside that prefix. Then the handoff to the DCS updater, where you log in and choose modules.
 
 ```sh
 dcs-linux install                          # into the default layout
 dcs-linux install --game-dir /mnt/big/DCS  # put the 150 GB somewhere else
 dcs-linux install --rebuild                # throw the prefix away and build it again
+dcs-linux install --prefix-only            # stop at a ready prefix, download nothing
 ```
 
 It prints one line per step, and re-running it is safe: an up-to-date prefix is left alone and only the mapping is re-asserted.
@@ -128,6 +129,18 @@ The toolchain versions are **pinned, not resolved** — the umu and GE-Proton bu
 Before any download starts, `install` re-runs the checks that it cannot itself fix — no GPU, a missing external tool, not enough disk space, a game directory inside the prefix — and stops on those. Everything else `check` calls blocking on a fresh machine (no umu, no Proton, no prefix) is exactly what this command is about to create.
 
 `vcrun2019` is refused if you ask for it with `--verb`: it causes a system-wide RAM leak. Use `vcrun2015` or `vcrun2022`.
+
+#### The DCS updater handoff
+
+The updater needs an Eagle Dynamics account and a module selection through its own GUI, so that part is yours. `install` prepares everything around it, opens it, and picks the install up afterwards.
+
+You have to fetch `DCS_World_web.exe` yourself — the download page needs a browser session, so it cannot be fetched for you. Put it in the toolchain directory (`~/.cache/dcs-linux/toolchain`) or pass `--installer PATH`. It is checked before it is run, and the hash of what ran is recorded.
+
+In the updater, **set the install path to `D:\`** — that is your game directory, mapped in — and **leave torrent/P2P enabled**, which is roughly ten times faster. `C:\` would put the whole install inside the disposable prefix, so `install` refuses to open the updater at all unless the mapping is in place.
+
+The download is 150 GB and up, measured in hours. Interrupting is safe: close the terminal, reboot, and run `dcs-linux install` again — the updater resumes where it stopped, and nothing is recorded until the install is finished. After that the install is registered, so `check`, `patch` and `verify` find it without you repeating `--game-dir`.
+
+Once it is done, run `dcs-linux patch apply` — the Linux fixes are what turn an install that starts into one that flies.
 
 ### `dcs-linux report`
 

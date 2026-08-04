@@ -38,6 +38,7 @@ from dcs_linux.report import (
     outcomes_json,
     patches_json,
     render_cleared,
+    render_handoff,
     render_installs,
     render_outcomes,
     render_patches,
@@ -46,6 +47,7 @@ from dcs_linux.report import (
 )
 from dcs_linux.runner import RealRunner
 from dcs_linux.system import RealSystem, System
+from dcs_linux.updater import WEB_INSTALLER_NAME, handoff
 from dcs_linux.writer import RealWriter
 
 app = typer.Typer(
@@ -133,6 +135,14 @@ VERB_OPTION = typer.Option(
     [], "--verb", help="An extra winetricks verb, on top of the defaults. Repeatable."
 )
 
+INSTALLER_OPTION = typer.Option(
+    None,
+    "--installer",
+    metavar="PATH",
+    help=f"The hand-downloaded {WEB_INSTALLER_NAME}. Looked for in the toolchain "
+    "directory if not given.",
+)
+
 
 @app.command()
 def install(
@@ -145,15 +155,24 @@ def install(
         help="Delete the prefix and build it again. The game directory and saved games "
         "are untouched — that is what makes this the standard repair.",
     ),
+    prefix_only: bool = typer.Option(
+        False,
+        "--prefix-only",
+        help="Stop at a working prefix. Nothing is downloaded and the updater is not opened.",
+    ),
+    installer: Path | None = INSTALLER_OPTION,
 ) -> None:
-    """Build the runtime DCS needs: toolchain, prefix, winetricks, mapping.
+    """Build the runtime DCS needs, then hand off to the DCS updater.
 
-    Stops short of DCS itself, which the updater installs (handled separately).
-    Safe to re-run: an up-to-date prefix is left alone, and the mapping that
-    keeps the game and the login outside it is re-asserted every time.
+    Two phases in one command, because they are one job: the prefix, the
+    toolchain and the mapping, and then the updater GUI where you log in and
+    choose modules. Safe to re-run, and re-running is how an interrupted
+    download is resumed — the prefix is left alone if it is up to date and the
+    updater carries on where it stopped.
     """
     options = output_options(ctx)
     system = RealSystem()
+    writer = RealWriter()
     layout = _install_layout(system, game_dir)
 
     verbs = resolve_verbs(verb)
@@ -164,7 +183,7 @@ def install(
     _require_preflight(system, layout)
     result = build(
         system,
-        RealWriter(),
+        writer,
         RealRunner(),
         RealFetcher(),
         layout,
@@ -172,12 +191,31 @@ def install(
         rebuild=rebuild,
     )
 
-    if options.json_output:
-        typer.echo(json.dumps(install_json(result), indent=2))
-    else:
-        render_steps(console_for(options), result)
+    console = console_for(options)
+    if not options.json_output:
+        render_steps(console, result, dcs_next=result.ok and not prefix_only)
 
-    if not result.ok:
+    handed_off = None
+    if result.ok and not prefix_only:
+        handed_off = handoff(
+            system,
+            writer,
+            RealRunner(),
+            layout,
+            installer=installer,
+            # To stderr, and not through the rich console: it is read while
+            # the updater is opening, nothing in it may be reflowed away from
+            # the `D:\` it tells the user to type, and under `--json` stdout
+            # belongs to the payload alone.
+            announce=lambda text: typer.echo(f"\n{text}\n", err=True),
+        )
+
+    if options.json_output:
+        typer.echo(json.dumps(install_json(result, handed_off), indent=2))
+    elif handed_off is not None:
+        render_handoff(console, handed_off)
+
+    if not result.ok or (handed_off is not None and not handed_off.ok):
         raise typer.Exit(code=1)
 
 

@@ -412,14 +412,14 @@ def _map_lifetimes(system: System, writer: Writer, layout: Layout) -> Step:
         (layout.prefix_game_drive, layout.game),
         (layout.prefix_saved_games, layout.saved_games),
     )
-    if all(_points_at(system, link, target) for link, target in mapped):
+    if all(points_at(system, link, target) for link, target in mapped):
         return Step("mapping", StepStatus.SKIPPED, detail)
     for link, target in mapped:
         writer.symlink(link, target)
     return Step("mapping", StepStatus.DONE, detail)
 
 
-def _points_at(system: System, link: Path, target: Path) -> bool:
+def points_at(system: System, link: Path, target: Path) -> bool:
     """Whether `link` is a symlink already resolving to `target`.
 
     A link to somewhere *else* is the dangerous case — a prefix mapped at a

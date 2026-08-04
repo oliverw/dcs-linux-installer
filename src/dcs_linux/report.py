@@ -20,6 +20,7 @@ from dcs_linux.patches import (
 )
 from dcs_linux.prefix import BuildResult, Step, StepStatus
 from dcs_linux.probes import Environment
+from dcs_linux.updater import HandoffResult
 
 _MARKER = {
     Status.PASS: ("ok", "green"),
@@ -179,8 +180,13 @@ _STEP_MARKER = {
 }
 
 
-def render_steps(console: Console, result: BuildResult) -> None:
-    """What the install did, one line per step, then what to do next."""
+def render_steps(console: Console, result: BuildResult, *, dcs_next: bool = False) -> None:
+    """What the install did, one line per step, then what to do next.
+
+    `dcs_next` says the handoff to the updater follows in the same run, so the
+    closing line is left to `render_handoff` — telling the user DCS is not
+    installed immediately before installing it would read as a failure.
+    """
     for step in result.steps:
         label, style = _STEP_MARKER[step.status]
         console.print(f"[{style}]{label:<4}[/{style}] {step.name}: {step.detail}")
@@ -188,7 +194,7 @@ def render_steps(console: Console, result: BuildResult) -> None:
     if not result.ok:
         console.print("\n[red]The install stopped.[/red] Fix the failure above and run it again.")
         return
-    if result.runtime is None:
+    if result.runtime is None or dcs_next:
         return
     console.print(
         f"\n[green]The runtime is ready.[/green] DCS itself is not installed yet — "
@@ -196,13 +202,56 @@ def render_steps(console: Console, result: BuildResult) -> None:
     )
 
 
-def install_json(result: BuildResult) -> dict[str, Any]:
-    """The same install, machine-readable."""
+def render_handoff(console: Console, result: HandoffResult) -> None:
+    """What the updater handoff did, and what the user can do now.
+
+    Deliberately ends on the patches: they are the difference between an
+    install that starts and one that flies, and nothing else on screen says
+    they exist.
+    """
+    for step in result.steps:
+        label, style = _STEP_MARKER[step.status]
+        console.print(f"[{style}]{label:<4}[/{style}] {step.name}: {step.detail}")
+
+    if not result.ok:
+        console.print(
+            "\n[red]DCS is not installed yet.[/red] Nothing is lost — "
+            "run [bold]dcs-linux install[/bold] again to carry on."
+        )
+        return
+    console.print(
+        "\n[green]DCS is installed.[/green] Apply the Linux fixes with "
+        "[bold]dcs-linux patch apply[/bold] — [bold]dcs-linux patch[/bold] lists them "
+        "first, and the ones that cost multiplayer are never applied unless you name "
+        "them. Re-run it after every DCS update."
+    )
+
+
+def install_json(result: BuildResult, handoff: HandoffResult | None = None) -> dict[str, Any]:
+    """The same install, machine-readable.
+
+    The prefix build and the DCS handoff are one command and one payload, but
+    two objects: `dcs` is null when the handoff was not reached or not asked
+    for, which is different from a handoff that ran and failed.
+    """
     return {
         "command": "install",
-        "ok": result.ok,
+        "ok": result.ok and (handoff is None or handoff.ok),
         "steps": [_step_json(step) for step in result.steps],
         "runtime": result.runtime.as_json() if result.runtime else None,
+        "dcs": handoff_json(handoff) if handoff is not None else None,
+    }
+
+
+def handoff_json(result: HandoffResult) -> dict[str, Any]:
+    """What the handoff did, for `--json`."""
+    return {
+        "ok": result.ok,
+        "steps": [_step_json(step) for step in result.steps],
+        "stage": result.progress.stage.value,
+        "game": str(result.progress.game_root) if result.progress.game_root else None,
+        "version": result.progress.version,
+        "installer_sha256": result.installer.sha256 if result.installer else None,
     }
 
 
