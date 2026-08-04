@@ -62,6 +62,14 @@ class System(Protocol):
     def run(self, command: list[str]) -> CommandResult | None:
         """Run a command; None if it could not be executed at all."""
 
+    def run_binary(self, command: list[str]) -> bytes | None:
+        """Run a command and return its stdout verbatim, or None if it failed.
+
+        Separate from `run` because a converter's output is a file, not text:
+        decoding it would corrupt it, and a patch plan carries the exact bytes
+        it means to write.
+        """
+
     def disk_usage(self, path: Path) -> DiskUsage | None:
         """Usage for the filesystem holding `path`, or None if unknowable."""
 
@@ -122,6 +130,22 @@ class RealSystem:
         except (OSError, subprocess.SubprocessError):
             return None
         return CommandResult(returncode=completed.returncode, stdout=completed.stdout)
+
+    def run_binary(self, command: list[str]) -> bytes | None:
+        try:
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                # A texture conversion is slower than a version query, and the
+                # 15 s that suffices for `--version` would abort it halfway.
+                timeout=120,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if completed.returncode != 0:
+            return None
+        return completed.stdout
 
     def disk_usage(self, path: Path) -> DiskUsage | None:
         probe = _nearest_existing(path)

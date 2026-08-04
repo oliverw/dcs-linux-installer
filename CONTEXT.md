@@ -99,8 +99,22 @@ loses the user's login and keybinds on every repair.
   Preferring env/prefix changes over file edits is not a style choice; it is
   what keeps users able to join servers.
 
+  The two risky patches shipped are `voice-chat` (comments the voice-chat
+  entries out of `optionsDb.lua`) and `mfd-textures` (re-encodes the AH-64D
+  MFD and sight textures with ImageMagick). Neither symptom was reproduced on
+  2.9.28.26385, so on a current install both **refuse** — that refusal is the
+  expected outcome, not a failure of the tool. `check` reports whether an
+  install currently carries a risky patch, because otherwise the first sign is
+  a server refusing to let the user in, weeks after the fix was applied.
+
 - **patch** — a single named fix with a check / apply / revert triple, backed
   by a state file outside the install.
+
+- **maintenance** — a named action that deletes regenerable files instead of
+  writing any, so it has no backup, no state record and no revert. Clearing
+  the **shader cache** (`Saved Games/DCS/fxo`, `metashaders2`) is the only one:
+  DCS rebuilds it on the next launch, which then takes several minutes.
+  Deliberately not a patch — "applied" would mean nothing about it.
 
 - **plan** — what a patch would write, assembled in full before anything is
   written. A patch that cannot assemble one returns a **refusal** instead and

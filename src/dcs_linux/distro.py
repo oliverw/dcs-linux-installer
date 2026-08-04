@@ -101,6 +101,12 @@ _PACKAGES: dict[str, dict[Family, str]] = {
         Family.ARCH: "mesa-utils",
         Family.SUSE: "Mesa-demo-x",
     },
+    "magick": {
+        Family.FEDORA: "ImageMagick",
+        Family.DEBIAN: "imagemagick",
+        Family.ARCH: "imagemagick",
+        Family.SUSE: "ImageMagick",
+    },
     "dejavu-fonts": {
         Family.FEDORA: "dejavu-sans-fonts",
         Family.DEBIAN: "fonts-dejavu-core",
@@ -114,6 +120,7 @@ _DEFAULT_PACKAGE = {
     "tar": "tar",
     "bwrap": "bubblewrap",
     "glxinfo": "glxinfo",
+    "magick": "ImageMagick",
     "dejavu-fonts": "the DejaVu fonts",
 }
 

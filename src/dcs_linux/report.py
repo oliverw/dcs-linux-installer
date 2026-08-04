@@ -10,7 +10,7 @@ from rich.text import Text
 
 from dcs_linux.checks import CheckResult, Status
 from dcs_linux.installs import EDITION_LABELS, DcsInstall
-from dcs_linux.patches import Outcome, PatchState, PatchStatus
+from dcs_linux.patches import Cleared, Outcome, PatchState, PatchStatus, risky_in_place
 from dcs_linux.probes import Environment
 
 _MARKER = {
@@ -116,10 +116,30 @@ def render_patches(console: Console, states: tuple[PatchState, ...]) -> None:
 
     for state in states:
         label, style = _PATCH_MARKER[state.status]
-        risk = Text("⚠ risky", style="yellow") if state.patch.ic_risk else Text("safe", style="dim")
+        risk = (
+            Text("⚠ MULTIPLAYER", style="bold yellow")
+            if state.patch.ic_risk
+            else Text("safe", style="dim")
+        )
         table.add_row(Text(label, style=style), state.patch.id, risk, state.patch.summary)
 
     console.print(table)
+
+    risky = [state for state in states if state.patch.ic_risk]
+    if risky:
+        console.print(
+            f"\n[yellow]⚠ {len(risky)} patch(es) edit files DCS hashes[/yellow] — applying one "
+            "makes servers running pure-client integrity checks reject this install. They are "
+            "never applied unless named together with [bold]--allow-ic-risk[/bold], and "
+            "reverting one gives multiplayer back."
+        )
+
+    in_place = risky_in_place(states)
+    if in_place:
+        console.print(
+            f"[red]This install is currently modified[/red] by "
+            f"{', '.join(state.patch.id for state in in_place)}."
+        )
 
     drifted = [state for state in states if state.is_drifted]
     if drifted:
@@ -143,6 +163,20 @@ def render_outcomes(console: Console, outcomes: list[Outcome]) -> None:
             console.print(f"[green]ok[/green]   {outcome.patch.id}: {outcome.detail}")
         else:
             console.print(f"[dim]skip[/dim] {outcome.patch.id}: {outcome.detail}")
+
+
+def render_cleared(console: Console, cleared: Cleared) -> None:
+    """What the shader-cache clear deleted."""
+    for directory in cleared.directories:
+        console.print(f"[dim]removed[/dim] {directory}")
+    console.print(cleared.detail)
+
+
+def cleared_json(cleared: Cleared) -> dict[str, Any]:
+    return {
+        "directories": [str(directory) for directory in cleared.directories],
+        "detail": cleared.detail,
+    }
 
 
 def patches_json(states: tuple[PatchState, ...]) -> list[dict[str, Any]]:

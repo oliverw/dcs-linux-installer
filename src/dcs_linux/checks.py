@@ -16,7 +16,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from dcs_linux.installs import Launcher
-from dcs_linux.patches import PatchStatus
+from dcs_linux.patches import PatchStatus, risky_in_place
 from dcs_linux.probes import REQUIRED_TOOLS, Environment
 
 GIB = 1024**3
@@ -43,6 +43,7 @@ D3DCOMPILER = "d3dcompiler_47"
 SAVED_GAMES_MAPPING = "Saved Games mapping"
 GAME_LOCATION = "Game location"
 PATCHES = "Patches"
+INTEGRITY_CHECK = "Integrity check"
 
 
 class Status(StrEnum):
@@ -91,6 +92,7 @@ def run_checks(environment: Environment) -> list[CheckResult]:
         check_saved_games_mapping,
         check_game_location,
         check_patches,
+        check_integrity,
     )
     return [check(environment) for check in checks]
 
@@ -428,6 +430,38 @@ def check_patches(environment: Environment) -> CheckResult:
         name=PATCHES,
         status=Status.PASS,
         detail=", ".join(state.patch.id for state in applied),
+    )
+
+
+def check_integrity(environment: Environment) -> CheckResult:
+    """Whether this install currently carries modifications DCS hashes.
+
+    Applying a risky patch is the user's own decision, so this is not a fault
+    — but it is invisible until a server refuses to let them in, and by then
+    nobody connects the refusal to a fix applied weeks earlier. Stated on
+    every `check` so the answer to "why can't I join?" is already on screen.
+    """
+    states = [state for state in environment.patches if state.status is not PatchStatus.UNKNOWN]
+    if not states:
+        return CheckResult(
+            name=INTEGRITY_CHECK, status=Status.SKIP, detail=_nothing_selected(environment)
+        )
+
+    risky = risky_in_place(tuple(states))
+    if not risky:
+        return CheckResult(
+            name=INTEGRITY_CHECK,
+            status=Status.PASS,
+            detail="no integrity-check-risky patch applied; multiplayer servers are unaffected",
+        )
+
+    names = ", ".join(state.patch.id for state in risky)
+    return CheckResult(
+        name=INTEGRITY_CHECK,
+        status=Status.WARN,
+        detail=f"game files DCS hashes were modified by: {names}; servers running "
+        "pure-client integrity checks will reject this install",
+        remediation=f"dcs-linux patch revert {risky[0].patch.id}   # to play multiplayer again",
     )
 
 

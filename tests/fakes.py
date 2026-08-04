@@ -30,6 +30,7 @@ class FakeSystem:
         links: dict[str, str] | None = None,
         executables: dict[str, str] | None = None,
         commands: dict[str, CommandResult] | None = None,
+        binary_commands: dict[str, bytes] | None = None,
         disk: DiskUsage | None = None,
         filesystem: str | None = None,
         env: dict[str, str] | None = None,
@@ -42,6 +43,7 @@ class FakeSystem:
         self.symlinks = {Path(path) for path in (symlinks or set())} | set(self.links)
         self.executables = executables or {}
         self.commands = commands or {}
+        self.binary_commands = binary_commands or {}
         self.disk = disk
         self.filesystem = filesystem
         self.env = env or {}
@@ -84,6 +86,9 @@ class FakeSystem:
 
     def run(self, command: list[str]) -> CommandResult | None:
         return self.commands.get(" ".join(command))
+
+    def run_binary(self, command: list[str]) -> bytes | None:
+        return self.binary_commands.get(" ".join(command))
 
     def disk_usage(self, path: Path) -> DiskUsage | None:
         return self.disk

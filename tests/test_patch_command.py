@@ -15,6 +15,7 @@ from dcs_linux.probes import Environment, probe_patches
 from tests.environments import OWN_INSTALL, PATHS, healthy_environment
 from tests.fakes import FakeSystem, FakeWriter
 from tests.test_check_command import STEAM_INSTALL
+from tests.test_patch_registry import FXO, OPTIONS_DB, OPTIONS_DB_WITH_VOICE_CHAT
 from tests.test_patches import DEJAVU, FONT_BYTES, machine, plan_nothing
 
 runner = CliRunner()
@@ -63,19 +64,17 @@ class TestList:
         result = runner.invoke(cli.app, ["--json", "patch", "--list"])
 
         payload = json.loads(result.stdout)
-        assert payload == {
-            "command": "patch",
-            "action": "list",
-            "patches": [
-                {
-                    "id": "segoe-fonts",
-                    "summary": payload["patches"][0]["summary"],
-                    "ic_risk": False,
-                    "status": "not-applied",
-                    "detail": "not applied",
-                }
-            ],
-        }
+        assert payload["command"] == "patch"
+        assert payload["action"] == "list"
+        assert [
+            (entry["id"], entry["ic_risk"], entry["status"], entry["detail"])
+            for entry in payload["patches"]
+        ] == [
+            ("segoe-fonts", False, "not-applied", "not applied"),
+            ("voice-chat", True, "not-applied", "not applied"),
+            ("mfd-textures", True, "not-applied", "not applied"),
+        ]
+        assert all(entry["summary"] for entry in payload["patches"])
 
     def test_applied_shows_up_as_applied(self, monkeypatch: pytest.MonkeyPatch) -> None:
         use(monkeypatch, machine())
@@ -224,6 +223,107 @@ class TestApply:
         assert payload["patches"][0]["id"] == "segoe-fonts"
         assert payload["patches"][0]["ok"] is True
         assert payload["patches"][0]["changed"] is True
+
+
+class TestShippedRiskyPatches:
+    """The gate, exercised against the real registry rather than a stand-in.
+
+    The tests above prove the *rule*; these prove the two patches that are
+    actually shipped are subject to it. A registry entry that opted itself out
+    by mistake would pass the ones above and fail these.
+    """
+
+    def machine(self) -> FakeSystem:
+        return machine(files={str(OPTIONS_DB): OPTIONS_DB_WITH_VOICE_CHAT})
+
+    def test_a_bare_apply_leaves_the_hashed_game_files_alone(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        system = use(monkeypatch, self.machine())
+
+        result = runner.invoke(cli.app, ["--json", "patch", "apply"])
+
+        assert [entry["id"] for entry in json.loads(result.stdout)["patches"]] == ["segoe-fonts"]
+        assert system.read_text(OPTIONS_DB) == OPTIONS_DB_WITH_VOICE_CHAT
+
+    def test_naming_it_without_the_flag_changes_nothing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        system = use(monkeypatch, self.machine())
+
+        result = runner.invoke(cli.app, ["--no-color", "patch", "apply", "voice-chat"])
+
+        assert result.exit_code == 2
+        assert "integrity" in result.output
+        assert system.read_text(OPTIONS_DB) == OPTIONS_DB_WITH_VOICE_CHAT
+
+    def test_the_opt_in_applies_it_and_states_the_multiplayer_cost(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        system = use(monkeypatch, self.machine())
+
+        result = runner.invoke(
+            cli.app, ["--no-color", "patch", "apply", "voice-chat", "--allow-ic-risk"]
+        )
+
+        assert result.exit_code == 0
+        assert "integrity" in result.output
+        assert "-- " in (system.read_text(OPTIONS_DB) or "")
+
+    def test_revert_gives_multiplayer_back_without_any_flag(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        system = use(monkeypatch, self.machine())
+        runner.invoke(cli.app, ["patch", "apply", "voice-chat", "--allow-ic-risk"])
+
+        result = runner.invoke(cli.app, ["--no-color", "patch", "revert", "voice-chat"])
+
+        assert result.exit_code == 0
+        assert system.read_text(OPTIONS_DB) == OPTIONS_DB_WITH_VOICE_CHAT
+
+    def test_the_list_marks_the_risk_before_anything_is_applied(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        use(monkeypatch, self.machine())
+
+        result = runner.invoke(cli.app, ["--no-color", "patch", "--list"])
+
+        assert "MULTIPLAYER" in result.stdout
+        assert "--allow-ic-risk" in result.stdout
+
+
+class TestClearShaderCache:
+    def machine(self) -> FakeSystem:
+        return machine(files={str(FXO / "0a1b.fxo"): "compiled"})
+
+    def test_the_cache_is_deleted_and_nothing_is_recorded(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        system = use(monkeypatch, self.machine())
+
+        result = runner.invoke(cli.app, ["--no-color", "patch", "clear-shader-cache"])
+
+        assert result.exit_code == 0
+        assert system.read_text(FXO / "0a1b.fxo") is None
+
+    def test_it_needs_no_opt_in_flag_because_it_is_always_safe(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        use(monkeypatch, self.machine())
+        result = runner.invoke(cli.app, ["--json", "patch", "clear-shader-cache"])
+
+        payload = json.loads(result.stdout)
+        assert payload["command"] == "patch"
+        assert payload["action"] == "clear-shader-cache"
+        assert payload["directories"] == [str(FXO)]
+
+    def test_an_install_with_no_cache_yet_is_not_an_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        use(monkeypatch, machine())
+        result = runner.invoke(cli.app, ["--no-color", "patch", "clear-shader-cache"])
+        assert result.exit_code == 0
+        assert "no shader cache" in result.stdout
 
 
 class TestRevert:
