@@ -35,10 +35,20 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from dcs_linux.checks import CheckResult, Status, check_upscaling
-from dcs_linux.dcslog import ACCESS_VIOLATION, FONT_CRASH, DcsLog, read_log
+from dcs_linux.dcslog import (
+    ACCESS_VIOLATION,
+    AUTH_FAILURE,
+    AUTH_SUCCESS,
+    CLOCK_DRIFT,
+    FONT_CRASH,
+    LOG_CLOSED,
+    RENDER_THREAD_STOPPED,
+    SHADER_RECOMPILE,
+    DcsLog,
+    read_log,
+)
 from dcs_linux.installs import DCS_EXE
 from dcs_linux.paths import Layout
 from dcs_linux.prefix import LAUNCH_ENVIRONMENT, prefix_environment
@@ -54,8 +64,9 @@ FONTS = "Fonts"
 CRASH = "Crash"
 SHADERS = "Shaders"
 SESSION = "Session"
-# The same name `check` uses, because it is the same rule.
-UPSCALING = "Upscaling"
+# There is deliberately no `UPSCALING` here. That finding is `check`'s own rule
+# reported verbatim, name included (`_from_check`), and a second spelling of
+# the name in this module is a second thing to keep in step.
 
 # DCS itself is launched with the launcher suppressed: the launcher is a second
 # window with its own updater in it, and this command is about the game.
@@ -68,45 +79,14 @@ NO_LAUNCHER = "--no-launcher"
 # nobody flying is ever cut off.
 LAUNCH_TIMEOUT = 4 * 60 * 60.0
 
-# Written on every clean shutdown, in this order. A log that reaches the second
-# without the first is DCS closing down after a crash.
-RENDER_THREAD_STOPPED = "render thread has stopped"
-LOG_CLOSED = "=== Log closed."
-
 # `=== Log opened UTC 2026-08-02 21:30:03`, the first line of every log. It
 # identifies one run, which is how a launch that wrote nothing is told from one
 # that did: without it, the previous run's log would be judged as this one's.
 _LOG_OPENED = re.compile(r"^=== Log opened(?: UTC)? (.+?)\s*$", re.MULTILINE)
 
-# Authorization went through. Present on both captured logs, so its absence is
-# a fact about the run rather than about the DCS version.
-AUTH_SUCCESS = re.compile(r"Successfully got authorization data")
-AUTH_FAILURE = re.compile(
-    r"Login failed|failed to get auth|authorization failed|auth data.*failed", re.IGNORECASE
-)
-
-# **Unverified.** No clock-drift failure was captured on hardware, so unlike
-# everything else here these patterns are reasoned rather than observed: a
-# machine whose clock is wrong fails ED's TLS handshake, and TLS says so in
-# terms of validity dates. They are matched only *alongside* an authorization
-# failure, so at worst a real failure is described with the wrong cause — never
-# a healthy run flagged.
-CLOCK_DRIFT = re.compile(
-    r"certificate (?:is )?not yet valid|certificate has expired|CERT_NOT_YET_VALID"
-    r"|CERT_HAS_EXPIRED|certificate verify failed",
-    re.IGNORECASE,
-)
-
-# DCS could not find a precompiled shader and rebuilt it. Absent from both
-# healthy captures and present on the run made before `d3dcompiler_47` was in
-# the prefix, so it discriminates — but it is recoverable, and it is also what
-# a deliberate shader-cache clear looks like, so it warns rather than fails.
-SHADER_RECOMPILE = re.compile(r"Can't find precompiled shader for effect")
-
 # The faulting module is logged just above the exception, as a path to the dll.
 _MODULE_SEARCH_LINES = 4
 _MODULE = re.compile(r"([^\\/]+\.dll)", re.IGNORECASE)
-_MAX_DETAIL_CHARS = 160
 
 
 @dataclass(frozen=True)
@@ -188,7 +168,8 @@ def verify_install(
     finding and never stops the judging: a DCS that would not start still has a
     log from last time, and reading it is more use than reporting nothing.
     """
-    before = log_opened(_log_text(system, environment))
+    previous = read_log(system, environment.paths)
+    before = log_opened(previous.text) if previous is not None else None
     launch_finding = Finding(LAUNCH, Status.SKIP, "not requested (--no-launch)")
     if launch:
         announce(briefing(environment))
@@ -196,7 +177,11 @@ def verify_install(
 
     log = read_log(system, environment.paths)
     findings = judge(environment, log)
-    if launch:
+    # Only a launch that actually ran DCS can be judged on whether the log is
+    # fresh. A launch that was skipped — someone else's prefix, `--no-launch` —
+    # said in so many words that it is reading the previous run, and failing it
+    # for being the previous run would contradict its own finding.
+    if launch_finding.status is Status.PASS:
         findings = _with_freshness(findings, before, log)
     return Verification(
         findings=(launch_finding, *findings),
@@ -297,11 +282,6 @@ def _with_freshness(
         remediation="check that DCS starts at all: dcs-linux check",
     )
     return tuple(stale if finding.name == LOG else finding for finding in findings)
-
-
-def _log_text(system: System, environment: Environment) -> str | None:
-    log = read_log(system, environment.paths)
-    return log.text if log is not None else None
 
 
 def _log_found(log: DcsLog | None) -> Finding:
@@ -462,17 +442,3 @@ def _from_check(result: CheckResult) -> Finding:
 def _no_log(name: str) -> Finding:
     """What a log-borne rule reports when there is no log: not a pass."""
     return Finding(name, Status.SKIP, "no dcs.log to read")
-
-
-def findings_json(findings: tuple[Finding, ...]) -> list[dict[str, Any]]:
-    """Findings for `--json`. `patch` is the id `patch apply` takes."""
-    return [
-        {
-            "name": finding.name,
-            "status": finding.status.value,
-            "detail": finding.detail,
-            "remediation": finding.remediation,
-            "patch": finding.patch,
-        }
-        for finding in findings
-    ]

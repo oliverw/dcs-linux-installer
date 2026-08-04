@@ -67,6 +67,36 @@ FATAL_SIGNATURES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("access violation", ACCESS_VIOLATION),
 )
 
+# Recoverable: DCS rebuilds the shader and carries on, costing minutes. Absent
+# from both healthy captures and present on the run made before
+# `d3dcompiler_47` was in the prefix, so it discriminates — but it is also what
+# a deliberate shader-cache clear looks like on the next launch.
+SHADER_RECOMPILE = re.compile(r"Can't find precompiled shader for effect")
+
+# Authorization. The success line is on both captured logs, so its absence is a
+# fact about the run rather than about the DCS version.
+AUTH_SUCCESS = re.compile(r"Successfully got authorization data")
+AUTH_FAILURE = re.compile(
+    r"Login failed|failed to get auth|authorization failed|auth data.*failed", re.IGNORECASE
+)
+
+# **Unverified.** No clock-drift failure was captured on hardware, so unlike
+# everything else in this file these patterns are reasoned rather than
+# observed: a machine whose clock is wrong fails ED's TLS handshake, and TLS
+# says so in terms of validity dates. They are only ever matched *alongside*
+# `AUTH_FAILURE`, so at worst a real failure is described with the wrong cause
+# — never a healthy run flagged.
+CLOCK_DRIFT = re.compile(
+    r"certificate (?:is )?not yet valid|certificate has expired|CERT_NOT_YET_VALID"
+    r"|CERT_HAS_EXPIRED|certificate verify failed",
+    re.IGNORECASE,
+)
+
+# Written on every clean shutdown, in this order. A log that reaches the second
+# without the first is DCS unwinding after a crash.
+RENDER_THREAD_STOPPED = "render thread has stopped"
+LOG_CLOSED = "=== Log closed."
+
 # Appear on healthy runs. Quoting them sends readers chasing faults that are
 # not there, so the excerpt drops them.
 BENIGN_SIGNATURES: tuple[re.Pattern[str], ...] = tuple(

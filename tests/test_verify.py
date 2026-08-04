@@ -11,9 +11,10 @@ from dataclasses import replace
 from pathlib import Path
 
 from dcs_linux import verify
-from dcs_linux.checks import Status
+from dcs_linux.checks import UPSCALING, Status
 from dcs_linux.dcslog import DcsLog
 from dcs_linux.probes import Environment, InstallState
+from dcs_linux.report import findings_json
 from dcs_linux.runner import Completed
 from dcs_linux.verify import (
     AUTHORIZATION,
@@ -21,7 +22,6 @@ from dcs_linux.verify import (
     FONTS,
     SESSION,
     SHADERS,
-    UPSCALING,
     Finding,
 )
 from tests.environments import LAYOUT, OWN_INSTALL, PATHS, healthy_environment
@@ -197,7 +197,7 @@ class TestLogOpened:
 class TestFindingsFeedReport:
     def test_a_finding_survives_being_made_machine_readable(self) -> None:
         finding = judged(CRASHED)[FONTS]
-        payload = verify.findings_json((finding,))[0]
+        payload = findings_json((finding,))[0]
         assert payload["name"] == FONTS
         assert payload["status"] == "fail"
         assert payload["patch"] == "segoe-fonts"
@@ -265,6 +265,10 @@ class TestLaunching:
 
         assert runner.calls == []
         assert named(result, verify.LAUNCH).status is Status.SKIP
+        # It said it would judge the previous run, so it must not then fail the
+        # log for being the previous run.
+        assert named(result, verify.LOG).status is Status.PASS
+        assert result.ok
 
     def test_an_unfinished_install_fails_before_anything_is_started(self) -> None:
         runner = FakeRunner()
@@ -274,6 +278,13 @@ class TestLaunching:
         assert runner.calls == []
         assert named(result, verify.LAUNCH).status is Status.FAIL
         assert not result.ok
+
+    def test_no_launch_does_not_fail_the_log_for_being_the_previous_run(self) -> None:
+        result = verify.verify_install(
+            self.machine(), FakeRunner(), healthy_environment(), LAYOUT, launch=False
+        )
+        assert named(result, verify.LOG).status is Status.PASS
+        assert result.ok
 
     def test_a_log_the_launch_did_not_rewrite_is_not_this_run(self) -> None:
         """The one way a verification could report a healthy run that never happened."""

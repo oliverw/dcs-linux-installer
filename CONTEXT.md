@@ -115,7 +115,7 @@ loses the user's login and keybinds on every repair.
   so authorization is refused for reasons that look nothing like a bad
   password. Reported as itself, with `timedatectl set-ntp true` as the fix.
   **Unverified**: no clock-drift log was captured on hardware, so the
-  certificate-validity signatures in `dcs_linux.verify.CLOCK_DRIFT` are
+  certificate-validity signatures in `dcs_linux.dcslog.CLOCK_DRIFT` are
   reasoned rather than observed, and are matched only alongside an
   authorization failure that has already been established.
 
@@ -224,8 +224,9 @@ loses the user's login and keybinds on every repair.
 ## Known failure signatures
 
 Recorded so `check` (#5), `report` (#7) and `verify` (#12) can tell noise from
-faults. The tables live in code as `dcs_linux.dcslog.FATAL_SIGNATURES` and
-`BENIGN_SIGNATURES`.
+faults. Every signature lives in code in `dcs_linux.dcslog`, whether it is quoted by
+`report` or judged by `verify` — one home, so the two can never disagree about
+what a line means.
 
 The two font lines below differ only in the brackets, and that is the whole
 distinction: **empty brackets are fatal**, a bracketed path is not. Both say

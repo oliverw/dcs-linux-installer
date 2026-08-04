@@ -91,16 +91,22 @@ class RealRunner:
             completed = subprocess.run(command, env=merged, timeout=timeout, check=False)
         except FileNotFoundError:
             return Completed(returncode=None, detail=f"{command[0]} could not be executed")
-        except OSError as error:
-            return Completed(returncode=None, detail=str(error))
         except subprocess.TimeoutExpired:
             return Completed(returncode=None, detail=f"timed out after {timeout:.0f}s")
+        except OSError as error:
+            return Completed(returncode=None, detail=str(error))
         return Completed(returncode=completed.returncode)
 
     def _run_in_session(
         self, command: list[str], environment: dict[str, str], timeout: float
     ) -> Completed:
-        """Run a whole process tree, and take all of it down on a timeout."""
+        """Run a whole process tree, and take all of it down when we stop waiting.
+
+        Its own session means Ctrl-C no longer reaches the tree — the terminal
+        signals its foreground group, and this is deliberately not in it. So
+        the interrupt has to be forwarded by hand, or the one thing a user does
+        to abort a four-hour wait would leave DCS running.
+        """
         process = subprocess.Popen(command, env=environment, start_new_session=True)
         try:
             return Completed(returncode=process.wait(timeout=timeout))
@@ -110,6 +116,9 @@ class RealRunner:
                 returncode=None,
                 detail=f"timed out after {timeout:.0f}s and was stopped",
             )
+        except KeyboardInterrupt:
+            _stop_group(process)
+            raise
 
 
 def _stop_group(process: subprocess.Popen[bytes]) -> None:
