@@ -12,11 +12,14 @@ from dcs_linux.dcslog import (
     SIGNATURES,
     TAIL,
 )
-from dcs_linux.paths import Layout
-from dcs_linux.probes import TargetPaths
+from dcs_linux.paths import Layout, TargetPaths
 from tests.fakes import FakeSystem
 
-LAYOUT = Layout(root=Path("/data/dcs"), toolchain=Path("/data/toolchain"))
+LAYOUT = Layout(
+    root=Path("/data/dcs"),
+    toolchain=Path("/data/toolchain"),
+    state=Path("/data/state"),
+)
 PREFIX_SAVED_GAMES = LAYOUT.prefix / "drive_c" / "users" / "steamuser" / "Saved Games"
 
 FIXTURES = Path(__file__).parent / "fixtures" / "dcs-logs"

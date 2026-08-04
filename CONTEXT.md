@@ -102,6 +102,25 @@ loses the user's login and keybinds on every repair.
 - **patch** — a single named fix with a check / apply / revert triple, backed
   by a state file outside the install.
 
+- **plan** — what a patch would write, assembled in full before anything is
+  written. A patch that cannot assemble one returns a **refusal** instead and
+  the engine touches nothing, so no install is ever left half-fixed.
+
+- **drift** — a patch that was applied and is no longer in place, because
+  `DCS_updater` overwrote the files or the prefix was rebuilt. Detected by
+  hashing each patched file against what the state store says was written, so
+  it is a fact about the files, never a stale flag. This is the normal way a
+  working install stops working, and `check` reports it as a failure with
+  `dcs-linux patch apply` as the one-command fix.
+
+- **pristine backup** — the copy of a file taken the moment before a patch
+  overwrote it, kept in the **patch store**
+  (`~/.local/state/dcs-linux/<install id>/`). Outside the install because
+  `DCS_updater repair` deletes files ED's manifest does not list. On a
+  re-apply after partial drift, files still holding what the patch wrote are
+  *ours* and keep their original backup — backing them up again would make
+  revert restore the patch instead of undoing it.
+
 - **patch-update channel** — the PyPI release pipeline. Patches ship bundled
   inside the package and `uvx` resolves the latest version on every
   invocation, so **publishing a release is how a fix reaches users**. There is

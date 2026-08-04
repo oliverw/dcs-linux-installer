@@ -19,7 +19,11 @@ from dcs_linux.probes import (
 from dcs_linux.system import CommandResult, DiskUsage, filesystem_type_from_mounts
 from tests.fakes import FakeSystem
 
-LAYOUT = Layout(root=Path("/data/dcs"), toolchain=Path("/data/toolchain"))
+LAYOUT = Layout(
+    root=Path("/data/dcs"),
+    toolchain=Path("/data/toolchain"),
+    state=Path("/data/state"),
+)
 
 
 # What `winetricks d3dcompiler_47` actually writes into the prefix.

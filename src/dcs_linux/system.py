@@ -37,6 +37,14 @@ class System(Protocol):
     def read_text(self, path: Path) -> str | None:
         """File contents, or None if it is missing or unreadable."""
 
+    def read_bytes(self, path: Path) -> bytes | None:
+        """File contents verbatim, or None if it is missing or unreadable.
+
+        Fonts and other patch targets are binary, and their hashes have to be
+        taken over exactly the bytes on disk — `read_text` replaces anything
+        undecodable, so two different files can read back the same.
+        """
+
     def exists(self, path: Path) -> bool:
         """True if the path exists (following symlinks)."""
 
@@ -72,6 +80,12 @@ class RealSystem:
     def read_text(self, path: Path) -> str | None:
         try:
             return path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return None
+
+    def read_bytes(self, path: Path) -> bytes | None:
+        try:
+            return path.read_bytes()
         except OSError:
             return None
 

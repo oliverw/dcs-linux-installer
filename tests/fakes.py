@@ -11,7 +11,9 @@ class FakeSystem:
     """In-memory machine.
 
     `files` maps a path to its contents; directories are implied by the files
-    inside them, and `directories` adds empty ones.
+    inside them, and `directories` adds empty ones. Contents are held as bytes
+    because patch targets are binary — text given to the constructor is
+    encoded, and `read_text` decodes it back.
 
     `symlinks` records which paths are links; `links` additionally says where
     a link points, which is what makes two spellings of one directory —
@@ -22,6 +24,7 @@ class FakeSystem:
         self,
         *,
         files: dict[str, str] | None = None,
+        blobs: dict[str, bytes] | None = None,
         directories: set[str] | None = None,
         symlinks: set[str] | None = None,
         links: dict[str, str] | None = None,
@@ -32,7 +35,8 @@ class FakeSystem:
         env: dict[str, str] | None = None,
         home: str = "/home/pilot",
     ) -> None:
-        self.files = {Path(path): text for path, text in (files or {}).items()}
+        self.files = {Path(path): text.encode() for path, text in (files or {}).items()}
+        self.files.update({Path(path): data for path, data in (blobs or {}).items()})
         self.directories = {Path(path) for path in (directories or set())}
         self.links = {Path(source): Path(target) for source, target in (links or {}).items()}
         self.symlinks = {Path(path) for path in (symlinks or set())} | set(self.links)
@@ -44,6 +48,10 @@ class FakeSystem:
         self._home = Path(home)
 
     def read_text(self, path: Path) -> str | None:
+        data = self.read_bytes(path)
+        return None if data is None else data.decode(errors="replace")
+
+    def read_bytes(self, path: Path) -> bytes | None:
         return self.files.get(self.resolve(path))
 
     def exists(self, path: Path) -> bool:
@@ -91,3 +99,37 @@ class FakeSystem:
 
     def _all_paths(self) -> set[Path]:
         return set(self.files) | self.directories | self.symlinks
+
+
+class FakeWriter:
+    """A `Writer` onto a `FakeSystem`.
+
+    Deliberately the *same* fixture the system reads from, so a test can apply
+    a patch and then ask the machine what happened exactly as `check` would —
+    which is the only way drift, revert and re-apply are worth testing at all.
+    """
+
+    def __init__(self, system: FakeSystem) -> None:
+        self.system = system
+
+    def make_dirs(self, path: Path) -> None:
+        self.system.directories.add(path)
+
+    def write_bytes(self, path: Path, data: bytes) -> None:
+        self.make_dirs(path.parent)
+        self.system.files[path] = data
+
+    def copy_file(self, source: Path, destination: Path) -> None:
+        data = self.system.read_bytes(source)
+        if data is None:
+            raise OSError(f"no such file: {source}")
+        self.write_bytes(destination, data)
+
+    def remove(self, path: Path) -> None:
+        self.system.files.pop(path, None)
+
+    def remove_tree(self, path: Path) -> None:
+        for known in [*self.system.files, *self.system.directories]:
+            if known == path or path in known.parents:
+                self.system.files.pop(known, None)
+                self.system.directories.discard(known)
