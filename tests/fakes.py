@@ -172,11 +172,18 @@ class FakeRunner:
         self.results = results or {}
         self.effects = effects or {}
         self.calls: list[tuple[list[str], dict[str, str]]] = []
+        self.sessions: list[bool] = []
 
     def run(
-        self, command: list[str], environment: dict[str, str], timeout: float = 0.0
+        self,
+        command: list[str],
+        environment: dict[str, str],
+        timeout: float = 0.0,
+        *,
+        own_session: bool = False,
     ) -> Completed:
         self.calls.append((command, environment))
+        self.sessions.append(own_session)
         key = self._key(command)
         effect = self.effects.get(key)
         if effect is not None:

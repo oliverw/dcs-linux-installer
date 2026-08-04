@@ -15,7 +15,7 @@ from dcs_linux.dcslog import read_log
 from dcs_linux.diagnostics import bundle
 from dcs_linux.fetcher import RealFetcher
 from dcs_linux.installs import AmbiguousInstall, DcsInstall, InstallNotFound
-from dcs_linux.output import OutputOptions, console_for, emit_stub, output_options
+from dcs_linux.output import OutputOptions, console_for, output_options
 from dcs_linux.patches import (
     MULTIPLAYER_WARNING,
     REGISTRY,
@@ -38,16 +38,19 @@ from dcs_linux.report import (
     outcomes_json,
     patches_json,
     render_cleared,
+    render_findings,
     render_handoff,
     render_installs,
     render_outcomes,
     render_patches,
     render_steps,
     render_table,
+    verify_json,
 )
 from dcs_linux.runner import RealRunner
 from dcs_linux.system import RealSystem, System
 from dcs_linux.updater import WEB_INSTALLER_NAME, handoff
+from dcs_linux.verify import verify_install
 from dcs_linux.writer import RealWriter
 
 app = typer.Typer(
@@ -451,9 +454,44 @@ def _emit_outcomes(ctx: typer.Context, action: str, outcomes: list[Outcome]) -> 
 
 
 @app.command()
-def verify(ctx: typer.Context) -> None:
-    """Launch DCS and confirm it actually works."""
-    emit_stub(ctx)
+def verify(
+    ctx: typer.Context,
+    install: str | None = INSTALL_OPTION,
+    no_launch: bool = typer.Option(
+        False,
+        "--no-launch",
+        help="Judge the last dcs.log instead of starting DCS. Nothing is launched.",
+    ),
+) -> None:
+    """Launch DCS and confirm it actually works.
+
+    The deep counterpart to `check`: DCS is started, you fly it, and then its
+    log is read for the failures that do not stop it starting — a missing font
+    that kills the Apache in a mission, an authorization that silently did not
+    happen. `check` stays the fast answer and launches nothing.
+    """
+    options = output_options(ctx)
+    system = RealSystem()
+    environment = _probe(system, install)
+    _targeted(environment)
+    result = verify_install(
+        system,
+        RealRunner(),
+        environment,
+        environment.layout,
+        launch=not no_launch,
+        # To stderr, like the updater briefing: it is read while DCS is
+        # starting, and under `--json` stdout belongs to the payload alone.
+        announce=lambda text: typer.echo(f"\n{text}\n", err=True),
+    )
+
+    if options.json_output:
+        typer.echo(json.dumps(verify_json(result), indent=2))
+    else:
+        render_findings(console_for(options), result)
+
+    if not result.ok:
+        raise typer.Exit(code=1)
 
 
 @app.command()

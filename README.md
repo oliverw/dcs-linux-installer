@@ -2,7 +2,7 @@
 
 Install [DCS World](https://www.digitalcombatsimulator.com/) **Standalone** on Linux, and keep it working.
 
-> **Status: pre-alpha.** `dcs-linux check`, `dcs-linux report`, `dcs-linux patch` and `dcs-linux install` work, including finding the DCS installs you already have and installing DCS itself through its own updater; `verify` is a stub.
+> **Status: pre-alpha.** Every command works — `check`, `install`, `patch`, `verify` and `report` — including finding the DCS installs you already have, installing DCS itself through its own updater, and launching it to confirm it actually flies.
 > The design is settled and the work is broken down in [issue #1](https://github.com/oliverw/dcs-linux-installer/issues/1). There is no usable release yet. Everything below describes the intended tool.
 
 ---
@@ -142,6 +142,33 @@ The download is 150 GB and up, measured in hours. Interrupting is safe: close th
 
 Once it is done, run `dcs-linux patch apply` — the Linux fixes are what turn an install that starts into one that flies.
 
+### `dcs-linux verify`
+
+The question the rest of this is for: **does it actually work?**
+
+```sh
+dcs-linux verify              # launch DCS, then judge the log it wrote
+dcs-linux verify --no-launch  # judge the last run, starting nothing
+```
+
+It opens DCS, tells you to fly to a real mission rather than stopping at the main menu, waits for you to quit, and then reads `dcs.log`. A process that starts proves very little here: DCS reaches the menu with no symbols in the Apache, with garbage MFDs, or having never authorized — and exits cleanly through all three. So `verify` reports per issue, each with its fix and the patch that applies it:
+
+```
+ok   Launch          DCS closed with exit code 0
+ok   dcs.log         ~/dcs-linux/saved-games/DCS/Logs/dcs.log, opened 2026-08-02 21:30:03
+ok   Authorization   ED authorization succeeded
+FAIL Fonts           a font was requested by no name at all — the missing Segoe font …
+                     → dcs-linux patch apply segoe-fonts
+FAIL Crash           DCS crashed with an access violation in CockpitBase.dll
+warn Shaders         DCS could not find a precompiled shader and rebuilt it …
+ok   Session         DCS shut down cleanly
+ok   Upscaling       OFF
+```
+
+Authorization failures caused by a wrong system clock are named as such rather than reported as a generic error, because nothing about the symptom suggests the clock. And a clean log is not a clean run: DLSS flicker never reaches `dcs.log` at all, so the static rule that catches it is applied here too.
+
+`check` stays the fast answer and still launches nothing. What `verify` finds is also in the `report` bundle, under **Last run**.
+
 ### `dcs-linux report`
 
 A diagnostics bundle, as markdown, ready to paste into an issue or a forum thread:
@@ -151,7 +178,7 @@ dcs-linux report                  # to stdout
 dcs-linux report --install 7976   # about one install
 ```
 
-It carries the tool version, your distro and kernel, GPU and driver, umu and the Proton builds present, every install found, the graphics block of `options.lua`, and the parts of `dcs.log` worth reading — the header, any known-fatal signature, errors with the known-benign noise filtered out, and the tail.
+It carries the tool version, your distro and kernel, GPU and driver, umu and the Proton builds present, every install found, what `verify` makes of the last run, the graphics block of `options.lua`, and the parts of `dcs.log` worth reading — the header, any known-fatal signature, errors with the known-benign noise filtered out, and the tail.
 
 It is meant to be **safe to post in public**: home and removable-drive paths, wine profile names, email addresses, Steam account ids, GUIDs and routable IP addresses are all replaced, keeping the shape of the path so it still reads as one. The ED credential (`Saved Games/DCS/Config/authdata.bin`) is never read at all. `--no-redact` turns redaction off, for a bundle you are keeping to yourself.
 

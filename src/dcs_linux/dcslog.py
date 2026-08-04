@@ -6,7 +6,7 @@ This module holds the knowledge that separates signal from noise — the
 signatures in `CONTEXT.md`, established over 15 runs on real hardware — and
 uses it to produce a bounded excerpt.
 
-`verify` (#12) will judge a log; this module only quotes it. The signature
+`dcs_linux.verify` judges a log; this module only quotes it. The signature
 tables are the part both need, so they live here.
 """
 
@@ -54,13 +54,17 @@ HEADER_MARKERS = (
 
 _SEVERITY = re.compile(r"\b(?:ERROR(?:_ONCE)?|WARNING)\b")
 
+# The empty brackets are the whole distinction: a *named* font that cannot be
+# created is the benign path-with-no-filename case below.
+FONT_CRASH = re.compile(r"Cannot create font \[\]")
+ACCESS_VIOLATION = re.compile(r"C0000005 ACCESS_VIOLATION")
+
 # Fatal, and worth naming: these are what turned a run from "starts" into
-# "dies in a mission" (CONTEXT.md).
+# "dies in a mission" (CONTEXT.md). Named separately above because `verify`
+# judges on the same two patterns, and two copies of them would be two rules.
 FATAL_SIGNATURES: tuple[tuple[str, re.Pattern[str]], ...] = (
-    # The empty brackets are the whole distinction: a *named* font that cannot
-    # be created is the benign path-with-no-filename case below.
-    ("missing Segoe font", re.compile(r"Cannot create font \[\]")),
-    ("access violation", re.compile(r"C0000005 ACCESS_VIOLATION")),
+    ("missing Segoe font", FONT_CRASH),
+    ("access violation", ACCESS_VIOLATION),
 )
 
 # Appear on healthy runs. Quoting them sends readers chasing faults that are
@@ -96,9 +100,15 @@ class Excerpt:
 
 @dataclass(frozen=True)
 class DcsLog:
-    """The log that was found, and the parts of it worth quoting."""
+    """The log that was found, the whole of it, and the parts worth quoting.
+
+    `text` is carried because `verify` judges the log while `report` quotes it,
+    and reading a 150 KB file twice to do both would let the two disagree about
+    which run they are describing.
+    """
 
     path: Path
+    text: str
     excerpts: tuple[Excerpt, ...]
 
 
@@ -130,7 +140,7 @@ def read_log(system: System, paths: TargetPaths) -> DcsLog | None:
     text = system.read_text(path)
     if text is None:
         return None
-    return DcsLog(path=path, excerpts=excerpt(text))
+    return DcsLog(path=path, text=text, excerpts=excerpt(text))
 
 
 def excerpt(text: str) -> tuple[Excerpt, ...]:

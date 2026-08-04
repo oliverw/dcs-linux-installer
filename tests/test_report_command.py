@@ -53,6 +53,7 @@ def use(
 def logged() -> dcslog.DcsLog:
     return dcslog.DcsLog(
         path=Path("/home/oliver/dcs-linux/saved-games/DCS/Logs/dcs.log"),
+        text=LOG_TEXT,
         excerpts=dcslog.excerpt(LOG_TEXT),
     )
 

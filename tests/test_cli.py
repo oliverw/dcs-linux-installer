@@ -1,4 +1,3 @@
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -13,11 +12,9 @@ runner = CliRunner()
 
 SUBCOMMANDS = ["check", "install", "patch", "verify", "report"]
 
-# These are implemented, so they are no longer stubs. See
-# test_check_command.py, test_report_command.py, test_patch_command.py and
-# test_install_command.py.
-IMPLEMENTED = {"check", "report", "patch", "install"}
-STUB_SUBCOMMANDS = [name for name in SUBCOMMANDS if name not in IMPLEMENTED]
+# Every one of them is now implemented, so this file is down to the surface the
+# whole CLI shares: the flags, the help, and the installed script. What each
+# command does is tested in test_<name>_command.py.
 
 
 def test_version_flag_prints_version_and_exits_zero() -> None:
@@ -40,19 +37,11 @@ def test_bare_invocation_shows_help() -> None:
         assert name in result.stdout
 
 
-@pytest.mark.parametrize("name", STUB_SUBCOMMANDS)
-def test_subcommand_runs_as_a_stub(name: str) -> None:
-    result = runner.invoke(app, [name])
+@pytest.mark.parametrize("name", SUBCOMMANDS)
+def test_every_subcommand_documents_itself(name: str) -> None:
+    result = runner.invoke(app, [name, "--help"])
     assert result.exit_code == 0
-    assert "not implemented" in result.stdout
-
-
-@pytest.mark.parametrize("name", STUB_SUBCOMMANDS)
-def test_json_flag_is_accepted_and_emits_json(name: str) -> None:
-    result = runner.invoke(app, ["--json", name])
-    assert result.exit_code == 0
-    payload = json.loads(result.stdout)
-    assert payload == {"command": name, "status": "not_implemented"}
+    assert "Usage" in result.stdout
 
 
 def test_no_color_flag_is_accepted_and_strips_ansi() -> None:
