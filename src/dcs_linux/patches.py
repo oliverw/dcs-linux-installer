@@ -242,22 +242,31 @@ class CommentedOut:
 def comment_out(text: str, pattern: re.Pattern[str]) -> CommentedOut:
     """Comment out every line matching `pattern`, or report why it is not safe to.
 
-    Lua's `--` comments to end of line, so this is only sound for a line that
-    opens nothing it does not also close. A line like `["voice_chat"] = {`
-    would leave the table it opens unterminated and the file unloadable, so
-    such lines are reported rather than written — a patch that cannot make a
-    safe edit refuses instead of making an unsafe one.
+    Lua's `--` comments to end of line, so this only works on a line that is a
+    whole statement by itself and nothing else's. Three ways it would not be,
+    all of which are reported rather than written:
+
+    - the line opens a table (`["voice_chat"] = {`) — commenting it out leaves
+      the table unterminated and the file unloadable;
+    - the table opens on the *next* line, which is the same thing spelled over
+      two lines;
+    - the line carries other entries too (`{ ["voice_chat"] = true, x = 1 }`) —
+      commenting it out would silently take `x` with it.
+
+    A patch that cannot make a safe edit refuses instead of making an unsafe
+    one, so anything but a plain one-line entry ends up in `unsafe`.
     """
+    lines = text.splitlines(keepends=True)
     disabled: list[str] = []
     unsafe: list[str] = []
     result: list[str] = []
 
-    for line in text.splitlines(keepends=True):
+    for index, line in enumerate(lines):
         stripped = line.strip()
         if not pattern.search(line) or stripped.startswith("--"):
             result.append(line)
             continue
-        if _balanced(stripped):
+        if _is_whole_statement(line, _next_code_line(lines, index)):
             disabled.append(stripped)
             indent = line[: len(line) - len(line.lstrip())]
             result.append(f"{indent}-- {line.lstrip()}")
@@ -268,13 +277,41 @@ def comment_out(text: str, pattern: re.Pattern[str]) -> CommentedOut:
     return CommentedOut(text="".join(result), disabled=tuple(disabled), unsafe=tuple(unsafe))
 
 
+def _next_code_line(lines: list[str], index: int) -> str:
+    """The next line with anything on it, or "" at the end of the file."""
+    return next((line.strip() for line in lines[index + 1 :] if line.strip()), "")
+
+
+def _is_whole_statement(line: str, following: str) -> bool:
+    """Whether commenting this line out removes exactly one entry and nothing else."""
+    code = _without_strings(line)
+    if "{" in code or "}" in code:
+        return False
+    if code.count("=") != 1:
+        return False
+    if not _balanced(code):
+        return False
+    # `["voice_chat"] =` with the table on the line below is the multi-line
+    # form written differently, and just as unsafe to comment out.
+    return not following.startswith("{")
+
+
+def _without_strings(line: str) -> str:
+    """The line with the contents of quoted strings removed.
+
+    Brackets and `=` inside a string are text, not syntax, and counting them
+    would make a perfectly safe line look unsafe.
+    """
+    return re.sub(r'"[^"]*"|\'[^\']*\'', '""', line)
+
+
 def _balanced(line: str) -> bool:
     """Whether a line closes every bracket it opens."""
     depth = 0
     for character in line:
-        if character in "{([":
+        if character in "([":
             depth += 1
-        elif character in "})]":
+        elif character in ")]":
             depth -= 1
             if depth < 0:
                 return False
@@ -372,19 +409,22 @@ def plan_mfd_textures(system: System, paths: TargetPaths) -> Plan:
     files, so on a current install there is usually nothing to convert and this
     says so rather than pretending to have fixed something.
     """
-    targets = find_mfd_textures(system, paths)
-    if not targets:
-        return Plan(
-            refusal=f"no loose MFD or sight textures under {paths.aircraft_mods}; "
-            "on current DCS versions this fix is not needed (see ADR-0004)"
-        )
-
-    # Only asked once there is real work, so a user on a current install is
-    # told the fix is unnecessary rather than sent to install a tool for it.
     converter = _imagemagick(system)
     if converter is None:
         hint = detect_distro(system).install_hint("magick")
         return Plan(refusal=f"ImageMagick is needed to convert textures; install it: {hint}")
+
+    targets = find_mfd_textures(system, paths)
+    if not targets:
+        # Said plainly, because it is the answer a stock install gets: DCS
+        # ships these textures inside `.zip` archives, and this patch does not
+        # open archives. Claiming "your install is fine" would be a clinical
+        # finding this patch is in no position to make.
+        return Plan(
+            refusal=f"no loose MFD or sight textures under {paths.aircraft_mods}; DCS ships "
+            "them inside .zip archives, which this patch does not open. On 2.9.28.26385 the "
+            "sight renders correctly without any conversion (see ADR-0004)"
+        )
 
     writes: list[FileWrite] = []
     for target in targets:
@@ -435,7 +475,20 @@ def clear_shader_cache(system: System, writer: Writer, paths: TargetPaths) -> Cl
     The cost is time, not risk: the launch after this one recompiles the whole
     cache and takes several minutes.
     """
-    present = tuple(directory for directory in paths.shader_caches if system.exists(directory))
+    # Deduplicated by resolved path: on a mapped install the in-prefix saved
+    # games *is* the durable one, so both spellings name a single directory
+    # and reporting it twice would overstate what was cleared.
+    # Resolved, and deduplicated on the result: on a mapped install the
+    # in-prefix saved games *is* the durable one, so both spellings name a
+    # single directory. Deleting it twice is harmless, but saying so is not.
+    present = tuple(
+        dict.fromkeys(
+            system.resolve(directory)
+            for directory in paths.shader_caches
+            if system.exists(directory)
+        )
+    )
+
     for directory in present:
         writer.remove_tree(directory)
     if not present:
@@ -448,10 +501,12 @@ def clear_shader_cache(system: System, writer: Writer, paths: TargetPaths) -> Cl
     )
 
 
-MULTIPLAYER_WARNING = (
-    "edits a file DCS hashes: servers running pure-client integrity checks "
-    "will reject this install until the patch is reverted"
-)
+# The consequence, in one place. It is load-bearing wording (ADR-0004 asks for
+# a multiplayer warning on both the refusal and the opt-in path), and `check`
+# and `patch --list` both have to say the same thing as the warning itself.
+SERVERS_REJECT = "servers running pure-client integrity checks will reject this install"
+
+MULTIPLAYER_WARNING = f"edits a file DCS hashes: {SERVERS_REJECT} until the patch is reverted"
 
 
 def by_id(patch_id: str) -> Patch | None:

@@ -288,7 +288,7 @@ class TestShippedRiskyPatches:
 
         result = runner.invoke(cli.app, ["--no-color", "patch", "--list"])
 
-        assert "MULTIPLAYER" in result.stdout
+        assert "IC-risky" in result.stdout
         assert "--allow-ic-risk" in result.stdout
 
 

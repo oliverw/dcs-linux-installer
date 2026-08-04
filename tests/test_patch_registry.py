@@ -113,6 +113,27 @@ class TestVoiceChat:
         assert "unloadable" in outcome.detail
         assert system.files == before
 
+    def test_a_table_opening_on_the_next_line_is_refused_too(self) -> None:
+        """The same multi-line entry, spelled over one more line."""
+        system = self.machine('Db.plugins["voice_chat"] =\n{\n  enabled = true,\n}\n')
+        before = dict(system.files)
+
+        outcome = apply(system, FakeWriter(system), VOICE_CHAT_PATCH)
+
+        assert not outcome.ok
+        assert "unloadable" in outcome.detail
+        assert system.files == before
+
+    def test_an_entry_sharing_a_line_with_others_is_refused(self) -> None:
+        """Commenting the line out would silently disable `sound` as well."""
+        system = self.machine('gui = { ["voice_chat"] = true, ["sound"] = true }\n')
+        before = dict(system.files)
+
+        outcome = apply(system, FakeWriter(system), VOICE_CHAT_PATCH)
+
+        assert not outcome.ok
+        assert system.files == before
+
     def test_a_missing_options_db_writes_nothing(self) -> None:
         system = FakeSystem()
         outcome = apply(system, FakeWriter(system), VOICE_CHAT_PATCH)
@@ -201,13 +222,15 @@ class TestMfdTextures:
         assert not outcome.ok
         assert system.files == before
 
-    def test_an_install_with_no_loose_textures_is_told_the_fix_is_unnecessary(self) -> None:
+    def test_an_install_with_no_loose_textures_is_told_why_plainly(self) -> None:
+        """The honest reason, not "your install is fine": DCS ships these
+        textures inside .zip archives, which this patch does not open."""
         system = FakeSystem(executables={"magick": "/usr/bin/magick"})
 
         outcome = apply(system, FakeWriter(system), MFD_TEXTURE_PATCH)
 
         assert not outcome.ok
-        assert "not needed" in outcome.detail
+        assert ".zip archives" in outcome.detail
 
     def test_the_search_is_bounded_and_finds_textures_by_name(self) -> None:
         system = self.machine()
@@ -250,6 +273,18 @@ class TestShaderCache:
         clear_shader_cache(system, FakeWriter(system), PATHS)
 
         assert load(system, STORE) == {}
+
+    def test_a_mapped_saved_games_is_cleared_once_not_twice(self) -> None:
+        """In-prefix and durable are one directory on a mapped install."""
+        system = FakeSystem(
+            files={str(DURABLE_FXO / "0a1b.fxo"): "compiled"},
+            links={str(PATHS.prefix_saved_games): str(PATHS.saved_games)},
+        )
+
+        cleared = clear_shader_cache(system, FakeWriter(system), PATHS)
+
+        assert len(cleared.directories) == 1
+        assert system.read_text(DURABLE_FXO / "0a1b.fxo") is None
 
     def test_clearing_an_empty_cache_is_not_an_error(self) -> None:
         system = FakeSystem()
