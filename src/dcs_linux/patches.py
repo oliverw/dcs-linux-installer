@@ -14,21 +14,28 @@ Three rules shape the design:
 - **Nothing is matched by position.** Targets move between DCS versions, so a
   patch locates its work by content — a file's presence, a pattern in it —
   never by a line number.
-- **IC-safe by default** (ADR-0004). Every patch carries `ic_risk`, and the
-  one patch in the registry so far touches only the wine prefix, so no hashed
-  game file is involved and multiplayer is not at stake.
+- **IC-safe by default** (ADR-0004). Every patch carries `ic_risk`. The two
+  risky ones here rewrite files DCS hashes, and the engine will not let them
+  near an install that did not name them: `safe_patches` is what a bare
+  `patch apply` sweeps up, and it drops them.
 
 The engine knows nothing about fonts. It knows about plans, backups, hashes
 and state, so the next patch is a planner function and a registry entry.
+
+Clearing the shader cache lives here too, but deliberately *not* as a patch:
+it deletes regenerable files rather than writing any, so there is nothing to
+back up, nothing to record and nothing to revert.
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from dcs_linux.distro import detect_distro
 from dcs_linux.patchstate import (
     FileRecord,
     PatchRecord,
@@ -214,13 +221,292 @@ SEGOE_FONT_PATCH = Patch(
     plan=plan_segoe_fonts,
 )
 
-REGISTRY: tuple[Patch, ...] = (SEGOE_FONT_PATCH,)
+
+# Every spelling the voice-chat entries have gone by. Matched case-insensitively
+# because optionsDb.lua mixes `voice_chat` keys with `VoiceChat` module names.
+VOICE_CHAT = re.compile(r"voice[_ ]?chat", re.IGNORECASE)
 
 
-MULTIPLAYER_WARNING = (
-    "edits a file DCS hashes: servers running pure-client integrity checks "
-    "will reject this install until the patch is reverted"
+@dataclass(frozen=True)
+class CommentedOut:
+    """The result of disabling some Lua lines by commenting them out."""
+
+    text: str
+    # The lines that were commented out, in file order.
+    disabled: tuple[str, ...]
+    # Matching lines left alone because commenting them out would have broken
+    # the file — an opening brace whose partner is on a later line.
+    unsafe: tuple[str, ...]
+
+
+def comment_out(text: str, pattern: re.Pattern[str]) -> CommentedOut:
+    """Comment out every line matching `pattern`, or report why it is not safe to.
+
+    Lua's `--` comments to end of line, so this only works on a line that is a
+    whole statement by itself and nothing else's. Three ways it would not be,
+    all of which are reported rather than written:
+
+    - the line opens a table (`["voice_chat"] = {`) — commenting it out leaves
+      the table unterminated and the file unloadable;
+    - the table opens on the *next* line, which is the same thing spelled over
+      two lines;
+    - the line carries other entries too (`{ ["voice_chat"] = true, x = 1 }`) —
+      commenting it out would silently take `x` with it.
+
+    A patch that cannot make a safe edit refuses instead of making an unsafe
+    one, so anything but a plain one-line entry ends up in `unsafe`.
+    """
+    lines = text.splitlines(keepends=True)
+    disabled: list[str] = []
+    unsafe: list[str] = []
+    result: list[str] = []
+
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if not pattern.search(line) or stripped.startswith("--"):
+            result.append(line)
+            continue
+        if _is_whole_statement(line, _next_code_line(lines, index)):
+            disabled.append(stripped)
+            indent = line[: len(line) - len(line.lstrip())]
+            result.append(f"{indent}-- {line.lstrip()}")
+        else:
+            unsafe.append(stripped)
+            result.append(line)
+
+    return CommentedOut(text="".join(result), disabled=tuple(disabled), unsafe=tuple(unsafe))
+
+
+def _next_code_line(lines: list[str], index: int) -> str:
+    """The next line with anything on it, or "" at the end of the file."""
+    return next((line.strip() for line in lines[index + 1 :] if line.strip()), "")
+
+
+def _is_whole_statement(line: str, following: str) -> bool:
+    """Whether commenting this line out removes exactly one entry and nothing else."""
+    code = _without_strings(line)
+    if "{" in code or "}" in code:
+        return False
+    if code.count("=") != 1:
+        return False
+    if not _balanced(code):
+        return False
+    # `["voice_chat"] =` with the table on the line below is the multi-line
+    # form written differently, and just as unsafe to comment out.
+    return not following.startswith("{")
+
+
+def _without_strings(line: str) -> str:
+    """The line with the contents of quoted strings removed.
+
+    Brackets and `=` inside a string are text, not syntax, and counting them
+    would make a perfectly safe line look unsafe.
+    """
+    return re.sub(r'"[^"]*"|\'[^\']*\'', '""', line)
+
+
+def _balanced(line: str) -> bool:
+    """Whether a line closes every bracket it opens."""
+    depth = 0
+    for character in line:
+        if character in "([":
+            depth += 1
+        elif character in ")]":
+            depth -= 1
+            if depth < 0:
+                return False
+    return depth == 0
+
+
+def plan_voice_chat(system: System, paths: TargetPaths) -> Plan:
+    """Disable the voice-chat entries in `optionsDb.lua`.
+
+    IC-risky: `optionsDb.lua` is a game file, and DCS hashes it, so an install
+    carrying this patch is rejected by servers running pure-client integrity
+    checks until it is reverted.
+
+    Widely cited for a voice-chat crash on Linux, and **not** reproduced here:
+    on 2.9.28.26385 `VoiceChat.dll` loads clean with no edit (ADR-0004). It is
+    in the registry so a user hitting the crash on some other version has the
+    fix, not because it is expected to be needed — which is also why finding
+    nothing to disable is a refusal rather than a silent success.
+    """
+    raw = system.read_bytes(paths.options_db)
+    if raw is None:
+        return Plan(refusal=f"no optionsDb.lua at {paths.options_db}")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return Plan(refusal=f"{paths.options_db} is not valid UTF-8; refusing to rewrite it")
+
+    result = comment_out(text, VOICE_CHAT)
+    if result.unsafe:
+        return Plan(
+            refusal=f"the voice-chat entry in {paths.options_db} spans several lines "
+            f"({result.unsafe[0]!r}); commenting it out would leave the file unloadable"
+        )
+    if not result.disabled:
+        return Plan(
+            refusal=f"nothing referring to voice chat in {paths.options_db}; "
+            "on current DCS versions this fix is not needed (see ADR-0004)"
+        )
+    return Plan(writes=(FileWrite(paths.options_db, result.text.encode()),))
+
+
+VOICE_CHAT_PATCH = Patch(
+    id="voice-chat",
+    summary="disable the voice-chat entries in optionsDb.lua (edits a hashed game file)",
+    ic_risk=True,
+    plan=plan_voice_chat,
 )
+
+
+# ImageMagick 7 renamed the binary; DCS-era distros still ship either.
+IMAGEMAGICK_COMMANDS = ("magick", "convert")
+
+# The MFD and TEDAC sight textures the conversion workaround is about. Matched
+# on the name rather than by a fixed path: the AH-64D's texture directories are
+# laid out differently between DCS versions.
+MFD_TEXTURE = re.compile(r"^(MFD_LCD_AH64|TEDAC)", re.IGNORECASE)
+
+# `Mods/aircraft/<module>/Textures/<pack>/<file>`. Bounded so a patch plan can
+# never turn into a walk of a 536 GB game directory.
+TEXTURE_SEARCH_DEPTH = 5
+
+
+def find_mfd_textures(system: System, paths: TargetPaths) -> tuple[Path, ...]:
+    """Loose MFD and sight textures under the aircraft modules.
+
+    Loose only: DCS ships these inside `.zip` texture archives, and rewriting
+    an archive's contents is not something this patch does.
+    """
+    found: list[Path] = []
+    _collect_textures(system, paths.aircraft_mods, TEXTURE_SEARCH_DEPTH, found)
+    return tuple(sorted(found))
+
+
+def _collect_textures(system: System, root: Path, depth: int, found: list[Path]) -> None:
+    if depth <= 0:
+        return
+    for entry in system.list_dir(root):
+        candidate = root / entry
+        if entry.lower().endswith(".dds"):
+            if MFD_TEXTURE.match(entry):
+                found.append(candidate)
+            continue
+        _collect_textures(system, candidate, depth - 1, found)
+
+
+def plan_mfd_textures(system: System, paths: TargetPaths) -> Plan:
+    """Re-encode the AH-64D MFD and sight textures as uncompressed DDS.
+
+    IC-risky: these are game files, and DCS hashes them.
+
+    Like the voice-chat fix, this is a workaround for a symptom not reproduced
+    here — the TADS sight renders correctly on 2.9.28.26385 once first-use
+    shader compilation settles (ADR-0004). The `texture ... not found` lines
+    that make people reach for it name runtime render targets, not shipped
+    files, so on a current install there is usually nothing to convert and this
+    says so rather than pretending to have fixed something.
+    """
+    converter = _imagemagick(system)
+    if converter is None:
+        hint = detect_distro(system).install_hint("magick")
+        return Plan(refusal=f"ImageMagick is needed to convert textures; install it: {hint}")
+
+    targets = find_mfd_textures(system, paths)
+    if not targets:
+        # Said plainly, because it is the answer a stock install gets: DCS
+        # ships these textures inside `.zip` archives, and this patch does not
+        # open archives. Claiming "your install is fine" would be a clinical
+        # finding this patch is in no position to make.
+        return Plan(
+            refusal=f"no loose MFD or sight textures under {paths.aircraft_mods}; DCS ships "
+            "them inside .zip archives, which this patch does not open. On 2.9.28.26385 the "
+            "sight renders correctly without any conversion (see ADR-0004)"
+        )
+
+    writes: list[FileWrite] = []
+    for target in targets:
+        converted = system.run_binary([converter, str(target), *DDS_CONVERSION_ARGS])
+        if not converted:
+            return Plan(refusal=f"{converter} could not convert {target}")
+        writes.append(FileWrite(target, converted))
+    return Plan(writes=tuple(writes))
+
+
+# Uncompressed BGRA8, written to stdout so no temporary file is involved and
+# the plan holds the finished bytes like every other plan does.
+DDS_CONVERSION_ARGS = ("-define", "dds:compression=none", "dds:-")
+
+
+def _imagemagick(system: System) -> str | None:
+    return next((name for name in IMAGEMAGICK_COMMANDS if system.which(name)), None)
+
+
+MFD_TEXTURE_PATCH = Patch(
+    id="mfd-textures",
+    summary="re-encode the AH-64D MFD and sight textures (edits hashed game files)",
+    ic_risk=True,
+    plan=plan_mfd_textures,
+)
+
+
+REGISTRY: tuple[Patch, ...] = (SEGOE_FONT_PATCH, VOICE_CHAT_PATCH, MFD_TEXTURE_PATCH)
+
+
+@dataclass(frozen=True)
+class Cleared:
+    """What clearing the shader cache removed."""
+
+    directories: tuple[Path, ...]
+    detail: str
+
+
+def clear_shader_cache(system: System, writer: Writer, paths: TargetPaths) -> Cleared:
+    """Delete DCS's compiled-shader directories.
+
+    Not a patch, and deliberately not in the registry. It writes nothing, so
+    there is nothing to back up, nothing to record and nothing to revert; the
+    files it deletes are ones DCS regenerates on the next launch. It is also
+    unconditionally IC-safe — the caches live in saved games, and DCS hashes
+    none of them.
+
+    The cost is time, not risk: the launch after this one recompiles the whole
+    cache and takes several minutes.
+    """
+    # Deduplicated by resolved path: on a mapped install the in-prefix saved
+    # games *is* the durable one, so both spellings name a single directory
+    # and reporting it twice would overstate what was cleared.
+    # Resolved, and deduplicated on the result: on a mapped install the
+    # in-prefix saved games *is* the durable one, so both spellings name a
+    # single directory. Deleting it twice is harmless, but saying so is not.
+    present = tuple(
+        dict.fromkeys(
+            system.resolve(directory)
+            for directory in paths.shader_caches
+            if system.exists(directory)
+        )
+    )
+
+    for directory in present:
+        writer.remove_tree(directory)
+    if not present:
+        return Cleared(directories=(), detail="no shader cache to clear")
+    return Cleared(
+        directories=present,
+        detail=f"cleared {len(present)} shader cache director"
+        f"{'ies' if len(present) > 1 else 'y'}; the next launch recompiles them "
+        "and takes several minutes",
+    )
+
+
+# The consequence, in one place. It is load-bearing wording (ADR-0004 asks for
+# a multiplayer warning on both the refusal and the opt-in path), and `check`
+# and `patch --list` both have to say the same thing as the warning itself.
+SERVERS_REJECT = "servers running pure-client integrity checks will reject this install"
+
+MULTIPLAYER_WARNING = f"edits a file DCS hashes: {SERVERS_REJECT} until the patch is reverted"
 
 
 def by_id(patch_id: str) -> Patch | None:
@@ -236,6 +522,20 @@ def safe_patches(patches: tuple[Patch, ...] = REGISTRY) -> tuple[Patch, ...]:
     by omission.
     """
     return tuple(patch for patch in patches if not patch.ic_risk)
+
+
+def risky_in_place(states: tuple[PatchState, ...]) -> tuple[PatchState, ...]:
+    """The IC-risky patches whose edits are on disk, wholly or partly.
+
+    A drifted risky patch counts: drift is per-file, so a DCS update that put
+    one file back can leave the others still modified — and still enough to
+    fail an integrity check.
+    """
+    return tuple(
+        state
+        for state in states
+        if state.patch.ic_risk and state.status in (PatchStatus.APPLIED, PatchStatus.DRIFTED)
+    )
 
 
 def states(

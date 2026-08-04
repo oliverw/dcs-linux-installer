@@ -342,9 +342,14 @@ class TestLostBackup:
 class TestIcRisk:
     """ADR-0004: a hashed-file edit is never applied unless it was asked for."""
 
-    def test_every_patch_shipped_today_is_ic_safe(self) -> None:
-        """A tripwire: adding a risky patch to the registry must be deliberate."""
-        assert [patch.id for patch in REGISTRY if patch.ic_risk] == []
+    def test_the_risky_patches_are_exactly_the_two_known_ones(self) -> None:
+        """A tripwire: adding a risky patch to the registry must be deliberate.
+
+        Both edit files DCS hashes, and both are workarounds for symptoms that
+        were *not* reproduced on 2.9.28.26385 (ADR-0004). A third entry landing
+        here should be an argued decision, not a diff nobody noticed.
+        """
+        assert [patch.id for patch in REGISTRY if patch.ic_risk] == ["voice-chat", "mfd-textures"]
 
     def test_a_risky_patch_is_left_out_of_an_unqualified_apply(self) -> None:
         risky = Patch(id="risky", summary="edits a hashed file", ic_risk=True, plan=plan_nothing)

@@ -19,6 +19,11 @@ TOOLCHAIN_ENV = "DCS_LINUX_TOOLCHAIN"
 STATE_ENV = "DCS_LINUX_STATE"
 XDG_STATE_ENV = "XDG_STATE_HOME"
 
+# DCS's compiled-shader directories under `Saved Games/DCS`. `metashaders` is
+# the pre-2.7 spelling and is still found on installs that have been upgraded
+# in place, so both are cleared.
+SHADER_CACHE_DIRS = ("fxo", "metashaders2", "metashaders")
+
 
 @dataclass(frozen=True)
 class Layout:
@@ -120,9 +125,44 @@ class TargetPaths:
         Our own durable path is a fallback only for our own install: for
         anyone else's, it is a different install's settings entirely.
         """
-        config = Path("DCS") / "Config" / "options.lua"
-        durable = (self.saved_games / config,) if self.saved_games else ()
-        return (self.prefix_saved_games / config, *durable)
+        return self._in_saved_games(Path("DCS") / "Config" / "options.lua")
+
+    @property
+    def options_db(self) -> Path:
+        """`optionsDb.lua`, the voice-chat patch's target.
+
+        A **game** file, so DCS hashes it: anything written here is IC-risky
+        (ADR-0004).
+        """
+        return self.game / "MissionEditor" / "modules" / "optionsDb.lua"
+
+    @property
+    def aircraft_mods(self) -> Path:
+        """Where the aircraft modules, and their loose textures, live."""
+        return self.game / "Mods" / "aircraft"
+
+    @property
+    def shader_caches(self) -> tuple[Path, ...]:
+        """DCS's compiled-shader directories.
+
+        In saved games, never in the game directory, which is what makes
+        clearing them IC-safe: nothing DCS hashes is touched, and DCS
+        recompiles whatever is missing on the next launch.
+        """
+        return tuple(
+            directory
+            for name in SHADER_CACHE_DIRS
+            for directory in self._in_saved_games(Path("DCS") / name)
+        )
+
+    def _in_saved_games(self, relative: Path) -> tuple[Path, ...]:
+        """One path per saved-games root this install might be reading.
+
+        The in-prefix one comes first because it is the one this prefix
+        actually reads — mapped out, it resolves to the durable copy anyway.
+        """
+        durable = (self.saved_games / relative,) if self.saved_games else ()
+        return (self.prefix_saved_games / relative, *durable)
 
 
 def resolve_layout(system: System) -> Layout:

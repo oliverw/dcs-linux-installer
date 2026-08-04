@@ -135,6 +135,7 @@ dcs-linux patch                # what is available, and what is applied
 dcs-linux patch apply          # apply everything applicable
 dcs-linux patch revert         # put the install back exactly as it was
 dcs-linux patch apply segoe-fonts   # or one patch by name
+dcs-linux patch clear-shader-cache  # delete the compiled shaders
 ```
 
 `DCS_updater` overwrites patched files on every update and repair, so a patch is never "done". Each applied file is remembered by its hash, so the tool can tell you a fix has been undone — `check` reports that as a failure, and `patch apply` puts it back. Applying something already applied is a no-op, so running it after every DCS update is the intended habit.
@@ -143,7 +144,17 @@ Backups and state live in `~/.local/state/dcs-linux/<install id>/`, outside the 
 
 Nothing is written unless the whole fix can be assembled: a patch that cannot find what it needs says why and touches nothing.
 
-So far there is one patch, `segoe-fonts`, which puts a locally installed sans font into the prefix under the three Segoe names the AH-64D needs. It touches only the wine prefix, so it is Integrity Check safe.
+| Patch | Integrity Check | What it does |
+| --- | --- | --- |
+| `segoe-fonts` | safe | puts a locally installed sans font into the prefix under the three Segoe names the AH-64D needs. Prefix only, so no hashed game file is involved |
+| `voice-chat` | ⚠️ risky | comments the voice-chat entries out of `optionsDb.lua` — a game file DCS hashes |
+| `mfd-textures` | ⚠️ risky | re-encodes the AH-64D MFD and sight textures with ImageMagick — game files DCS hashes |
+
+A risky patch is never swept up by a bare `patch apply`, and `--allow-ic-risk` does not widen one: it consents to a patch you named, and the multiplayer cost is printed either way. `check` tells you whether the install currently carries such a modification, and `patch revert` gives multiplayer back.
+
+Both risky patches are workarounds for symptoms that were **not** reproduced on 2.9.28.26385 — voice chat loads clean, and the sight renders correctly once shaders finish compiling. They are here for anyone who does hit them; on a current install they will tell you there is nothing to fix rather than modify anything.
+
+`clear-shader-cache` is maintenance rather than a patch: it deletes DCS's compiled shaders in `Saved Games`, which DCS rebuilds on the next launch (that launch takes several minutes). Nothing to back up, nothing to revert, and always Integrity Check safe.
 
 ## Design
 

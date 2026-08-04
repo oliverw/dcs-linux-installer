@@ -28,6 +28,29 @@ Verified on 2.9.28.26385:
 Both risky patches currently look droppable. Stated as "appears": one aircraft,
 one machine, one DCS version.
 
+### They are shipped anyway, and they refuse rather than pretend
+
+"Appears unnecessary on one machine" is not grounds for withholding a fix from
+somebody hitting the bug on another. Both are in the registry as `ic_risk`
+patches (#9), and both **refuse** when they find nothing to change — no
+voice-chat entry in `optionsDb.lua`, no loose MFD or sight textures — rather
+than reporting a success that changed nothing. On a current install that
+refusal is the expected answer, and it says so.
+
+The gate is enforced in one place, `safe_patches`, so a registry entry cannot
+opt itself in by omission: a bare `patch apply` sweeps up the IC-safe patches
+only, and `--allow-ic-risk` widens nothing — it consents to a patch the user
+named. The multiplayer warning prints on both paths, because the user who
+passes the flag is the one who ends up with a modified install.
+
+### Clearing the shader cache is not a patch
+
+It deletes regenerable files in `Saved Games` and writes nothing, so it has no
+backup, no state record and nothing to revert — and it cannot fail an
+integrity check, because DCS hashes none of it. Modelling it as a patch would
+have given it a meaningless "applied" status. It is a subcommand instead:
+`dcs-linux patch clear-shader-cache`.
+
 ### The font patch is the model case
 
 Without it the AH-64D dies entering a mission (`Cannot create font [] size 30`

@@ -52,8 +52,20 @@ STEAMOS = Distro(
 
 
 def patch_states(status: PatchStatus, detail: str) -> tuple[PatchState, ...]:
-    """Every registered patch in one standing, as `probe_patches` would report."""
-    return tuple(PatchState(patch=patch, status=status, detail=detail) for patch in REGISTRY)
+    """Every IC-safe patch in one standing, as `probe_patches` would report.
+
+    The risky ones are left not-applied: a healthy install is an *unmodified*
+    one, and a fixture that quietly carried a hashed-file edit would make the
+    integrity-check row warn on every test that builds on it.
+    """
+    return tuple(
+        PatchState(
+            patch=patch,
+            status=status if not patch.ic_risk else PatchStatus.NOT_APPLIED,
+            detail=detail if not patch.ic_risk else "not applied",
+        )
+        for patch in REGISTRY
+    )
 
 
 def healthy_environment(**overrides: object) -> Environment:

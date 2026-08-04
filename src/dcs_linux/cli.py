@@ -20,6 +20,7 @@ from dcs_linux.patches import (
     Patch,
     apply_patch,
     by_id,
+    clear_shader_cache,
     revert_patch,
     safe_patches,
 )
@@ -27,8 +28,10 @@ from dcs_linux.probes import Environment, patch_store_for, probe
 from dcs_linux.redaction import redactor_for
 from dcs_linux.report import (
     as_json_payload,
+    cleared_json,
     outcomes_json,
     patches_json,
+    render_cleared,
     render_installs,
     render_outcomes,
     render_patches,
@@ -192,6 +195,30 @@ def patch_apply(
             for patch in chosen
         ],
     )
+
+
+@patch_app.command("clear-shader-cache")
+def patch_clear_shader_cache(
+    ctx: typer.Context,
+    install: str | None = INSTALL_OPTION,
+) -> None:
+    """Delete DCS's compiled shaders so the next launch rebuilds them.
+
+    Maintenance rather than a patch: it writes nothing, needs no backup and
+    cannot be reverted because there is nothing to put back — DCS regenerates
+    the caches. Always integrity-check safe, so it takes no opt-in flag.
+    """
+    options = output_options(ctx)
+    system, writer = RealSystem(), RealWriter()
+    environment = _probe(system, install)
+    _targeted(environment)
+    cleared = clear_shader_cache(system, writer, environment.paths)
+
+    if options.json_output:
+        payload = {"command": "patch", "action": "clear-shader-cache", **cleared_json(cleared)}
+        typer.echo(json.dumps(payload, indent=2))
+        return
+    render_cleared(console_for(options), cleared)
 
 
 @patch_app.command("revert")
