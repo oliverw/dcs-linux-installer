@@ -10,7 +10,7 @@ from typing import Any
 import typer
 
 from dcs_linux import __version__
-from dcs_linux.checks import has_blocking_failure, run_checks
+from dcs_linux.checks import blocking_preflight, has_blocking_failure, run_checks
 from dcs_linux.dcslog import read_log
 from dcs_linux.diagnostics import bundle
 from dcs_linux.fetcher import RealFetcher
@@ -27,8 +27,8 @@ from dcs_linux.patches import (
     revert_patch,
     safe_patches,
 )
-from dcs_linux.paths import Layout, resolve_layout
-from dcs_linux.prefix import blocking_preflight, build, resolve_verbs
+from dcs_linux.paths import Layout, normalise, resolve_layout
+from dcs_linux.prefix import build, resolve_verbs
 from dcs_linux.probes import Environment, patch_store_for, probe
 from dcs_linux.redaction import redactor_for
 from dcs_linux.report import (
@@ -156,9 +156,9 @@ def install(
     system = RealSystem()
     layout = _install_layout(system, game_dir)
 
-    verbs, refusal = resolve_verbs(verb)
-    if refusal is not None:
-        typer.echo(refusal, err=True)
+    verbs = resolve_verbs(verb)
+    if verbs.refusal is not None:
+        typer.echo(verbs.refusal, err=True)
         raise typer.Exit(code=2)
 
     _require_preflight(system, layout)
@@ -168,7 +168,7 @@ def install(
         RealRunner(),
         RealFetcher(),
         layout,
-        verbs=verbs,
+        verbs=verbs.verbs,
         rebuild=rebuild,
     )
 
@@ -182,9 +182,13 @@ def install(
 
 
 def _install_layout(system: System, game_dir: Path | None) -> Layout:
-    """This machine's layout, with the game directory the user chose."""
+    """This machine's layout, with the game directory the user chose.
+
+    Normalised on the way in, because the path is later compared against the
+    prefix to decide whether `--rebuild` would destroy the download.
+    """
     layout = resolve_layout(system)
-    return replace(layout, game_dir=game_dir) if game_dir else layout
+    return replace(layout, game_dir=normalise(system, game_dir)) if game_dir else layout
 
 
 def _require_preflight(system: System, layout: Layout) -> None:

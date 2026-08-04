@@ -18,7 +18,7 @@ from dcs_linux.patches import (
     PatchStatus,
     risky_in_place,
 )
-from dcs_linux.prefix import InstallResult, Step, StepStatus
+from dcs_linux.prefix import BuildResult, Step, StepStatus
 from dcs_linux.probes import Environment
 
 _MARKER = {
@@ -179,7 +179,7 @@ _STEP_MARKER = {
 }
 
 
-def render_steps(console: Console, result: InstallResult) -> None:
+def render_steps(console: Console, result: BuildResult) -> None:
     """What the install did, one line per step, then what to do next."""
     for step in result.steps:
         label, style = _STEP_MARKER[step.status]
@@ -196,7 +196,7 @@ def render_steps(console: Console, result: InstallResult) -> None:
     )
 
 
-def install_json(result: InstallResult) -> dict[str, Any]:
+def install_json(result: BuildResult) -> dict[str, Any]:
     """The same install, machine-readable."""
     return {
         "command": "install",

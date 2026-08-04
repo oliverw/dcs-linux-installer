@@ -10,7 +10,7 @@ fatal but are not, which `check` deliberately does not flag.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -99,6 +99,28 @@ def run_checks(environment: Environment) -> list[CheckResult]:
 
 def has_blocking_failure(results: list[CheckResult]) -> bool:
     return any(result.is_blocking for result in results)
+
+
+# What `install` must not proceed past. An allowlist, not "every failure":
+# most of what `check` calls blocking on a fresh machine — no umu, no Proton
+# build, no prefix, saved games unmapped — is precisely what `install` exists
+# to fix, and refusing to run because of it would leave the tool unable to
+# bootstrap itself. These four are the ones it cannot fix.
+PREFLIGHT_CHECKS = (GPU, EXTERNAL_TOOLS, DISK_SPACE, GAME_LOCATION)
+
+
+def blocking_preflight(results: Sequence[CheckResult]) -> list[CheckResult]:
+    """The failures that stop an install before any long-running work starts.
+
+    Disk space is in here on purpose: fetching a toolchain and unpacking Proton
+    onto a full disk fails slowly, confusingly, and only after the user has
+    already waited for it.
+    """
+    return [
+        result
+        for result in results
+        if result.name in PREFLIGHT_CHECKS and result.status is Status.FAIL
+    ]
 
 
 def check_distro(environment: Environment) -> CheckResult:

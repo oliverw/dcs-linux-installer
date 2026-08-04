@@ -12,7 +12,7 @@ from typer.testing import CliRunner
 from dcs_linux import cli
 from dcs_linux.checks import GIB
 from dcs_linux.paths import Layout
-from dcs_linux.prefix import InstallResult, Runtime, Step, StepStatus
+from dcs_linux.prefix import BuildResult, Runtime, Step, StepStatus
 from dcs_linux.probes import Environment
 from dcs_linux.system import DiskUsage
 from tests.environments import LAYOUT, bare_environment, healthy_environment
@@ -30,7 +30,7 @@ RUNTIME = Runtime(
     saved_games=LAYOUT.saved_games,
 )
 
-BUILT = InstallResult(
+BUILT = BuildResult(
     steps=(
         Step("prefix", StepStatus.DONE, "built"),
         Step("mapping", StepStatus.SKIPPED, "already mapped"),
@@ -42,12 +42,12 @@ BUILT = InstallResult(
 class Spy:
     """Stands in for `prefix.build`, recording what the CLI asked for."""
 
-    def __init__(self, result: InstallResult = BUILT) -> None:
+    def __init__(self, result: BuildResult = BUILT) -> None:
         self.result = result
         self.layout: Layout | None = None
         self.kwargs: dict[str, object] = {}
 
-    def __call__(self, *args: object, **kwargs: object) -> InstallResult:
+    def __call__(self, *args: object, **kwargs: object) -> BuildResult:
         layout = args[4]
         assert isinstance(layout, Layout)
         self.layout = layout
@@ -58,7 +58,7 @@ class Spy:
 def use(
     monkeypatch: pytest.MonkeyPatch,
     environment: Environment,
-    result: InstallResult = BUILT,
+    result: BuildResult = BUILT,
 ) -> Spy:
     """Replace the machine and the builder, leaving the command itself real."""
     monkeypatch.setattr(
@@ -146,7 +146,7 @@ def test_rebuild_is_passed_through(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_a_failed_step_exits_non_zero(monkeypatch: pytest.MonkeyPatch) -> None:
-    failed = InstallResult(steps=(Step("prefix", StepStatus.FAILED, "no system.reg"),))
+    failed = BuildResult(steps=(Step("prefix", StepStatus.FAILED, "no system.reg"),))
     use(monkeypatch, bare_environment(), failed)
     result = runner.invoke(cli.app, ["install"])
 
@@ -168,7 +168,7 @@ def test_json_carries_the_steps_and_the_pins(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_json_reports_a_failure_as_not_ok(monkeypatch: pytest.MonkeyPatch) -> None:
-    failed = InstallResult(steps=(Step("GE-Proton", StepStatus.FAILED, "download failed"),))
+    failed = BuildResult(steps=(Step("GE-Proton", StepStatus.FAILED, "download failed"),))
     use(monkeypatch, bare_environment(), failed)
     result = runner.invoke(cli.app, ["--json", "install"])
 

@@ -28,6 +28,11 @@ the winetricks verbs and the launch environment.
 
 - Bumping either version is a deliberate change with a run journal behind it,
   not something that happens to a user overnight.
+- A GE-Proton build unpacks into a directory named for its version, so the
+  path carries the pin. The umu zipapp does not — it unpacks to one
+  unversioned `umu/umu-run` — so the version it *is* is recorded beside it in
+  `.dcs-linux-version`, and a bump re-fetches. Without that, bumping the pin
+  would leave the old binary in place while the manifest claimed the new one.
 - Pinning the version also pins the *asset name*, which removes the class of
   bug that landed the aarch64 build on an x86_64 machine (ADR-0003): the
   x86_64 asset is `<TAG>.tar.gz`, and with `<TAG>` known there is nothing left

@@ -9,6 +9,7 @@ install that was discovered there — see `dcs_linux.probes.Target`.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -92,6 +93,17 @@ class Layout:
     def umu_run(self) -> Path:
         """The umu zipapp entry point (ADR-0003)."""
         return self.toolchain / "umu" / "umu-run"
+
+    @property
+    def umu_version_marker(self) -> Path:
+        """Which umu version the zipapp beside it actually is.
+
+        The zipapp unpacks to one unversioned path, so its filename cannot
+        carry the pin the way a GE-Proton directory does. Without this, bumping
+        the pin would leave the old binary in place while the manifest claimed
+        the new one — a manifest naming a pair that was never installed.
+        """
+        return self.toolchain / "umu" / ".dcs-linux-version"
 
     @property
     def ge_proton(self) -> Path:
@@ -211,11 +223,33 @@ def resolve_layout(system: System) -> Layout:
     game = system.environ(GAME_ENV)
     toolchain = system.environ(TOOLCHAIN_ENV)
     return Layout(
-        root=Path(root) if root else home / "dcs-linux",
-        toolchain=Path(toolchain) if toolchain else home / ".cache" / "dcs-linux" / "toolchain",
+        root=normalise(system, root) if root else home / "dcs-linux",
+        toolchain=normalise(system, toolchain)
+        if toolchain
+        else home / ".cache" / "dcs-linux" / "toolchain",
         state=_state_root(system, home),
-        game_dir=Path(game) if game else None,
+        game_dir=normalise(system, game) if game else None,
     )
+
+
+def normalise(system: System, path: str | Path) -> Path:
+    """A path as given by a user, made comparable.
+
+    `~` is expanded and `..` is collapsed, because these paths are later
+    compared against the prefix to decide whether wiping it would destroy the
+    game directory (`prefix.durable_inside_prefix`). `../prefix/game` names
+    somewhere inside the prefix while looking to a string comparison like it
+    does not, and that comparison is the guard in front of a 536 GB download.
+
+    `~` is expanded through the `System` seam rather than `Path.expanduser`,
+    which would read the real environment's home even under a fixture.
+    """
+    expanded = Path(path)
+    if expanded.parts and expanded.parts[0] == "~":
+        expanded = system.home().joinpath(*expanded.parts[1:])
+    # Lexical: symlinks are followed later, by the guard itself, through the
+    # same seam. `normpath` is what collapses `..` without touching the disk.
+    return Path(os.path.normpath(expanded.absolute()))
 
 
 def _state_root(system: System, home: Path) -> Path:

@@ -1,5 +1,7 @@
+from dataclasses import replace
 from pathlib import Path
 
+from dcs_linux.installs import DcsInstall, Launcher
 from dcs_linux.paths import Layout, resolve_layout
 from dcs_linux.probes import (
     InstallState,
@@ -72,6 +74,21 @@ class TestLayout:
         assert layout.root == Path("/mnt/big/dcs")
         assert layout.toolchain == Path("/mnt/big/tools")
         assert layout.state == Path("/mnt/big/state")
+
+    def test_the_game_directory_can_be_moved_on_its_own(self) -> None:
+        """The one lifetime worth putting on another drive."""
+        layout = resolve_layout(FakeSystem(env={"DCS_LINUX_GAME": "/mnt/big/DCS"}))
+        assert layout.game == Path("/mnt/big/DCS")
+        # And only that one: the prefix and saved games stay where they were.
+        assert layout.prefix == layout.root / "prefix"
+        assert layout.saved_games == layout.root / "saved-games"
+
+    def test_user_paths_are_normalised(self) -> None:
+        """`~` and `..` are collapsed before anything compares these to the prefix."""
+        layout = resolve_layout(
+            FakeSystem(env={"DCS_LINUX_GAME": "~/games/../dcs"}, home="/home/pilot")
+        )
+        assert layout.game == Path("/home/pilot/dcs")
 
     def test_the_three_lifetimes_are_siblings_not_nested(self) -> None:
         layout = resolve_layout(FakeSystem())
@@ -474,3 +491,26 @@ class TestGraphicsBlock:
         system = FakeSystem(files={"/data/dcs/prefix/system.reg": "", inside: GRAPHICS_OPTIONS})
         graphics = state_of(system).graphics_options
         assert graphics is not None and "Upscaling" in graphics
+
+
+class TestTargetPaths:
+    """Which install's paths the checks are answered about."""
+
+    def test_a_discovered_install_supplies_the_game_directory(self) -> None:
+        found = DcsInstall(game=Path("/games/lutris/DCS World"), launcher=Launcher.LUTRIS)
+        paths = target_paths(FakeSystem(), LAYOUT, found)
+        assert paths.game == found.game
+
+    def test_an_explicitly_chosen_game_directory_outranks_discovery(self) -> None:
+        """`install --game-dir` says where DCS is *going*.
+
+        Measuring free space on some other install's drive would pass a full
+        one, and the download only fails hours later.
+        """
+        chosen = replace(LAYOUT, game_dir=Path("/mnt/big/DCS"))
+        found = DcsInstall(game=Path("/games/lutris/DCS World"), launcher=Launcher.LUTRIS)
+        paths = target_paths(FakeSystem(), chosen, found)
+        assert paths.game == Path("/mnt/big/DCS")
+
+    def test_with_nothing_found_it_falls_back_to_our_own_layout(self) -> None:
+        assert target_paths(FakeSystem(), LAYOUT, None).game == LAYOUT.game

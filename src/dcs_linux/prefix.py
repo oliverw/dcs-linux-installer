@@ -32,14 +32,6 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from dcs_linux.checks import (
-    DISK_SPACE,
-    EXTERNAL_TOOLS,
-    GAME_LOCATION,
-    GPU,
-    CheckResult,
-    Status,
-)
 from dcs_linux.fetcher import Fetcher
 from dcs_linux.paths import Layout
 from dcs_linux.runner import Runner
@@ -88,13 +80,6 @@ LAUNCH_ENVIRONMENT = {
     "WINEDLLOVERRIDES": "wbemprox=n",
     "WINE_SIMULATE_WRITECOPY": "1",
 }
-
-# The checks that must pass before anything is built. An allowlist, not "every
-# failure": most of what `check` reports as blocking on a fresh machine — no
-# umu, no Proton build, no prefix, saved games unmapped — is precisely what
-# this command exists to fix, and refusing to run because of it would make the
-# tool unable to bootstrap itself.
-PREFLIGHT_CHECKS = (GPU, EXTERNAL_TOOLS, DISK_SPACE, GAME_LOCATION)
 
 # umu creates the prefix and then exits 1 trying to ShellExecute the empty
 # string (ADR-0003). The exit code is not a success signal; this file is.
@@ -154,7 +139,7 @@ class Runtime:
 
 
 @dataclass(frozen=True)
-class InstallResult:
+class BuildResult:
     """Every step that ran, and the runtime if one was finished."""
 
     steps: tuple[Step, ...]
@@ -165,21 +150,19 @@ class InstallResult:
         return not any(step.failed for step in self.steps)
 
 
-def blocking_preflight(results: Sequence[CheckResult]) -> list[CheckResult]:
-    """The `check` failures that stop an install before any long work starts.
+@dataclass(frozen=True)
+class Verbs:
+    """The winetricks verbs to apply, or why a requested one is refused.
 
-    Disk space is in here on purpose: fetching a toolchain and unpacking Proton
-    onto a full disk fails slowly, confusingly, and only after the user has
-    waited for it.
+    Shaped like `patches.Plan`: a **refusal** is a first-class outcome in this
+    codebase, not an empty result the caller has to interpret.
     """
-    return [
-        result
-        for result in results
-        if result.name in PREFLIGHT_CHECKS and result.status is Status.FAIL
-    ]
+
+    verbs: tuple[str, ...] = ()
+    refusal: str | None = None
 
 
-def resolve_verbs(extra: Sequence[str] = ()) -> tuple[tuple[str, ...], str | None]:
+def resolve_verbs(extra: Sequence[str] = ()) -> Verbs:
     """The winetricks verbs to apply, or the reason a requested one is refused.
 
     Extras are appended rather than replacing the defaults: the defaults are
@@ -189,10 +172,10 @@ def resolve_verbs(extra: Sequence[str] = ()) -> tuple[tuple[str, ...], str | Non
     verbs = list(WINETRICKS_VERBS)
     for verb in extra:
         if verb in BLACKLISTED_VERBS:
-            return (), f"refusing {verb}: {BLACKLISTED_VERBS[verb]}"
+            return Verbs(refusal=f"refusing {verb}: {BLACKLISTED_VERBS[verb]}")
         if verb not in verbs:
             verbs.append(verb)
-    return tuple(verbs), None
+    return Verbs(verbs=tuple(verbs))
 
 
 def build(
@@ -204,7 +187,7 @@ def build(
     *,
     verbs: tuple[str, ...] = WINETRICKS_VERBS,
     rebuild: bool = False,
-) -> InstallResult:
+) -> BuildResult:
     """Create the runtime environment DCS needs, stopping short of the game.
 
     Idempotent: on a prefix already built from the same pins and verbs every
@@ -219,24 +202,24 @@ def build(
         return not step.failed
 
     if not take(_wipe_prefix(system, writer, layout, rebuild=rebuild)):
-        return InstallResult(steps=tuple(steps))
+        return BuildResult(steps=tuple(steps))
     if not take(_fetch_umu(system, writer, fetcher, layout)):
-        return InstallResult(steps=tuple(steps))
+        return BuildResult(steps=tuple(steps))
     if not take(_fetch_ge_proton(system, fetcher, layout)):
-        return InstallResult(steps=tuple(steps))
+        return BuildResult(steps=tuple(steps))
 
     installed = _installed_runtime(system, layout)
     if not take(_create_prefix(system, runner, layout, runtime, current=installed)):
-        return InstallResult(steps=tuple(steps))
+        return BuildResult(steps=tuple(steps))
     if not take(_apply_verbs(runner, layout, runtime, current=installed)):
-        return InstallResult(steps=tuple(steps))
+        return BuildResult(steps=tuple(steps))
     # The mapping is re-asserted on every run, skips or not. It is the one step
     # whose absence loses data rather than merely leaving something undone.
     if not take(_map_lifetimes(system, writer, layout)):
-        return InstallResult(steps=tuple(steps))
+        return BuildResult(steps=tuple(steps))
 
-    take(_record(writer, layout, runtime))
-    return InstallResult(steps=tuple(steps), runtime=runtime)
+    take(_record(system, writer, layout, runtime))
+    return BuildResult(steps=tuple(steps), runtime=runtime)
 
 
 def _runtime_for(layout: Layout, verbs: tuple[str, ...]) -> Runtime:
@@ -262,7 +245,7 @@ def _wipe_prefix(system: System, writer: Writer, layout: Layout, *, rebuild: boo
     """
     if not rebuild:
         return Step("prefix wipe", StepStatus.SKIPPED, "not requested")
-    inside = [path for path in (layout.game, layout.saved_games) if _is_inside(layout.prefix, path)]
+    inside = durable_inside_prefix(system, layout)
     if inside:
         return Step(
             "prefix wipe",
@@ -276,14 +259,37 @@ def _wipe_prefix(system: System, writer: Writer, layout: Layout, *, rebuild: boo
     return Step("prefix wipe", StepStatus.DONE, f"deleted {layout.prefix}")
 
 
-def _is_inside(directory: Path, path: Path) -> bool:
-    return directory == path or directory in path.parents
+def durable_inside_prefix(system: System, layout: Layout) -> list[Path]:
+    """Which durable directories are inside the disposable prefix (ADR-0001).
+
+    The one guard between `--rebuild` and a 536 GB download, so it compares
+    *resolved* paths: `--game-dir ../prefix/game` and a game directory reached
+    through a symlink both name something inside the prefix while looking to a
+    string comparison like they do not.
+    """
+    prefix = system.resolve(layout.prefix)
+    return [
+        path
+        for path in (layout.game, layout.saved_games)
+        if _contains(prefix, system.resolve(path))
+    ]
+
+
+def _contains(container: Path, path: Path) -> bool:
+    """Whether `path` is `container` itself or somewhere beneath it."""
+    return container == path or container in path.parents
 
 
 def _fetch_umu(system: System, writer: Writer, fetcher: Fetcher, layout: Layout) -> Step:
-    """The umu zipapp (ADR-0003): not on PyPI, so it is fetched by hand."""
-    if system.exists(layout.umu_run):
-        return Step("umu-launcher", StepStatus.SKIPPED, f"{layout.umu_run} already present")
+    """The umu zipapp (ADR-0003): not on PyPI, so it is fetched by hand.
+
+    Skipped only when the *pinned* version is the one on disk. A zipapp that
+    is merely present says nothing about which build it is, and a re-fetch
+    after a bump is what keeps the manifest honest (ADR-0008).
+    """
+    installed = (system.read_text(layout.umu_version_marker) or "").strip()
+    if system.exists(layout.umu_run) and installed == UMU_VERSION:
+        return Step("umu-launcher", StepStatus.SKIPPED, f"{UMU_VERSION} at {layout.umu_run}")
     url = UMU_ZIPAPP_URL.format(version=UMU_VERSION)
     # The tar holds `umu/umu-run`, so it unpacks at the toolchain root.
     failure = fetcher.fetch_archive(url, layout.toolchain)
@@ -296,6 +302,7 @@ def _fetch_umu(system: System, writer: Writer, fetcher: Fetcher, layout: Layout)
             f"unpacked {url} but no umu-run at {layout.umu_run}",
         )
     writer.make_executable(layout.umu_run)
+    writer.write_bytes(layout.umu_version_marker, f"{UMU_VERSION}\n".encode())
     return Step("umu-launcher", StepStatus.DONE, f"{UMU_VERSION} at {layout.umu_run}")
 
 
@@ -338,6 +345,9 @@ def _create_prefix(
     `system.reg` is the postcondition that is checked instead.
     """
     built = system.exists(layout.prefix / PREFIX_MARKER)
+    # Only the Proton build is compared, not the whole pin: umu drives Proton
+    # but puts nothing of its own into the prefix, so a umu bump is no reason
+    # to throw away a working one.
     if built and current is not None and current.ge_proton == runtime.ge_proton:
         return Step("prefix", StepStatus.SKIPPED, f"{layout.prefix} already built")
 
@@ -387,12 +397,13 @@ def _map_lifetimes(system: System, writer: Writer, layout: Layout) -> Step:
     profile. Both are created if absent, so the updater has somewhere to
     install to and DCS has somewhere to keep the login.
     """
-    if _is_inside(layout.prefix, layout.game) or _is_inside(layout.prefix, layout.saved_games):
+    inside = durable_inside_prefix(system, layout)
+    if inside:
         return Step(
             "mapping",
             StepStatus.FAILED,
-            f"the game directory and saved games must live outside {layout.prefix}; "
-            "rebuilding the prefix would otherwise destroy them",
+            f"{inside[0]} is inside {layout.prefix}; the game directory and saved games "
+            "must live outside it, or rebuilding the prefix would destroy them",
         )
     writer.make_dirs(layout.game)
     writer.make_dirs(layout.saved_games)
@@ -418,7 +429,14 @@ def _points_at(system: System, link: Path, target: Path) -> bool:
     return system.is_symlink(link) and system.resolve(link) == target
 
 
-def _record(writer: Writer, layout: Layout, runtime: Runtime) -> Step:
+def _record(system: System, writer: Writer, layout: Layout, runtime: Runtime) -> Step:
+    """Write the runtime manifest, unless it already says exactly this.
+
+    Re-running on a healthy install has to write *nothing* — a step that
+    reports DONE having changed nothing makes every other DONE unreadable.
+    """
+    if read_manifest(system, layout) == runtime:
+        return Step("manifest", StepStatus.SKIPPED, f"unchanged in {layout.manifest}")
     writer.write_bytes(
         layout.manifest, (json.dumps(runtime.as_json(), indent=2, sort_keys=True) + "\n").encode()
     )

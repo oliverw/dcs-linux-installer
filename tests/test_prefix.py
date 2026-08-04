@@ -18,7 +18,7 @@ from dcs_linux.prefix import (
     LAUNCH_ENVIRONMENT,
     UMU_VERSION,
     WINETRICKS_VERBS,
-    InstallResult,
+    BuildResult,
     StepStatus,
     build,
     read_manifest,
@@ -59,7 +59,7 @@ def install(
     layout: Layout = LAYOUT,
     verbs: tuple[str, ...] = WINETRICKS_VERBS,
     rebuild: bool = False,
-) -> tuple[InstallResult, FakeRunner, FakeFetcher]:
+) -> tuple[BuildResult, FakeRunner, FakeFetcher]:
     runner = runner or FakeRunner(effects=creates_prefix(system, layout))
     fetcher = fetcher or FakeFetcher(system, payloads=PAYLOADS)
     result = build(
@@ -68,7 +68,7 @@ def install(
     return result, runner, fetcher
 
 
-def statuses(result: InstallResult) -> dict[str, StepStatus]:
+def statuses(result: BuildResult) -> dict[str, StepStatus]:
     return {step.name: step.status for step in result.steps}
 
 
@@ -175,17 +175,17 @@ def test_a_failing_winetricks_stops_the_install() -> None:
 
 
 def test_vcrun2019_is_refused_with_the_reason() -> None:
-    verbs, refusal = resolve_verbs(["vcrun2019"])
-    assert verbs == ()
-    assert refusal is not None
-    assert "RAM leak" in refusal
-    assert "vcrun2015" in refusal and "vcrun2022" in refusal
+    refused = resolve_verbs(["vcrun2019"])
+    assert refused.verbs == ()
+    assert refused.refusal is not None
+    assert "RAM leak" in refused.refusal
+    assert "vcrun2015" in refused.refusal and "vcrun2022" in refused.refusal
 
 
 def test_an_extra_verb_is_added_to_the_defaults_not_swapped_for_them() -> None:
-    verbs, refusal = resolve_verbs(["vcrun2022"])
-    assert refusal is None
-    assert verbs == (*WINETRICKS_VERBS, "vcrun2022")
+    resolved = resolve_verbs(["vcrun2022"])
+    assert resolved.refusal is None
+    assert resolved.verbs == (*WINETRICKS_VERBS, "vcrun2022")
 
 
 def test_the_dll_override_and_launch_variables_are_recorded() -> None:
@@ -234,10 +234,9 @@ def test_re_running_on_a_finished_install_writes_nothing() -> None:
     assert result.ok
     assert runner.calls == []
     assert fetcher.urls == []
-    assert set(statuses(result).values()) <= {StepStatus.SKIPPED, StepStatus.DONE}
-    assert statuses(result)["prefix"] is StepStatus.SKIPPED
-    assert statuses(result)["winetricks"] is StepStatus.SKIPPED
-    assert statuses(result)["mapping"] is StepStatus.SKIPPED
+    # Every step skipped, manifest included: a DONE that changed nothing would
+    # make every other DONE unreadable.
+    assert set(statuses(result).values()) == {StepStatus.SKIPPED}
 
 
 def test_a_rebuild_keeps_the_game_directory_and_the_login() -> None:
@@ -276,6 +275,39 @@ def test_a_rebuild_refuses_when_the_game_is_inside_the_prefix() -> None:
     assert runner.calls == []
 
 
+def test_a_rebuild_refuses_when_the_game_reaches_inside_the_prefix_by_symlink() -> None:
+    """The guard compares resolved paths, not spellings.
+
+    A game directory that is a symlink into the prefix looks safe to a string
+    comparison, and wiping it would take the download with it.
+    """
+    system = machine()
+    system.links[LAYOUT.game] = LAYOUT.prefix / "drive_c" / "DCS"
+    system.symlinks.add(LAYOUT.game)
+    system.files[LAYOUT.prefix / "drive_c" / "DCS" / "bin" / "DCS.exe"] = b"MZ"
+
+    result, runner, _ = install(system, rebuild=True)
+
+    assert not result.ok
+    assert statuses(result)["prefix wipe"] is StepStatus.FAILED
+    assert system.exists(LAYOUT.prefix / "drive_c" / "DCS" / "bin" / "DCS.exe")
+    assert runner.calls == []
+
+
+def test_bumping_the_umu_pin_re_fetches_it() -> None:
+    """An unversioned zipapp path cannot say which build it is (ADR-0008)."""
+    system = machine()
+    install(system)
+    system.files[LAYOUT.umu_version_marker] = b"1.4.3\n"
+
+    result, _, fetcher = install(system)
+
+    assert result.ok
+    assert statuses(result)["umu-launcher"] is StepStatus.DONE
+    assert any(f"/{UMU_VERSION}/" in url for url in fetcher.urls)
+    assert (system.read_text(LAYOUT.umu_version_marker) or "").strip() == UMU_VERSION
+
+
 def test_a_stale_mapping_is_re_pointed_at_the_current_game_directory() -> None:
     system = machine()
     install(system)
@@ -310,7 +342,7 @@ def test_an_archive_without_umu_run_in_it_is_a_failure() -> None:
 def test_a_new_verb_re_runs_winetricks_on_the_existing_prefix() -> None:
     system = machine()
     install(system)
-    verbs, _ = resolve_verbs(["vcrun2022"])
+    verbs = resolve_verbs(["vcrun2022"]).verbs
 
     result, runner, _ = install(system, verbs=verbs)
 
@@ -343,5 +375,5 @@ def test_the_manifest_is_json_a_bug_report_can_carry() -> None:
     assert payload["game"] == str(LAYOUT.game)
 
 
-def _detail(result: InstallResult, name: str) -> str:
+def _detail(result: BuildResult, name: str) -> str:
     return next(step.detail for step in result.steps if step.name == name)
