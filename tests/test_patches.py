@@ -316,11 +316,35 @@ class TestPartialFailure:
         assert install_files(system) == {**before, PATHS.fonts / "segoeui.ttf": b"shipped by DCS"}
 
 
+class TestLostBackup:
+    """The store can be cleared while `state.json` survives — or vice versa."""
+
+    def test_a_missing_backup_makes_revert_delete_rather_than_restore(self) -> None:
+        """Never re-back-up our own content: revert would restore the patch.
+
+        With the pristine copy gone we no longer know what the file replaced,
+        and the one thing we do know is that we wrote what is there now.
+        """
+        system = machine(files={str(PATHS.fonts / "segoeui.ttf"): "the original"})
+        writer = FakeWriter(system)
+        apply(system, writer)
+
+        writer.remove_tree(STORE.backups_for(SEGOE_FONT_PATCH.id))
+        writer.write_bytes(PATHS.fonts / "seguisym.ttf", b"shipped by DCS 2.9.29")
+        apply(system, writer)
+        revert_patch(system, writer, STORE, SEGOE_FONT_PATCH)
+
+        # Not restored to our DejaVu bytes, which is what re-backing-up would do.
+        assert system.read_bytes(PATHS.fonts / "segoeui.ttf") is None
+        assert system.read_bytes(PATHS.fonts / "seguisym.ttf") == b"shipped by DCS 2.9.29"
+
+
 class TestIcRisk:
     """ADR-0004: a hashed-file edit is never applied unless it was asked for."""
 
-    def test_the_registry_ships_only_safe_patches_today(self) -> None:
-        assert safe_patches() == REGISTRY
+    def test_every_patch_shipped_today_is_ic_safe(self) -> None:
+        """A tripwire: adding a risky patch to the registry must be deliberate."""
+        assert [patch.id for patch in REGISTRY if patch.ic_risk] == []
 
     def test_a_risky_patch_is_left_out_of_an_unqualified_apply(self) -> None:
         risky = Patch(id="risky", summary="edits a hashed file", ic_risk=True, plan=plan_nothing)

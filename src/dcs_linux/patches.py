@@ -361,11 +361,16 @@ def _preserve(
     directories apart, which the file name alone would not.
     """
     if previous is not None and digest_of(system, path) == previous.sha256:
-        # Ours, untouched. Carried forward only if the backup is still there —
-        # a store that has been cleared out leaves nothing to restore, and
-        # deleting the file we wrote is then the honest revert.
+        # Ours, untouched: the original backup still describes what was here
+        # before this patch, so it is carried forward rather than retaken.
         if previous.backup is None or system.exists(store.absolute(previous.backup)):
             return previous.backup
+        # Ours, but the pristine copy has gone from the store. Backing the file
+        # up now would enshrine our own content as the original — the very
+        # thing this function exists to prevent. Recording no backup makes
+        # revert delete the file, which is the honest answer: we know we wrote
+        # it, and we no longer know what it replaced.
+        return None
 
     if not system.exists(path):
         return None

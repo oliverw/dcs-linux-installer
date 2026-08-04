@@ -78,7 +78,7 @@ It reports your distro and whether its base system is immutable, your GPU and dr
 
 Once DCS is installed it also checks the things that break it in ways the logs never mention — DLSS upscaling, the missing Segoe fonts the AH-64D needs, `d3dcompiler_47`, and whether the game and your saved games really do live outside the disposable prefix.
 
-Paths default to `~/dcs-linux` and `~/.cache/dcs-linux/toolchain`; override with `DCS_LINUX_ROOT` and `DCS_LINUX_TOOLCHAIN`.
+Paths default to `~/dcs-linux`, `~/.cache/dcs-linux/toolchain` and `~/.local/state/dcs-linux`; override with `DCS_LINUX_ROOT`, `DCS_LINUX_TOOLCHAIN` and `DCS_LINUX_STATE` (which also honours `XDG_STATE_HOME`).
 
 #### The DCS installs you already have
 

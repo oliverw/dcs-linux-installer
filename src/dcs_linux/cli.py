@@ -179,10 +179,7 @@ def patch_apply(
     Applying an already-applied patch is a no-op, so this is the one command
     to run after every DCS update without having to know what it broke.
     """
-    chosen = _chosen(patch_id, allow_ic_risk=allow_ic_risk)
-    for patch in chosen:
-        _confirm_ic_risk(patch, allow_ic_risk)
-
+    chosen = _to_apply(patch_id, allow_ic_risk=allow_ic_risk)
     system, writer = RealSystem(), RealWriter()
     environment = _probe(system, install)
     targeted = _targeted(environment)
@@ -211,40 +208,59 @@ def patch_revert(
     _emit_outcomes(
         ctx,
         "revert",
-        # Reverting is always allowed: undoing a risky patch is what gives
-        # multiplayer back, so it is never the direction that needs a gate.
-        [
-            revert_patch(system, writer, store, patch)
-            for patch in _chosen(patch_id, allow_ic_risk=True)
-        ],
+        [revert_patch(system, writer, store, patch) for patch in _to_revert(patch_id)],
     )
 
 
-def _chosen(patch_id: str | None, *, allow_ic_risk: bool) -> tuple[Patch, ...]:
-    """The patch named, or every patch that may be applied unasked.
-
-    A bare `apply` takes only the IC-safe patches (ADR-0004): one that edits a
-    hashed game file costs the user multiplayer access, so it has to be named
-    explicitly and confirmed. `revert` has no such gate — undoing a risky
-    patch is what restores multiplayer, and is never the dangerous direction.
-    """
-    if patch_id is None:
-        return REGISTRY if allow_ic_risk else safe_patches()
+def _named(patch_id: str) -> Patch:
+    """The patch with this id, or a usage error listing the ones there are."""
     patch = by_id(patch_id)
     if patch is None:
         known = ", ".join(known.id for known in REGISTRY)
         typer.echo(f"no patch called {patch_id!r}; known patches: {known}", err=True)
         raise typer.Exit(code=2)
+    return patch
+
+
+def _to_apply(patch_id: str | None, *, allow_ic_risk: bool) -> tuple[Patch, ...]:
+    """The patches a bare or named `apply` may write (ADR-0004).
+
+    An unnamed apply takes the IC-safe patches and only those — `--allow-ic-risk`
+    does not widen it. The flag consents to *one patch the user named*, not to
+    whatever the registry grows later, and a sweep is exactly how somebody
+    loses multiplayer without having chosen to.
+    """
+    if patch_id is None:
+        return safe_patches()
+    patch = _named(patch_id)
+    _confirm_ic_risk(patch, allow_ic_risk)
     return (patch,)
 
 
+def _to_revert(patch_id: str | None) -> tuple[Patch, ...]:
+    """The patches `revert` may undo — all of them, risky included.
+
+    Reverting needs no gate: undoing a risky patch is what gives multiplayer
+    back, so refusing to sweep here would strand the user in the very state
+    the gate exists to protect them from.
+    """
+    return (_named(patch_id),) if patch_id else REGISTRY
+
+
 def _confirm_ic_risk(patch: Patch, accepted: bool) -> None:
-    """Refuse a hashed-file edit that was not explicitly consented to."""
-    if not patch.ic_risk or accepted:
+    """Warn about a hashed-file edit, and refuse one not consented to.
+
+    ADR-0004 asks for opt-in *and* a multiplayer warning, so the warning is
+    printed on both paths. Printing it only on the refusal would mean the one
+    user who actually ends up with a modified install — the one who passed the
+    flag — is the only one never told what it costs.
+    """
+    if not patch.ic_risk:
         return
     typer.echo(f"{patch.id} {MULTIPLAYER_WARNING}", err=True)
-    typer.echo("re-run with --allow-ic-risk if that is what you want", err=True)
-    raise typer.Exit(code=2)
+    if not accepted:
+        typer.echo("re-run with --allow-ic-risk if that is what you want", err=True)
+        raise typer.Exit(code=2)
 
 
 def _targeted(environment: Environment) -> DcsInstall:

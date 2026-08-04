@@ -170,6 +170,50 @@ class TestApply:
         assert "integrity" in named.output
         assert system.read_bytes(PATHS.fonts / "segoeui.ttf") == FONT_BYTES
 
+    def test_the_risk_flag_does_not_widen_an_unnamed_apply(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The flag consents to one named patch, never to a sweep."""
+        risky = Patch(id="risky", summary="edits a hashed file", ic_risk=True, plan=plan_nothing)
+        monkeypatch.setattr(cli, "REGISTRY", (SEGOE_FONT_PATCH, risky))
+        monkeypatch.setattr(patches, "REGISTRY", (SEGOE_FONT_PATCH, risky))
+        use(monkeypatch, machine())
+
+        result = runner.invoke(cli.app, ["--json", "patch", "apply", "--allow-ic-risk"])
+
+        assert [p["id"] for p in json.loads(result.stdout)["patches"]] == ["segoe-fonts"]
+
+    def test_the_multiplayer_cost_is_stated_when_the_user_accepts_it(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """ADR-0004 wants opt-in *and* a warning; the opt-in path is the one
+        where the install actually ends up modified."""
+        risky = Patch(id="risky", summary="edits a hashed file", ic_risk=True, plan=plan_nothing)
+        monkeypatch.setattr(cli, "REGISTRY", (SEGOE_FONT_PATCH, risky))
+        monkeypatch.setattr(patches, "REGISTRY", (SEGOE_FONT_PATCH, risky))
+        use(monkeypatch, machine())
+
+        result = runner.invoke(
+            cli.app, ["--no-color", "patch", "apply", "risky", "--allow-ic-risk"]
+        )
+
+        assert result.exit_code == 0
+        assert "integrity" in result.output
+
+    def test_revert_still_sweeps_up_risky_patches(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Undoing a risky patch is what gives multiplayer back."""
+        risky = Patch(id="risky", summary="edits a hashed file", ic_risk=True, plan=plan_nothing)
+        monkeypatch.setattr(cli, "REGISTRY", (SEGOE_FONT_PATCH, risky))
+        monkeypatch.setattr(patches, "REGISTRY", (SEGOE_FONT_PATCH, risky))
+        use(monkeypatch, machine())
+
+        result = runner.invoke(cli.app, ["--json", "patch", "revert"])
+
+        assert [p["id"] for p in json.loads(result.stdout)["patches"]] == [
+            "segoe-fonts",
+            "risky",
+        ]
+
     def test_json_reports_what_changed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         use(monkeypatch, machine())
         result = runner.invoke(cli.app, ["--json", "patch", "apply"])
