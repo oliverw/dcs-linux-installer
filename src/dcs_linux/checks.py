@@ -16,6 +16,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from dcs_linux.installs import Launcher
+from dcs_linux.patches import PatchStatus
 from dcs_linux.probes import REQUIRED_TOOLS, Environment
 
 GIB = 1024**3
@@ -41,6 +42,7 @@ SEGOE_FONTS = "Segoe fonts"
 D3DCOMPILER = "d3dcompiler_47"
 SAVED_GAMES_MAPPING = "Saved Games mapping"
 GAME_LOCATION = "Game location"
+PATCHES = "Patches"
 
 
 class Status(StrEnum):
@@ -88,6 +90,7 @@ def run_checks(environment: Environment) -> list[CheckResult]:
         check_d3dcompiler,
         check_saved_games_mapping,
         check_game_location,
+        check_patches,
     )
     return [check(environment) for check in checks]
 
@@ -388,6 +391,42 @@ def check_game_location(environment: Environment) -> CheckResult:
         name=GAME_LOCATION,
         status=Status.PASS,
         detail=f"{install.game} (outside the prefix)",
+    )
+
+
+def check_patches(environment: Environment) -> CheckResult:
+    """Whether the fixes this tool applied are still in place.
+
+    A DCS update overwrites patched files, so a patch that was applied and is
+    now gone is the normal way a working install stops working — and it looks
+    to the user like DCS broke itself. Reported as a failure with a one-command
+    fix, because that is exactly what it is.
+    """
+    states = [state for state in environment.patches if state.status is not PatchStatus.UNKNOWN]
+    if not states:
+        return CheckResult(name=PATCHES, status=Status.SKIP, detail=_nothing_selected(environment))
+
+    drifted = [state for state in states if state.is_drifted]
+    if drifted:
+        return CheckResult(
+            name=PATCHES,
+            status=Status.FAIL,
+            detail="undone by a DCS update: " + ", ".join(state.patch.id for state in drifted),
+            remediation="dcs-linux patch apply",
+        )
+
+    applied = [state for state in states if state.status is PatchStatus.APPLIED]
+    if not applied:
+        return CheckResult(
+            name=PATCHES,
+            status=Status.SKIP,
+            detail=f"none applied, {len(states)} available",
+            remediation="dcs-linux patch --list",
+        )
+    return CheckResult(
+        name=PATCHES,
+        status=Status.PASS,
+        detail=", ".join(state.patch.id for state in applied),
     )
 
 

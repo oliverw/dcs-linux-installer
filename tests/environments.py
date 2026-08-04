@@ -6,11 +6,16 @@ from pathlib import Path
 from dcs_linux.checks import GIB
 from dcs_linux.distro import Distro, Family, Immutability
 from dcs_linux.installs import DcsInstall, Launcher
-from dcs_linux.paths import Layout
-from dcs_linux.probes import Environment, Gpu, InstallState, TargetPaths, Umu
+from dcs_linux.patches import REGISTRY, PatchState, PatchStatus, unknown_states
+from dcs_linux.paths import Layout, TargetPaths
+from dcs_linux.probes import Environment, Gpu, InstallState, Umu
 from dcs_linux.system import DiskUsage
 
-LAYOUT = Layout(root=Path("/data/dcs"), toolchain=Path("/data/toolchain"))
+LAYOUT = Layout(
+    root=Path("/data/dcs"),
+    toolchain=Path("/data/toolchain"),
+    state=Path("/data/state"),
+)
 
 OWN_INSTALL = DcsInstall(
     game=LAYOUT.game / "DCS World",
@@ -46,6 +51,11 @@ STEAMOS = Distro(
 )
 
 
+def patch_states(status: PatchStatus, detail: str) -> tuple[PatchState, ...]:
+    """Every registered patch in one standing, as `probe_patches` would report."""
+    return tuple(PatchState(patch=patch, status=status, detail=detail) for patch in REGISTRY)
+
+
 def healthy_environment(**overrides: object) -> Environment:
     """A machine that passes everything, as the baseline to break."""
     base = Environment(
@@ -68,6 +78,7 @@ def healthy_environment(**overrides: object) -> Environment:
             saved_games_target=LAYOUT.saved_games,
             upscaling="OFF",
         ),
+        patches=patch_states(PatchStatus.APPLIED, "applied to DCS 2.9.28.26385"),
     )
     return replace(base, **overrides)  # type: ignore[arg-type]
 
@@ -81,5 +92,6 @@ def bare_environment(**overrides: object) -> Environment:
         "installs": (),
         "targeted": None,
         "install_state": InstallState(),
+        "patches": unknown_states(),
     }
     return healthy_environment(**{**defaults, **overrides})

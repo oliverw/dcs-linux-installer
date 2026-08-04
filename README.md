@@ -2,7 +2,7 @@
 
 Install [DCS World](https://www.digitalcombatsimulator.com/) **Standalone** on Linux, and keep it working.
 
-> **Status: pre-alpha.** `dcs-linux check` and `dcs-linux report` work, including finding the DCS installs you already have; everything else is a stub.
+> **Status: pre-alpha.** `dcs-linux check`, `dcs-linux report` and `dcs-linux patch` work, including finding the DCS installs you already have; `install` and `verify` are stubs.
 > The design is settled and the work is broken down in [issue #1](https://github.com/oliverw/dcs-linux-installer/issues/1). There is no usable release yet. Everything below describes the intended tool.
 
 ---
@@ -125,6 +125,25 @@ It is meant to be **safe to post in public**: home and removable-drive paths, wi
 Redaction is pattern-based, so give the output a glance before you post it — and open an issue if something identifying gets through.
 
 It is bounded — a healthy DCS log is 150 KB with several hundred ERROR lines, so it is excerpted rather than dumped — and it works on a machine where everything is broken and nothing is installed, which is exactly when it is needed.
+
+### `dcs-linux patch`
+
+The Linux fixes, applied, reverted, and put back after a DCS update undoes them:
+
+```sh
+dcs-linux patch                # what is available, and what is applied
+dcs-linux patch apply          # apply everything applicable
+dcs-linux patch revert         # put the install back exactly as it was
+dcs-linux patch apply segoe-fonts   # or one patch by name
+```
+
+`DCS_updater` overwrites patched files on every update and repair, so a patch is never "done". Each applied file is remembered by its hash, so the tool can tell you a fix has been undone — `check` reports that as a failure, and `patch apply` puts it back. Applying something already applied is a no-op, so running it after every DCS update is the intended habit.
+
+Backups and state live in `~/.local/state/dcs-linux/<install id>/`, outside the install, because `DCS_updater repair` deletes files ED's manifest does not list and would otherwise destroy the only pristine copy. Revert restores exactly what was there before — including a file DCS itself later replaced.
+
+Nothing is written unless the whole fix can be assembled: a patch that cannot find what it needs says why and touches nothing.
+
+So far there is one patch, `segoe-fonts`, which puts a locally installed sans font into the prefix under the three Segoe names the AH-64D needs. It touches only the wine prefix, so it is Integrity Check safe.
 
 ## Design
 

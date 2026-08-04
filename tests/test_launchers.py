@@ -12,7 +12,11 @@ from dcs_linux.launchers import discover
 from dcs_linux.paths import Layout
 from tests.fakes import FakeSystem
 
-LAYOUT = Layout(root=Path("/data/dcs"), toolchain=Path("/data/toolchain"))
+LAYOUT = Layout(
+    root=Path("/data/dcs"),
+    toolchain=Path("/data/toolchain"),
+    state=Path("/data/state"),
+)
 HOME = "/home/pilot"
 
 AUTOUPDATE = json.dumps({"version": "2.9.28.26385", "branch": "release", "lang": "EN"})

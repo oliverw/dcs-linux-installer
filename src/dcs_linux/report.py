@@ -10,6 +10,7 @@ from rich.text import Text
 
 from dcs_linux.checks import CheckResult, Status
 from dcs_linux.installs import EDITION_LABELS, DcsInstall
+from dcs_linux.patches import Outcome, PatchState, PatchStatus
 from dcs_linux.probes import Environment
 
 _MARKER = {
@@ -17,6 +18,13 @@ _MARKER = {
     Status.WARN: ("warn", "yellow"),
     Status.FAIL: ("FAIL", "red"),
     Status.SKIP: ("skip", "dim"),
+}
+
+_PATCH_MARKER = {
+    PatchStatus.APPLIED: ("applied", "green"),
+    PatchStatus.DRIFTED: ("DRIFTED", "red"),
+    PatchStatus.NOT_APPLIED: ("not applied", "dim"),
+    PatchStatus.UNKNOWN: ("unknown", "dim"),
 }
 
 
@@ -96,6 +104,70 @@ def _install_cell(install: DcsInstall) -> Text:
     cell.append(f"\ngame:   {install.game}", style="dim")
     cell.append(f"\nprefix: {install.prefix or 'unknown'}", style="dim")
     return cell
+
+
+def render_patches(console: Console, states: tuple[PatchState, ...]) -> None:
+    """Every patch, whether it is in place, and what it would risk."""
+    table = Table(show_header=True, header_style="bold", expand=False)
+    table.add_column("")
+    table.add_column("Patch")
+    table.add_column("IC risk")
+    table.add_column("Detail", overflow="fold")
+
+    for state in states:
+        label, style = _PATCH_MARKER[state.status]
+        risk = Text("⚠ risky", style="yellow") if state.patch.ic_risk else Text("safe", style="dim")
+        table.add_row(Text(label, style=style), state.patch.id, risk, state.patch.summary)
+
+    console.print(table)
+
+    drifted = [state for state in states if state.is_drifted]
+    if drifted:
+        console.print(
+            f"\n[red]{len(drifted)} patch(es) undone by a DCS update[/red] — "
+            "run [bold]dcs-linux patch apply[/bold] to put them back."
+        )
+    if any(state.status is PatchStatus.UNKNOWN for state in states):
+        console.print(
+            "\n[yellow]No install targeted[/yellow], so no patch could be inspected. "
+            "Pass [bold]--install ID[/bold] to choose one."
+        )
+
+
+def render_outcomes(console: Console, outcomes: list[Outcome]) -> None:
+    """What apply or revert did to each patch, and what it refused to do."""
+    for outcome in outcomes:
+        if not outcome.ok:
+            console.print(f"[red]FAIL[/red] {outcome.patch.id}: {outcome.detail}")
+        elif outcome.changed:
+            console.print(f"[green]ok[/green]   {outcome.patch.id}: {outcome.detail}")
+        else:
+            console.print(f"[dim]skip[/dim] {outcome.patch.id}: {outcome.detail}")
+
+
+def patches_json(states: tuple[PatchState, ...]) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": state.patch.id,
+            "summary": state.patch.summary,
+            "ic_risk": state.patch.ic_risk,
+            "status": state.status.value,
+            "detail": state.detail,
+        }
+        for state in states
+    ]
+
+
+def outcomes_json(outcomes: list[Outcome]) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": outcome.patch.id,
+            "ok": outcome.ok,
+            "changed": outcome.changed,
+            "detail": outcome.detail,
+        }
+        for outcome in outcomes
+    ]
 
 
 def as_json_payload(environment: Environment, results: list[CheckResult]) -> dict[str, Any]:

@@ -13,7 +13,9 @@ from pathlib import Path
 from dcs_linux.distro import Distro, detect_distro
 from dcs_linux.installs import DcsInstall, Launcher, default_install, select
 from dcs_linux.launchers import discover
-from dcs_linux.paths import Layout, resolve_layout
+from dcs_linux.patches import SEGOE_FONT_NAMES, PatchState, states, unknown_states
+from dcs_linux.patchstate import PatchStore
+from dcs_linux.paths import Layout, TargetPaths, resolve_layout
 from dcs_linux.system import DiskUsage, System
 
 DRM_ROOT = Path("/sys/class/drm")
@@ -30,10 +32,6 @@ PCI_VENDORS = {
 # Tools later commands shell out to. umu's Steam runtime needs bubblewrap;
 # the toolchain is fetched with curl and unpacked with tar (ADR-0003).
 REQUIRED_TOOLS = ("curl", "tar", "bwrap")
-
-# The Segoe names the AH-64D asks for. corefonts ships 42 fonts and none of
-# them are Segoe, so "corefonts is installed" proves nothing here.
-SEGOE_FONTS = ("segoeui.ttf", "seguisb.ttf", "seguisym.ttf")
 
 D3DCOMPILER = "d3dcompiler_47"
 
@@ -54,44 +52,6 @@ class Umu:
     path: Path | None
     usable: bool
     version: str | None
-
-
-@dataclass(frozen=True)
-class TargetPaths:
-    """Where to read the targeted install's state.
-
-    Discovery finds installs; these are the paths of the one being reported
-    on. With no DCS anywhere they fall back to where this tool would put
-    things, so a bare machine still has coherent paths to answer against.
-    """
-
-    game: Path
-    prefix: Path
-    prefix_saved_games: Path
-    # Only known for an install of ours. Somebody else's saved games are
-    # wherever they mapped them, which we cannot know (ADR-0007).
-    saved_games: Path | None
-
-    @property
-    def fonts(self) -> Path:
-        return self.prefix / "drive_c" / "windows" / "Fonts"
-
-    @property
-    def user_reg(self) -> Path:
-        return self.prefix / "user.reg"
-
-    @property
-    def options_lua_candidates(self) -> tuple[Path, ...]:
-        """Where this install's `options.lua` may be, mapped out or not.
-
-        The in-prefix path comes first because it is the one this prefix
-        actually reads — mapped out, it resolves to the durable copy anyway.
-        Our own durable path is a fallback only for our own install: for
-        anyone else's, it is a different install's settings entirely.
-        """
-        config = Path("DCS") / "Config" / "options.lua"
-        durable = (self.saved_games / config,) if self.saved_games else ()
-        return (self.prefix_saved_games / config, *durable)
 
 
 @dataclass(frozen=True)
@@ -131,6 +91,7 @@ class Environment:
     installs: tuple[DcsInstall, ...] = ()
     targeted: DcsInstall | None = None
     install_state: InstallState = field(default_factory=InstallState)
+    patches: tuple[PatchState, ...] = ()
 
 
 def probe(system: System, identifier: str | None = None) -> Environment:
@@ -156,7 +117,27 @@ def probe(system: System, identifier: str | None = None) -> Environment:
         installs=installs,
         targeted=targeted,
         install_state=probe_install(system, paths),
+        patches=probe_patches(system, layout, targeted),
     )
+
+
+def probe_patches(
+    system: System, layout: Layout, targeted: DcsInstall | None
+) -> tuple[PatchState, ...]:
+    """Which patches are in place on the targeted install.
+
+    Read-only, like everything else here: the standings come from the state
+    store plus the hash of each patched file, so nothing has to be applied to
+    find out that a DCS update undid it.
+    """
+    if targeted is None:
+        return unknown_states()
+    return states(system, patch_store_for(layout, targeted))
+
+
+def patch_store_for(layout: Layout, targeted: DcsInstall) -> PatchStore:
+    """The state directory for an install, keyed by its stable id."""
+    return PatchStore(directory=layout.patch_store(targeted.install_id))
 
 
 def target_paths(system: System, layout: Layout, targeted: DcsInstall | None) -> TargetPaths:
@@ -312,7 +293,7 @@ def probe_install(system: System, paths: TargetPaths) -> InstallState:
     return InstallState(
         prefix_exists=system.exists(paths.prefix),
         missing_segoe_fonts=tuple(
-            name for name in SEGOE_FONTS if name.lower() not in {f.lower() for f in fonts}
+            name for name in SEGOE_FONT_NAMES if name.lower() not in {f.lower() for f in fonts}
         ),
         d3dcompiler_installed=has_dll_override(user_reg, D3DCOMPILER),
         saved_games_mapped=mapped,

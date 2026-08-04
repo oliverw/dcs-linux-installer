@@ -16,7 +16,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from dcs_linux.probes import TargetPaths
+from dcs_linux.paths import TargetPaths
 from dcs_linux.system import System
 
 LOG_NAME = "dcs.log"
