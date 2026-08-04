@@ -45,7 +45,7 @@ from dcs_linux.writer import Writer
 # The names the AH-64D asks for. Without them it dies entering a mission
 # (`Cannot create font [] size 30` → ACCESS_VIOLATION in CockpitBase.dll), and
 # `winetricks corefonts` does not help: it ships 42 fonts, none of them Segoe.
-SEGOE_FONTS = ("segoeui.ttf", "seguisb.ttf", "seguisym.ttf")
+SEGOE_FONT_NAMES = ("segoeui.ttf", "seguisb.ttf", "seguisym.ttf")
 
 # Any of these will do. Verified in-cockpit on 2.9.28.26385 that a DejaVu
 # substitute renders EUFD, MFD, HMD and the Keyboard Unit correctly (ADR-0004),
@@ -204,7 +204,7 @@ def plan_segoe_fonts(system: System, paths: TargetPaths) -> Plan:
     if content is None:
         return Plan(refusal=f"{source} could not be read")
 
-    return Plan(writes=tuple(FileWrite(paths.fonts / name, content) for name in SEGOE_FONTS))
+    return Plan(writes=tuple(FileWrite(paths.fonts / name, content) for name in SEGOE_FONT_NAMES))
 
 
 SEGOE_FONT_PATCH = Patch(
@@ -217,8 +217,25 @@ SEGOE_FONT_PATCH = Patch(
 REGISTRY: tuple[Patch, ...] = (SEGOE_FONT_PATCH,)
 
 
+MULTIPLAYER_WARNING = (
+    "edits a file DCS hashes: servers running pure-client integrity checks "
+    "will reject this install until the patch is reverted"
+)
+
+
 def by_id(patch_id: str) -> Patch | None:
     return next((patch for patch in REGISTRY if patch.id == patch_id), None)
+
+
+def safe_patches(patches: tuple[Patch, ...] = REGISTRY) -> tuple[Patch, ...]:
+    """The patches that may be applied without being asked for by name.
+
+    ADR-0004: a patch that edits a hashed game file costs the user multiplayer
+    access, so it can never be swept up by a bare `patch apply`. Enforced here
+    rather than trusted to each patch, so a registry entry cannot opt itself in
+    by omission.
+    """
+    return tuple(patch for patch in patches if not patch.ic_risk)
 
 
 def states(
@@ -300,8 +317,13 @@ def apply_patch(
             written.append(FileRecord(path=write.path, sha256=digest(write.content), backup=backup))
     except OSError as error:
         # Whatever landed is recorded before the failure is reported, so a
-        # half-applied patch is still fully revertible.
-        _record(writer, store, records, patch, dcs_version, written)
+        # half-applied patch is still fully revertible. On a re-apply the
+        # files this attempt never reached are still patched from last time,
+        # so their old records are carried over rather than dropped — losing
+        # them would leave patched files that nothing knows how to undo.
+        reached = {file.path for file in written}
+        untouched = [file for file in known.values() if file.path not in reached]
+        _record(writer, store, records, patch, dcs_version, written + untouched)
         return Outcome(patch=patch, ok=False, changed=bool(written), detail=str(error))
 
     _record(writer, store, records, patch, dcs_version, written)

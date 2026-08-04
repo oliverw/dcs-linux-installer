@@ -11,18 +11,23 @@ from pathlib import Path
 
 from dcs_linux.checks import PATCHES, Status, check_patches
 from dcs_linux.patches import (
+    REGISTRY,
+    SEGOE_FONT_NAMES,
     SEGOE_FONT_PATCH,
-    SEGOE_FONTS,
     Outcome,
+    Patch,
     PatchStatus,
+    Plan,
     apply_patch,
     find_substitute_font,
     revert_patch,
+    safe_patches,
     states,
 )
 from dcs_linux.patchstate import PatchStore, load
+from dcs_linux.paths import TargetPaths
 from dcs_linux.probes import probe_patches
-from dcs_linux.system import CommandResult
+from dcs_linux.system import CommandResult, System
 from tests.environments import LAYOUT, OWN_INSTALL, PATHS, healthy_environment
 from tests.fakes import FakeSystem, FakeWriter
 
@@ -40,6 +45,11 @@ def machine(**overrides: object) -> FakeSystem:
         "directories": {str(PATHS.prefix), str(PATHS.fonts)},
     }
     return FakeSystem(**{**defaults, **overrides})  # type: ignore[arg-type]
+
+
+def plan_nothing(system: System, paths: TargetPaths) -> Plan:
+    """A planner for registry tests that never reach the filesystem."""
+    return Plan()
 
 
 def apply(system: FakeSystem, writer: FakeWriter) -> Outcome:
@@ -69,7 +79,7 @@ class TestApply:
         outcome = apply(system, FakeWriter(system))
 
         assert outcome.ok and outcome.changed
-        for name in SEGOE_FONTS:
+        for name in SEGOE_FONT_NAMES:
             assert system.read_bytes(PATHS.fonts / name) == FONT_BYTES
 
     def test_state_records_the_patch_the_version_and_a_hash_per_file(self) -> None:
@@ -78,7 +88,7 @@ class TestApply:
 
         record = load(system, STORE)["segoe-fonts"]
         assert record.dcs_version == DCS_VERSION
-        assert {file.path.name for file in record.files} == set(SEGOE_FONTS)
+        assert {file.path.name for file in record.files} == set(SEGOE_FONT_NAMES)
         assert all(len(file.sha256) == 64 for file in record.files)
 
     def test_state_and_backups_live_outside_the_install(self) -> None:
@@ -261,6 +271,60 @@ class TestDrift:
 
         assert result.status is Status.PASS
         assert "segoe-fonts" in result.detail
+
+
+class TestPartialFailure:
+    """A write that dies halfway must still leave a revertible install."""
+
+    def failing_writer(self, system: FakeSystem, on: str) -> FakeWriter:
+        writer = FakeWriter(system)
+        write_bytes = writer.write_bytes
+
+        def guarded(path: Path, data: bytes) -> None:
+            if path.name == on:
+                raise OSError("no space left on device")
+            write_bytes(path, data)
+
+        writer.write_bytes = guarded  # type: ignore[method-assign]
+        return writer
+
+    def test_what_landed_before_the_failure_is_still_reverted(self) -> None:
+        system = machine()
+        before = install_files(system)
+        writer = self.failing_writer(system, on="seguisb.ttf")
+
+        outcome = apply(system, writer)
+        assert not outcome.ok
+
+        revert_patch(system, FakeWriter(system), STORE, SEGOE_FONT_PATCH)
+        assert install_files(system) == before
+
+    def test_a_failed_re_apply_does_not_forget_files_it_never_reached(self) -> None:
+        """Those files are still patched from last time, and still ours to undo."""
+        system = machine()
+        before = install_files(system)
+        apply(system, FakeWriter(system))
+        # An update replaces the first font; re-applying then dies on the second.
+        FakeWriter(system).write_bytes(PATHS.fonts / "segoeui.ttf", b"shipped by DCS")
+
+        apply(system, self.failing_writer(system, on="seguisb.ttf"))
+        revert_patch(system, FakeWriter(system), STORE, SEGOE_FONT_PATCH)
+
+        assert system.read_bytes(PATHS.fonts / "segoeui.ttf") == b"shipped by DCS"
+        assert system.read_bytes(PATHS.fonts / "seguisym.ttf") is None
+        assert system.read_bytes(PATHS.fonts / "seguisb.ttf") is None
+        assert install_files(system) == {**before, PATHS.fonts / "segoeui.ttf": b"shipped by DCS"}
+
+
+class TestIcRisk:
+    """ADR-0004: a hashed-file edit is never applied unless it was asked for."""
+
+    def test_the_registry_ships_only_safe_patches_today(self) -> None:
+        assert safe_patches() == REGISTRY
+
+    def test_a_risky_patch_is_left_out_of_an_unqualified_apply(self) -> None:
+        risky = Patch(id="risky", summary="edits a hashed file", ic_risk=True, plan=plan_nothing)
+        assert safe_patches((SEGOE_FONT_PATCH, risky)) == (SEGOE_FONT_PATCH,)
 
 
 class TestUnreadableState:

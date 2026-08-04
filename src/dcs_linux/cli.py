@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import typer
 
@@ -12,8 +13,17 @@ from dcs_linux.dcslog import read_log
 from dcs_linux.diagnostics import bundle
 from dcs_linux.installs import AmbiguousInstall, DcsInstall, InstallNotFound
 from dcs_linux.output import OutputOptions, console_for, emit_stub, output_options
-from dcs_linux.patches import REGISTRY, Outcome, Patch, apply_patch, by_id, revert_patch
-from dcs_linux.probes import Environment, patch_store, probe
+from dcs_linux.patches import (
+    MULTIPLAYER_WARNING,
+    REGISTRY,
+    Outcome,
+    Patch,
+    apply_patch,
+    by_id,
+    revert_patch,
+    safe_patches,
+)
+from dcs_linux.probes import Environment, patch_store_for, probe
 from dcs_linux.redaction import redactor_for
 from dcs_linux.report import (
     as_json_payload,
@@ -136,29 +146,21 @@ def patch_main(
     """
     if ctx.invoked_subcommand is not None:
         return
-    del list_patches  # Listing is what a bare `patch` does either way.
-    _list_patches(ctx, install)
-
-
-@patch_app.command("list")
-def patch_list(ctx: typer.Context, install: str | None = INSTALL_OPTION) -> None:
-    """Show the patches and whether each is currently applied."""
-    _list_patches(ctx, install)
-
-
-def _list_patches(ctx: typer.Context, install: str | None) -> None:
+    # `--list` is the documented spelling; a bare `patch` does the same thing
+    # because listing is the only safe default for a command that can write.
+    del list_patches
     options = output_options(ctx)
     environment = _probe(RealSystem(), install)
 
     if options.json_output:
-        payload = {
-            "command": "patch",
-            "action": "list",
-            "patches": patches_json(environment.patches),
-        }
-        typer.echo(json.dumps(payload, indent=2))
+        _emit_patch_json("list", patches_json(environment.patches))
         return
     render_patches(console_for(options), environment.patches)
+
+
+def _emit_patch_json(action: str, patches: list[dict[str, Any]]) -> None:
+    """The one shape every `patch` subcommand emits under --json."""
+    typer.echo(json.dumps({"command": "patch", "action": action, "patches": patches}, indent=2))
 
 
 @patch_app.command("apply")
@@ -166,22 +168,31 @@ def patch_apply(
     ctx: typer.Context,
     patch_id: str | None = PATCH_ARGUMENT,
     install: str | None = INSTALL_OPTION,
+    allow_ic_risk: bool = typer.Option(
+        False,
+        "--allow-ic-risk",
+        help="Permit a patch that edits a hashed game file. Costs multiplayer access.",
+    ),
 ) -> None:
     """Apply the patches, or put back the ones a DCS update undid.
 
     Applying an already-applied patch is a no-op, so this is the one command
     to run after every DCS update without having to know what it broke.
     """
+    chosen = _chosen(patch_id, allow_ic_risk=allow_ic_risk)
+    for patch in chosen:
+        _confirm_ic_risk(patch, allow_ic_risk)
+
     system, writer = RealSystem(), RealWriter()
     environment = _probe(system, install)
     targeted = _targeted(environment)
-    store = patch_store(environment.layout, targeted)
+    store = patch_store_for(environment.layout, targeted)
     _emit_outcomes(
         ctx,
         "apply",
         [
             apply_patch(system, writer, store, patch, environment.paths, targeted.version)
-            for patch in _chosen(patch_id)
+            for patch in chosen
         ],
     )
 
@@ -196,24 +207,44 @@ def patch_revert(
     system, writer = RealSystem(), RealWriter()
     environment = _probe(system, install)
     targeted = _targeted(environment)
-    store = patch_store(environment.layout, targeted)
+    store = patch_store_for(environment.layout, targeted)
     _emit_outcomes(
         ctx,
         "revert",
-        [revert_patch(system, writer, store, patch) for patch in _chosen(patch_id)],
+        # Reverting is always allowed: undoing a risky patch is what gives
+        # multiplayer back, so it is never the direction that needs a gate.
+        [
+            revert_patch(system, writer, store, patch)
+            for patch in _chosen(patch_id, allow_ic_risk=True)
+        ],
     )
 
 
-def _chosen(patch_id: str | None) -> tuple[Patch, ...]:
-    """The patches named, or all of them."""
+def _chosen(patch_id: str | None, *, allow_ic_risk: bool) -> tuple[Patch, ...]:
+    """The patch named, or every patch that may be applied unasked.
+
+    A bare `apply` takes only the IC-safe patches (ADR-0004): one that edits a
+    hashed game file costs the user multiplayer access, so it has to be named
+    explicitly and confirmed. `revert` has no such gate — undoing a risky
+    patch is what restores multiplayer, and is never the dangerous direction.
+    """
     if patch_id is None:
-        return REGISTRY
+        return REGISTRY if allow_ic_risk else safe_patches()
     patch = by_id(patch_id)
     if patch is None:
         known = ", ".join(known.id for known in REGISTRY)
         typer.echo(f"no patch called {patch_id!r}; known patches: {known}", err=True)
         raise typer.Exit(code=2)
     return (patch,)
+
+
+def _confirm_ic_risk(patch: Patch, accepted: bool) -> None:
+    """Refuse a hashed-file edit that was not explicitly consented to."""
+    if not patch.ic_risk or accepted:
+        return
+    typer.echo(f"{patch.id} {MULTIPLAYER_WARNING}", err=True)
+    typer.echo("re-run with --allow-ic-risk if that is what you want", err=True)
+    raise typer.Exit(code=2)
 
 
 def _targeted(environment: Environment) -> DcsInstall:

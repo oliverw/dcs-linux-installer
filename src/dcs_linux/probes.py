@@ -13,7 +13,7 @@ from pathlib import Path
 from dcs_linux.distro import Distro, detect_distro
 from dcs_linux.installs import DcsInstall, Launcher, default_install, select
 from dcs_linux.launchers import discover
-from dcs_linux.patches import SEGOE_FONTS, PatchState, states, unknown_states
+from dcs_linux.patches import SEGOE_FONT_NAMES, PatchState, states, unknown_states
 from dcs_linux.patchstate import PatchStore
 from dcs_linux.paths import Layout, TargetPaths, resolve_layout
 from dcs_linux.system import DiskUsage, System
@@ -132,10 +132,10 @@ def probe_patches(
     """
     if targeted is None:
         return unknown_states()
-    return states(system, patch_store(layout, targeted))
+    return states(system, patch_store_for(layout, targeted))
 
 
-def patch_store(layout: Layout, targeted: DcsInstall) -> PatchStore:
+def patch_store_for(layout: Layout, targeted: DcsInstall) -> PatchStore:
     """The state directory for an install, keyed by its stable id."""
     return PatchStore(directory=layout.patch_store(targeted.install_id))
 
@@ -293,7 +293,7 @@ def probe_install(system: System, paths: TargetPaths) -> InstallState:
     return InstallState(
         prefix_exists=system.exists(paths.prefix),
         missing_segoe_fonts=tuple(
-            name for name in SEGOE_FONTS if name.lower() not in {f.lower() for f in fonts}
+            name for name in SEGOE_FONT_NAMES if name.lower() not in {f.lower() for f in fonts}
         ),
         d3dcompiler_installed=has_dll_override(user_reg, D3DCOMPILER),
         saved_games_mapped=mapped,
