@@ -94,12 +94,19 @@ class Environment:
     patches: tuple[PatchState, ...] = ()
 
 
-def probe(system: System, identifier: str | None = None) -> Environment:
+def probe(
+    system: System, identifier: str | None = None, *, layout: Layout | None = None
+) -> Environment:
     """Read the whole machine, reporting on the install `identifier` names.
 
     Raises `InstallNotFound` or `AmbiguousInstall` if it names none.
+
+    `layout` overrides where this tool's own directories are. `install` passes
+    the layout it is about to build into, so that the disk-space and location
+    checks are answered about the directory the user chose rather than the
+    default one they are overriding.
     """
-    layout = resolve_layout(system)
+    layout = layout if layout is not None else resolve_layout(system)
     installs = discover(system, layout)
     targeted = select(installs, identifier) if identifier else default_install(installs)
     paths = target_paths(system, layout, targeted)

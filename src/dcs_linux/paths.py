@@ -15,6 +15,7 @@ from pathlib import Path
 from dcs_linux.system import System
 
 ROOT_ENV = "DCS_LINUX_ROOT"
+GAME_ENV = "DCS_LINUX_GAME"
 TOOLCHAIN_ENV = "DCS_LINUX_TOOLCHAIN"
 STATE_ENV = "DCS_LINUX_STATE"
 XDG_STATE_ENV = "XDG_STATE_HOME"
@@ -37,6 +38,10 @@ class Layout:
     # exactly when it is needed. Keyed by install id, not by path, so it
     # survives the install being renamed or its prefix rebuilt.
     state: Path
+    # Where the user asked the game to go. Separate from `root` because it is
+    # the one lifetime worth putting on another drive: a 536 GB install often
+    # does not belong beside a prefix that is measured in gigabytes.
+    game_dir: Path | None = None
 
     @property
     def prefix(self) -> Path:
@@ -46,12 +51,42 @@ class Layout:
     @property
     def game(self) -> Path:
         """Durable: the expensive thing (hundreds of GB)."""
-        return self.root / "game"
+        return self.game_dir if self.game_dir else self.root / "game"
 
     @property
     def saved_games(self) -> Path:
         """Durable: the irreplaceable thing (login, keybinds, config)."""
         return self.root / "saved-games"
+
+    @property
+    def prefix_game_drive(self) -> Path:
+        """Where the game directory is mapped in: `D:` (ADR-0001).
+
+        A drive letter rather than a directory under `drive_c`, so the install
+        lives outside the prefix and a rebuild cannot take it with it. DCS is
+        installed to `D:\\`, never `C:\\`.
+        """
+        return self.prefix / "dosdevices" / "d:"
+
+    @property
+    def prefix_saved_games(self) -> Path:
+        """Where saved games is mapped in, in the profile umu creates.
+
+        Ours is always `steamuser`: umu builds the prefix, so unlike a
+        discovered Lutris or Heroic prefix the profile name is not a guess
+        (`dcs_linux.probes.find_prefix_saved_games` handles those).
+        """
+        return self.prefix / "drive_c" / "users" / "steamuser" / "Saved Games"
+
+    @property
+    def manifest(self) -> Path:
+        """What built this prefix, recorded inside the prefix itself.
+
+        In the prefix rather than beside it so it can never describe a prefix
+        that has since been wiped: deleting the prefix deletes the claim that
+        anything was installed into it.
+        """
+        return self.prefix / ".dcs-linux.json"
 
     @property
     def umu_run(self) -> Path:
@@ -61,6 +96,10 @@ class Layout:
     @property
     def ge_proton(self) -> Path:
         return self.toolchain / "ge-proton"
+
+    def ge_proton_build(self, version: str) -> Path:
+        """The unpacked directory of one pinned GE-Proton build."""
+        return self.ge_proton / version
 
     def patch_store(self, install_id: str) -> Path:
         """Where one install's patch backups and patch state live."""
@@ -169,11 +208,13 @@ def resolve_layout(system: System) -> Layout:
     """The layout for this machine, honouring the environment overrides."""
     home = system.home()
     root = system.environ(ROOT_ENV)
+    game = system.environ(GAME_ENV)
     toolchain = system.environ(TOOLCHAIN_ENV)
     return Layout(
         root=Path(root) if root else home / "dcs-linux",
         toolchain=Path(toolchain) if toolchain else home / ".cache" / "dcs-linux" / "toolchain",
         state=_state_root(system, home),
+        game_dir=Path(game) if game else None,
     )
 
 

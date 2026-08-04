@@ -152,6 +152,29 @@ loses the user's login and keybinds on every repair.
   **web installer** (`DCS_World_web.exe`), which refuses to reuse a directory
   it has already bootstrapped.
 
+- **pin** — the exact umu and GE-Proton versions `install` fetches, held as
+  constants in `dcs_linux.prefix`. Never resolved from a release API, so two
+  users a week apart get the same runtime and a bug report names a
+  reproducible pair (ADR-0008).
+
+- **runtime manifest** — `.dcs-linux.json` inside the prefix: the pins, the
+  `GAMEID`, the winetricks verbs and the launch environment. Written by
+  `install`, and what a re-run reads to tell an up-to-date prefix from one
+  built with an older pin. Inside the prefix on purpose — deleting the prefix
+  must delete the claim that anything was installed into it.
+
+- **launch environment** — `WINEDLLOVERRIDES=wbemprox=n` (DCS hangs querying
+  WMI under wine) and `WINE_SIMULATE_WRITECOPY=1`, applied when DCS itself
+  runs. IC-safe by construction: it lives in the process, so no hashed game
+  file is involved. Distinct from the **prefix environment**
+  (`WINEPREFIX`, `GAMEID`, `PROTONPATH`), which says *which* prefix and
+  *which* Proton and is needed by winetricks and the updater too.
+
+- **rebuild** — `dcs-linux install --rebuild`: delete the prefix and build it
+  again. The repair every other recovery path rests on, and safe only because
+  the other two lifetimes are outside. It **refuses** if the game directory or
+  saved games is inside the prefix — there, wiping is not a repair.
+
 ## Known failure signatures
 
 Recorded so `check` (#5), `report` (#7) and `verify` (#12) can tell noise from

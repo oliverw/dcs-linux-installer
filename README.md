@@ -2,7 +2,7 @@
 
 Install [DCS World](https://www.digitalcombatsimulator.com/) **Standalone** on Linux, and keep it working.
 
-> **Status: pre-alpha.** `dcs-linux check`, `dcs-linux report` and `dcs-linux patch` work, including finding the DCS installs you already have; `install` and `verify` are stubs.
+> **Status: pre-alpha.** `dcs-linux check`, `dcs-linux report`, `dcs-linux patch` and `dcs-linux install` work, including finding the DCS installs you already have; `install` stops at a ready prefix and does not yet fetch DCS itself, and `verify` is a stub.
 > The design is settled and the work is broken down in [issue #1](https://github.com/oliverw/dcs-linux-installer/issues/1). There is no usable release yet. Everything below describes the intended tool.
 
 ---
@@ -57,7 +57,7 @@ uvx --from dcs-linux-installer dcs-linux check
 uv tool install dcs-linux-installer
 
 dcs-linux check      # is this machine ready? what DCS installs exist?
-dcs-linux install    # build the prefix, then hand off to the DCS updater
+dcs-linux install    # build the prefix (then, later, hand off to the DCS updater)
 dcs-linux patch      # apply the Linux fixes (IC-safe ones by default)
 dcs-linux verify     # launch DCS and confirm it actually works
 dcs-linux report     # diagnostics bundle for a bug report
@@ -67,7 +67,7 @@ Requires [uv](https://docs.astral.sh/uv/). It installs to your home directory wi
 
 ### `dcs-linux check`
 
-The one command that works today. It needs no DCS install — it is the first thing to run — and reports a pass/fail row per check, each failure carrying the command that fixes it, chosen for your distro:
+The first command to run. It needs no DCS install — it is the first thing to run — and reports a pass/fail row per check, each failure carrying the command that fixes it, chosen for your distro:
 
 ```sh
 dcs-linux check          # exits non-zero if anything blocking is wrong
@@ -108,6 +108,26 @@ dcs-linux check --install 7976       # any unambiguous prefix works
 ```
 
 With one install found, or one of ours, it is used automatically.
+
+### `dcs-linux install`
+
+Builds everything DCS needs *except* DCS: the umu-launcher zipapp, a pinned GE-Proton build, the Wine prefix, the winetricks verbs, and the mapping that keeps your game and your login outside that prefix.
+
+```sh
+dcs-linux install                          # into the default layout
+dcs-linux install --game-dir /mnt/big/DCS  # put the 150 GB somewhere else
+dcs-linux install --rebuild                # throw the prefix away and build it again
+```
+
+It prints one line per step, and re-running it is safe: an up-to-date prefix is left alone and only the mapping is re-asserted.
+
+The toolchain versions are **pinned, not resolved** — the umu and GE-Proton builds are the exact ones this project flew to a working mission, so a bug report always names a reproducible pair. They are recorded in `.dcs-linux.json` inside the prefix, along with the verbs and the launch environment.
+
+`--rebuild` is the repair everything else rests on. It deletes the prefix and nothing else: the game directory and `Saved Games` live outside it, so your download and your ED login survive. If either one is somehow *inside* the prefix, the rebuild refuses rather than destroying it.
+
+Before any download starts, `install` re-runs the checks that it cannot itself fix — no GPU, a missing external tool, not enough disk space, a game directory inside the prefix — and stops on those. Everything else `check` calls blocking on a fresh machine (no umu, no Proton, no prefix) is exactly what this command is about to create.
+
+`vcrun2019` is refused if you ask for it with `--verb`: it causes a system-wide RAM leak. Use `vcrun2015` or `vcrun2022`.
 
 ### `dcs-linux report`
 

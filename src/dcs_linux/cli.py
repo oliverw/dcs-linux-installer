@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 import typer
@@ -11,6 +13,7 @@ from dcs_linux import __version__
 from dcs_linux.checks import has_blocking_failure, run_checks
 from dcs_linux.dcslog import read_log
 from dcs_linux.diagnostics import bundle
+from dcs_linux.fetcher import RealFetcher
 from dcs_linux.installs import AmbiguousInstall, DcsInstall, InstallNotFound
 from dcs_linux.output import OutputOptions, console_for, emit_stub, output_options
 from dcs_linux.patches import (
@@ -24,19 +27,24 @@ from dcs_linux.patches import (
     revert_patch,
     safe_patches,
 )
+from dcs_linux.paths import Layout, resolve_layout
+from dcs_linux.prefix import blocking_preflight, build, resolve_verbs
 from dcs_linux.probes import Environment, patch_store_for, probe
 from dcs_linux.redaction import redactor_for
 from dcs_linux.report import (
     as_json_payload,
     cleared_json,
+    install_json,
     outcomes_json,
     patches_json,
     render_cleared,
     render_installs,
     render_outcomes,
     render_patches,
+    render_steps,
     render_table,
 )
+from dcs_linux.runner import RealRunner
 from dcs_linux.system import RealSystem, System
 from dcs_linux.writer import RealWriter
 
@@ -113,10 +121,90 @@ def _bad_install(message: str) -> typer.Exit:
     return typer.Exit(code=2)
 
 
+GAME_DIR_OPTION = typer.Option(
+    None,
+    "--game-dir",
+    metavar="PATH",
+    help="Where DCS itself goes. Outside the prefix, on any drive. "
+    "Defaults to the game directory in the layout (see DCS_LINUX_ROOT).",
+)
+
+VERB_OPTION = typer.Option(
+    [], "--verb", help="An extra winetricks verb, on top of the defaults. Repeatable."
+)
+
+
 @app.command()
-def install(ctx: typer.Context) -> None:
-    """Build the prefix, then hand off to the DCS updater."""
-    emit_stub(ctx)
+def install(
+    ctx: typer.Context,
+    game_dir: Path | None = GAME_DIR_OPTION,
+    verb: list[str] = VERB_OPTION,
+    rebuild: bool = typer.Option(
+        False,
+        "--rebuild",
+        help="Delete the prefix and build it again. The game directory and saved games "
+        "are untouched — that is what makes this the standard repair.",
+    ),
+) -> None:
+    """Build the runtime DCS needs: toolchain, prefix, winetricks, mapping.
+
+    Stops short of DCS itself, which the updater installs (handled separately).
+    Safe to re-run: an up-to-date prefix is left alone, and the mapping that
+    keeps the game and the login outside it is re-asserted every time.
+    """
+    options = output_options(ctx)
+    system = RealSystem()
+    layout = _install_layout(system, game_dir)
+
+    verbs, refusal = resolve_verbs(verb)
+    if refusal is not None:
+        typer.echo(refusal, err=True)
+        raise typer.Exit(code=2)
+
+    _require_preflight(system, layout)
+    result = build(
+        system,
+        RealWriter(),
+        RealRunner(),
+        RealFetcher(),
+        layout,
+        verbs=verbs,
+        rebuild=rebuild,
+    )
+
+    if options.json_output:
+        typer.echo(json.dumps(install_json(result), indent=2))
+    else:
+        render_steps(console_for(options), result)
+
+    if not result.ok:
+        raise typer.Exit(code=1)
+
+
+def _install_layout(system: System, game_dir: Path | None) -> Layout:
+    """This machine's layout, with the game directory the user chose."""
+    layout = resolve_layout(system)
+    return replace(layout, game_dir=game_dir) if game_dir else layout
+
+
+def _require_preflight(system: System, layout: Layout) -> None:
+    """Refuse to build on a machine `check` says cannot run DCS.
+
+    Only the failures an install cannot itself remove count here — no GPU, a
+    missing tool, a full disk, a game directory inside the prefix. Everything
+    else `check` calls blocking on a fresh machine is what this command is
+    about to fix.
+    """
+    environment = probe(system, layout=layout)
+    blocking = blocking_preflight(run_checks(environment))
+    if not blocking:
+        return
+    for result in blocking:
+        typer.echo(f"{result.name}: {result.detail}", err=True)
+        if result.remediation:
+            typer.echo(f"  → {result.remediation}", err=True)
+    typer.echo("run `dcs-linux check` for the full picture", err=True)
+    raise typer.Exit(code=1)
 
 
 patch_app = typer.Typer(

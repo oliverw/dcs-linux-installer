@@ -18,6 +18,7 @@ from dcs_linux.patches import (
     PatchStatus,
     risky_in_place,
 )
+from dcs_linux.prefix import InstallResult, Step, StepStatus
 from dcs_linux.probes import Environment
 
 _MARKER = {
@@ -169,6 +170,44 @@ def render_outcomes(console: Console, outcomes: list[Outcome]) -> None:
             console.print(f"[green]ok[/green]   {outcome.patch.id}: {outcome.detail}")
         else:
             console.print(f"[dim]skip[/dim] {outcome.patch.id}: {outcome.detail}")
+
+
+_STEP_MARKER = {
+    StepStatus.DONE: ("ok", "green"),
+    StepStatus.SKIPPED: ("skip", "dim"),
+    StepStatus.FAILED: ("FAIL", "red"),
+}
+
+
+def render_steps(console: Console, result: InstallResult) -> None:
+    """What the install did, one line per step, then what to do next."""
+    for step in result.steps:
+        label, style = _STEP_MARKER[step.status]
+        console.print(f"[{style}]{label:<4}[/{style}] {step.name}: {step.detail}")
+
+    if not result.ok:
+        console.print("\n[red]The install stopped.[/red] Fix the failure above and run it again.")
+        return
+    if result.runtime is None:
+        return
+    console.print(
+        f"\n[green]The runtime is ready.[/green] DCS itself is not installed yet — "
+        f"it goes in [bold]{result.runtime.game}[/bold], mapped into the prefix as D:."
+    )
+
+
+def install_json(result: InstallResult) -> dict[str, Any]:
+    """The same install, machine-readable."""
+    return {
+        "command": "install",
+        "ok": result.ok,
+        "steps": [_step_json(step) for step in result.steps],
+        "runtime": result.runtime.as_json() if result.runtime else None,
+    }
+
+
+def _step_json(step: Step) -> dict[str, Any]:
+    return {"name": step.name, "status": step.status.value, "detail": step.detail}
 
 
 def render_cleared(console: Console, cleared: Cleared) -> None:
