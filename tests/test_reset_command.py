@@ -112,14 +112,15 @@ def test_reset_patches_refuses_when_patch_state_cannot_be_read(
     assert system.read_text(STORE / "state.json") == "{"
 
 
-def test_reset_patches_removes_a_backup_only_patch_store(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_reset_patches_refuses_a_backup_only_patch_store(monkeypatch: pytest.MonkeyPatch) -> None:
     backup = STORE / "backups" / "segoe-fonts" / "0"
     system = use(monkeypatch, FakeSystem(files={str(backup): "pristine"}))
 
     result = runner.invoke(cli.app, ["reset", "--patches", "--yes"])
 
-    assert result.exit_code == 0
-    assert system.read_text(backup) is None
+    assert result.exit_code == 1
+    assert "dcs-linux patch revert" in result.stdout
+    assert system.read_text(backup) == "pristine"
 
 
 def test_reset_refuses_a_state_directory_that_overlaps_the_game(
@@ -138,6 +139,24 @@ def test_reset_refuses_a_state_directory_that_overlaps_the_game(
 
     assert result.exit_code == 1
     assert system.read_text(register) == "{}"
+    assert system.read_text(LAYOUT.game / "bin" / "DCS.exe") == "game"
+
+
+def test_reset_accepts_an_empty_state_directory_that_overlaps_a_lifetime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    system = use(
+        monkeypatch,
+        FakeSystem(
+            files={str(LAYOUT.game / "bin" / "DCS.exe"): "game"},
+            env={"DCS_LINUX_STATE": str(LAYOUT.game)},
+        ),
+    )
+
+    result = runner.invoke(cli.app, ["reset", "--yes"])
+
+    assert result.exit_code == 0
+    assert "Nothing to delete" in result.stdout
     assert system.read_text(LAYOUT.game / "bin" / "DCS.exe") == "game"
 
 

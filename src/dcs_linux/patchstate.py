@@ -122,6 +122,21 @@ def load(system: System, store: PatchStore) -> dict[str, PatchRecord]:
     return records
 
 
+def is_known_empty(system: System, store: PatchStore) -> bool:
+    """Whether this store proves it has no patch records or backups to protect."""
+    text = system.read_text(store.state_file)
+    if text is None:
+        return False
+    try:
+        document: object = json.loads(text)
+    except ValueError:
+        return False
+    return isinstance(document, dict) and document == {
+        "version": FORMAT_VERSION,
+        "patches": {},
+    }
+
+
 def _record(patch_id: str, entry: object) -> PatchRecord | None:
     if not isinstance(entry, dict):
         return None

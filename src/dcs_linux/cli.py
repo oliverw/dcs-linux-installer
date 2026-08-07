@@ -473,23 +473,22 @@ def reset(
     """
     system = RealSystem()
     layout = resolve_layout(system)
+    planned = reset_plan(system, layout, patches=patches)
+    if not planned.has_deletions:
+        typer.echo("Nothing to delete.")
+        return
     if overlaps_lifetime(system, layout):
         typer.echo(
             "state directory overlaps the prefix, game directory or saved games; "
             "set DCS_LINUX_STATE outside them"
         )
         raise typer.Exit(code=1)
-    planned = reset_plan(system, layout, patches=patches)
     protected = unsafe_stores(system, planned.stores)
     if protected:
         typer.echo(
             "patch stores still contain reversible patches; run `dcs-linux patch revert` first"
         )
         raise typer.Exit(code=1)
-    if not planned.has_deletions:
-        typer.echo("Nothing to delete.")
-        return
-
     typer.echo("Will delete:")
     if planned.register_exists:
         typer.echo(f"  {layout.installs_register}")
