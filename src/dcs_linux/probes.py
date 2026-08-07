@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from dcs_linux.distro import Distro, detect_distro
+from dcs_linux.headtracking import HeadTracking, detect_head_tracking
 from dcs_linux.installs import DcsInstall, Launcher, default_install, select
 from dcs_linux.launchers import discover
 from dcs_linux.patches import SEGOE_FONT_NAMES, PatchState, states, unknown_states
@@ -92,6 +93,7 @@ class Environment:
     targeted: DcsInstall | None = None
     install_state: InstallState = field(default_factory=InstallState)
     patches: tuple[PatchState, ...] = ()
+    head_tracking: HeadTracking = field(default_factory=HeadTracking)
 
 
 def probe(
@@ -125,6 +127,7 @@ def probe(
         targeted=targeted,
         install_state=probe_install(system, paths),
         patches=probe_patches(system, layout, targeted),
+        head_tracking=detect_head_tracking(system, paths),
     )
 
 

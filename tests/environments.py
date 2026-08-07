@@ -5,6 +5,7 @@ from pathlib import Path
 
 from dcs_linux.checks import GIB
 from dcs_linux.distro import Distro, Family, Immutability
+from dcs_linux.headtracking import HeadTracking, Tracker
 from dcs_linux.installs import DcsInstall, Launcher
 from dcs_linux.patches import REGISTRY, PatchState, PatchStatus, unknown_states
 from dcs_linux.paths import Layout, TargetPaths
@@ -51,6 +52,26 @@ STEAMOS = Distro(
 )
 
 
+TRACKER = Tracker(name="TrackIR 5", node=Path("/dev/bus/usb/001/007"), accessible=True)
+
+
+def with_tracker(
+    *, access: bool = True, rule: Path | None = None, **overrides: object
+) -> HeadTracking:
+    """A machine with a TrackIR plugged in, which most machines are not.
+
+    `flatpak` defaults to present because the remediation branches on it, and
+    the interesting branch is the one where opentrack is missing rather than
+    the one where the tooling to install it is.
+    """
+    base = HeadTracking(
+        trackers=(replace(TRACKER, accessible=access),),
+        udev_rule=rule,
+        flatpak=True,
+    )
+    return replace(base, **overrides)  # type: ignore[arg-type]
+
+
 def patch_states(status: PatchStatus, detail: str) -> tuple[PatchState, ...]:
     """Every IC-safe patch in one standing, as `probe_patches` would report.
 
@@ -91,6 +112,8 @@ def healthy_environment(**overrides: object) -> Environment:
             upscaling="OFF",
         ),
         patches=patch_states(PatchStatus.APPLIED, "applied to DCS 2.9.28.26385"),
+        # No tracker: the common case, and the one a quiet table depends on.
+        head_tracking=HeadTracking(flatpak=True),
     )
     return replace(base, **overrides)  # type: ignore[arg-type]
 

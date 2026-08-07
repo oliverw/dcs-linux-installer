@@ -15,6 +15,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from dcs_linux.headtracking import (
+    FLATHUB_REMOTE,
+    OPENTRACK_INSTALL,
+    RULE_FILE,
+    install_rule_command,
+)
 from dcs_linux.installs import Launcher
 from dcs_linux.patches import SERVERS_REJECT, PatchState, PatchStatus, risky_in_place
 from dcs_linux.probes import REQUIRED_TOOLS, Environment
@@ -44,6 +50,9 @@ SAVED_GAMES_MAPPING = "Saved Games mapping"
 GAME_LOCATION = "Game location"
 PATCHES = "Patches"
 INTEGRITY_CHECK = "Integrity check"
+HEAD_TRACKER = "Head tracker"
+OPENTRACK = "opentrack"
+DCS_HEAD_TRACKING = "Head tracking in DCS"
 
 
 class Status(StrEnum):
@@ -93,6 +102,7 @@ def run_checks(environment: Environment) -> list[CheckResult]:
         check_game_location,
         check_patches,
         check_integrity,
+        *HEAD_TRACKING_CHECKS,
     )
     return [check(environment) for check in checks]
 
@@ -500,3 +510,148 @@ def _nothing_selected(environment: Environment) -> str:
     if not environment.installs:
         return "no DCS install found"
     return f"{len(environment.installs)} installs found; pass --install ID to choose one"
+
+
+def check_head_tracker(environment: Environment) -> CheckResult:
+    """The connected tracker, and whether this user is allowed to open it.
+
+    Never a failure: DCS flies without head tracking, and a blocking row here
+    would stop `install` on a machine that is otherwise perfectly ready.
+    """
+    tracking = environment.head_tracking
+    if not tracking.trackers:
+        return CheckResult(
+            name=HEAD_TRACKER,
+            status=Status.SKIP,
+            detail="no NaturalPoint or TrackIR device connected",
+        )
+
+    names = ", ".join(f"{tracker.name} at {tracker.node}" for tracker in tracking.trackers)
+    rule = f"udev rule in {tracking.udev_rule}" if tracking.udev_rule else "no udev rule installed"
+    blocked = tracking.inaccessible
+    if not blocked:
+        return CheckResult(
+            name=HEAD_TRACKER,
+            status=Status.PASS,
+            detail=f"{names}; readable; {rule}",
+        )
+
+    return CheckResult(
+        name=HEAD_TRACKER,
+        status=Status.WARN,
+        detail=f"{names}; {rule}, and this user cannot open the device, so nothing "
+        "will move in the cockpit",
+        remediation=_tracker_access_hint(tracking.udev_rule),
+    )
+
+
+RECONNECT = "   # then unplug and replug the tracker"
+
+
+def _tracker_access_hint(rule: Path | None) -> str:
+    """How to get access, which is not the same advice twice.
+
+    Only *our* rule earns the shorter answer. It is correct by construction,
+    so if it is in place and the device is still shut, nothing was wrong with
+    the rule — udev applies rules when a device appears, and this one has not
+    been applied yet.
+
+    Any other rule is a rule that demonstrably is not working, and the usual
+    reason is that it cannot: the recipes in circulation number theirs `99-`,
+    which sets a `uaccess` tag after the only thing that reads it has run, or
+    give it a group the user is not in. Withholding the working rule because
+    a broken one exists would leave the user re-running a reload that can
+    never help.
+
+    Either way the tool prints the privileged command and runs none of it.
+    """
+    if rule == RULE_FILE:
+        return (
+            "the rule is installed but has not been applied: "
+            f"sudo udevadm control --reload-rules && sudo udevadm trigger{RECONNECT}"
+        )
+    existing = f"{rule} does not grant access; install one that does: " if rule else ""
+    return f"{existing}{install_rule_command()}{RECONNECT}"
+
+
+def check_opentrack(environment: Environment) -> CheckResult:
+    """opentrack, which is what turns a tracker into head movement in DCS."""
+    tracking = environment.head_tracking
+    if tracking.opentrack is not None:
+        return CheckResult(name=OPENTRACK, status=Status.PASS, detail=tracking.opentrack)
+    if not tracking.in_use:
+        # Nothing on this machine says head tracking is wanted, so absence is
+        # not a gap. A row that warns on every run teaches users to skim.
+        return CheckResult(
+            name=OPENTRACK,
+            status=Status.SKIP,
+            detail="not installed; only needed for head tracking",
+        )
+    return CheckResult(
+        name=OPENTRACK,
+        status=Status.WARN,
+        detail="a head tracker is connected but opentrack is not installed, so DCS "
+        "has nothing feeding it head movement",
+        remediation=_opentrack_hint(environment),
+    )
+
+
+def _opentrack_hint(environment: Environment) -> str:
+    """How to install opentrack on the machine reading this (ADR-0006).
+
+    Flathub rather than a package manager: opentrack is in no mainstream
+    distro's own repositories, and it is the one route that also works on the
+    image-based bases. Flatpak itself is the part that varies, so that is the
+    part the distro answers for.
+    """
+    install = f"{FLATHUB_REMOTE} && {OPENTRACK_INSTALL}"
+    if environment.head_tracking.flatpak:
+        return install
+    if environment.distro.is_immutable:
+        # flatpak is part of the image on every base like this, so a missing
+        # one is a broken system rather than something to install. Asking
+        # `install_hint` would answer "get it from a container", and a flatpak
+        # inside a distrobox exports nothing to the host that could run DCS.
+        return f"flatpak is missing from this system's image; once it is back: {install}"
+    return f"{environment.distro.install_hint('flatpak')}, then {install}"
+
+
+def check_dcs_head_tracking(environment: Environment) -> CheckResult:
+    """Whether DCS can actually see the tracker, as far as that is knowable.
+
+    DCS reaches a head tracker through NaturalPoint's client DLL, and finds it
+    through a registry key in the prefix. The key is therefore the one part of
+    the chain that is readable from disk — whether opentrack is running, and
+    whether the user has bound the axes, is not.
+    """
+    tracking = environment.head_tracking
+    if not tracking.in_use:
+        return CheckResult(
+            name=DCS_HEAD_TRACKING,
+            status=Status.SKIP,
+            detail="not in use",
+        )
+    if not environment.install_state.prefix_exists:
+        return _no_prefix_yet(DCS_HEAD_TRACKING)
+    if tracking.wine_bridge:
+        return CheckResult(
+            name=DCS_HEAD_TRACKING,
+            status=Status.PASS,
+            detail="the prefix points DCS at an NPClient bridge",
+        )
+    return CheckResult(
+        name=DCS_HEAD_TRACKING,
+        status=Status.WARN,
+        detail="nothing in the prefix points DCS at an NPClient bridge, so head "
+        "movement will not reach the cockpit",
+        remediation=f"in opentrack set Output to 'Wine' and point it at {environment.paths.prefix}",
+    )
+
+
+# Head tracking, as its own tuple so the "these never block" rule is one thing
+# to assert rather than three (#13).
+HEAD_TRACKING_CHECKS: tuple[Callable[[Environment], CheckResult], ...] = (
+    check_head_tracker,
+    check_opentrack,
+    check_dcs_head_tracking,
+)
