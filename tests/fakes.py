@@ -104,6 +104,7 @@ class FakeSystem:
         return self.commands.get(" ".join(command))
 
     def run_binary(self, command: list[str]) -> bytes | None:
+        self.runs.append(command)
         return self.binary_commands.get(" ".join(command))
 
     def disk_usage(self, path: Path) -> DiskUsage | None:

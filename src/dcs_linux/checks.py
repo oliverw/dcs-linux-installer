@@ -15,7 +15,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from dcs_linux.headtracking import OPENTRACK_INSTALL, install_rule_command
+from dcs_linux.headtracking import (
+    FLATHUB_REMOTE,
+    OPENTRACK_INSTALL,
+    RULE_FILE,
+    install_rule_command,
+)
 from dcs_linux.installs import Launcher
 from dcs_linux.patches import SERVERS_REJECT, PatchState, PatchStatus, risky_in_place
 from dcs_linux.probes import REQUIRED_TOOLS, Environment
@@ -126,11 +131,6 @@ def blocking_preflight(results: Sequence[CheckResult]) -> list[CheckResult]:
         for result in results
         if result.name in PREFLIGHT_CHECKS and result.status is Status.FAIL
     ]
-
-
-# Head tracking, as its own tuple so the "these never block" rule is one
-# thing to assert rather than three (#13).
-HEAD_TRACKING_CHECKS: tuple[Callable[[Environment], CheckResult], ...] = ()
 
 
 def check_distro(environment: Environment) -> CheckResult:
@@ -541,24 +541,37 @@ def check_head_tracker(environment: Environment) -> CheckResult:
         status=Status.WARN,
         detail=f"{names}; {rule}, and this user cannot open the device, so nothing "
         "will move in the cockpit",
-        remediation=_tracker_access_hint(tracking.udev_rule is not None),
+        remediation=_tracker_access_hint(tracking.udev_rule),
     )
 
 
-def _tracker_access_hint(rule_installed: bool) -> str:
+RECONNECT = "   # then unplug and replug the tracker"
+
+
+def _tracker_access_hint(rule: Path | None) -> str:
     """How to get access, which is not the same advice twice.
 
-    With a rule already in place, writing another one changes nothing: udev
-    applies rules when a device appears, so the fix is to reload and reconnect.
+    Only *our* rule earns the shorter answer. It is correct by construction,
+    so if it is in place and the device is still shut, nothing was wrong with
+    the rule — udev applies rules when a device appears, and this one has not
+    been applied yet.
+
+    Any other rule is a rule that demonstrably is not working, and the usual
+    reason is that it cannot: the recipes in circulation number theirs `99-`,
+    which sets a `uaccess` tag after the only thing that reads it has run, or
+    give it a group the user is not in. Withholding the working rule because
+    a broken one exists would leave the user re-running a reload that can
+    never help.
+
     Either way the tool prints the privileged command and runs none of it.
     """
-    if rule_installed:
+    if rule == RULE_FILE:
         return (
-            "a rule is already installed but has not taken effect: "
-            "sudo udevadm control --reload-rules && sudo udevadm trigger   "
-            "# then unplug and replug the tracker"
+            "the rule is installed but has not been applied: "
+            f"sudo udevadm control --reload-rules && sudo udevadm trigger{RECONNECT}"
         )
-    return f"{install_rule_command()}   # then unplug and replug the tracker"
+    existing = f"{rule} does not grant access; install one that does: " if rule else ""
+    return f"{existing}{install_rule_command()}{RECONNECT}"
 
 
 def check_opentrack(environment: Environment) -> CheckResult:
@@ -591,9 +604,16 @@ def _opentrack_hint(environment: Environment) -> str:
     image-based bases. Flatpak itself is the part that varies, so that is the
     part the distro answers for.
     """
+    install = f"{FLATHUB_REMOTE} && {OPENTRACK_INSTALL}"
     if environment.head_tracking.flatpak:
-        return OPENTRACK_INSTALL
-    return f"{environment.distro.install_hint('flatpak')}, then {OPENTRACK_INSTALL}"
+        return install
+    if environment.distro.is_immutable:
+        # flatpak is part of the image on every base like this, so a missing
+        # one is a broken system rather than something to install. Asking
+        # `install_hint` would answer "get it from a container", and a flatpak
+        # inside a distrobox exports nothing to the host that could run DCS.
+        return f"flatpak is missing from this system's image; once it is back: {install}"
+    return f"{environment.distro.install_hint('flatpak')}, then {install}"
 
 
 def check_dcs_head_tracking(environment: Environment) -> CheckResult:
@@ -628,4 +648,10 @@ def check_dcs_head_tracking(environment: Environment) -> CheckResult:
     )
 
 
-HEAD_TRACKING_CHECKS = (check_head_tracker, check_opentrack, check_dcs_head_tracking)
+# Head tracking, as its own tuple so the "these never block" rule is one thing
+# to assert rather than three (#13).
+HEAD_TRACKING_CHECKS: tuple[Callable[[Environment], CheckResult], ...] = (
+    check_head_tracker,
+    check_opentrack,
+    check_dcs_head_tracking,
+)

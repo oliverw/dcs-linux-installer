@@ -96,7 +96,9 @@ Once DCS is installed it also checks the things that break it in ways the logs n
 │      │                      │ the tracker                                                        │
 │ warn │ opentrack            │ a head tracker is connected but opentrack is not installed, so DCS │
 │      │                      │ has nothing feeding it head movement                               │
-│      │                      │ → flatpak install flathub io.github.opentrack.opentrack            │
+│      │                      │ → flatpak remote-add --if-not-exists flathub                       │
+│      │                      │ https://dl.flathub.org/repo/flathub.flatpakrepo && flatpak install │
+│      │                      │ flathub io.github.opentrack.opentrack                              │
 │ warn │ Head tracking in DCS │ nothing in the prefix points DCS at an NPClient bridge, so head    │
 │      │                      │ movement will not reach the cockpit                                │
 │      │                      │ → in opentrack set Output to 'Wine' and point it at                │

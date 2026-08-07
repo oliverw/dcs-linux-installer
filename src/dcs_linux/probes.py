@@ -11,8 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from dcs_linux.distro import Distro, detect_distro
-from dcs_linux.headtracking import HeadTracking
-from dcs_linux.headtracking import detect as detect_head_tracking
+from dcs_linux.headtracking import HeadTracking, detect_head_tracking
 from dcs_linux.installs import DcsInstall, Launcher, default_install, select
 from dcs_linux.launchers import discover
 from dcs_linux.patches import SEGOE_FONT_NAMES, PatchState, states, unknown_states

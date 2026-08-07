@@ -1,6 +1,7 @@
 """The rules, exercised against fixture environments only."""
 
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -30,6 +31,7 @@ from dcs_linux.checks import (
 )
 from dcs_linux.distro import Family
 from dcs_linux.headtracking import (
+    FLATHUB_REMOTE,
     OPENTRACK_INSTALL,
     RULE_FILE,
     HeadTracking,
@@ -351,6 +353,32 @@ class TestHeadTrackerRow:
         assert "udevadm trigger" in result.remediation
         assert "sudo tee" not in result.remediation
 
+    def test_a_foreign_rule_that_is_not_working_still_gets_the_working_one(self) -> None:
+        """The recipes in circulation number theirs 99-, which cannot work.
+
+        Withholding the rule that does work because a broken one exists would
+        leave the user re-running a reload that can never help them.
+        """
+        stale = Path("/etc/udev/rules.d/99-trackir.rules")
+        tracking = with_tracker(access=False, rule=stale)
+        result = check_head_tracker(healthy_environment(head_tracking=tracking))
+        assert result.remediation is not None
+        assert install_rule_command() in result.remediation
+        assert str(stale) in result.remediation
+
+    def test_the_udev_advice_is_the_same_on_an_image_based_base(self) -> None:
+        """Deliberately the one remediation with no per-distro variant.
+
+        A udev rule is not a package, and the container answer ADR-0006 gives
+        an image-based base governs nothing: a distrobox has no udev.
+        """
+        tracking = with_tracker(access=False)
+        for distro in (STEAMOS, BAZZITE):
+            result = check_head_tracker(healthy_environment(distro=distro, head_tracking=tracking))
+            assert result.remediation is not None
+            assert install_rule_command() in result.remediation
+            assert "distrobox" not in result.remediation
+
     def test_the_tool_only_ever_prints_the_privileged_command(self) -> None:
         assert install_rule_command().count("sudo") >= 1
 
@@ -371,17 +399,29 @@ class TestOpentrackRow:
         assert result.remediation is not None
         assert OPENTRACK_INSTALL in result.remediation
 
+    def test_the_flathub_remote_is_added_because_a_new_flatpak_has_none(self) -> None:
+        """Without it the install exits with `Remote "flathub" not found`."""
+        result = check_opentrack(healthy_environment(head_tracking=with_tracker()))
+        assert result.remediation is not None
+        assert result.remediation.index(FLATHUB_REMOTE) < result.remediation.index(
+            OPENTRACK_INSTALL
+        )
+
     def test_flatpak_itself_is_installed_first_when_it_is_missing(self) -> None:
         tracking = replace(with_tracker(), flatpak=False)
         result = check_opentrack(healthy_environment(head_tracking=tracking))
         assert result.remediation is not None
         assert result.remediation.startswith("sudo dnf install flatpak")
 
-    def test_an_immutable_base_is_never_told_to_run_a_package_manager(self) -> None:
+    def test_an_image_based_base_is_never_sent_to_a_container_for_flatpak(self) -> None:
+        """A flatpak inside a distrobox exports nothing to the host."""
         tracking = replace(with_tracker(), flatpak=False)
-        result = check_opentrack(healthy_environment(distro=STEAMOS, head_tracking=tracking))
-        assert result.remediation is not None
-        assert "pacman" not in result.remediation
+        for distro in (STEAMOS, BAZZITE):
+            result = check_opentrack(healthy_environment(distro=distro, head_tracking=tracking))
+            assert result.remediation is not None
+            assert "distrobox" not in result.remediation
+            assert "pacman" not in result.remediation
+            assert OPENTRACK_INSTALL in result.remediation
 
 
 class TestDcsHeadTrackingRow:

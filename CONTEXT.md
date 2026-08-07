@@ -238,14 +238,27 @@ device permissions — so the scope line is drawn in code: detection matches the
   the account is not allowed to talk to it. Read with `os.access`, never from
   the mode bits, because udev's `uaccess` tag grants the logged-in seat an ACL
   that owner-and-group reasoning cannot see.
-- **udev rule** — any file under udev's rules directories that names the
-  vendor id, whoever wrote it: by hand, or shipped by linuxtrack or an
-  opentrack package. Installing one needs root, so the tool **prints the exact
-  command and runs none of it**. The rule it emits uses `TAG+="uaccess"` rather
-  than the `MODE="0666"` of the old TrackIR recipes, which hands the device to
-  every account on the machine — and is numbered **70**, not the customary 99,
-  because systemd applies uaccess ACLs from `73-seat-late.rules` and a tag set
-  after that is a tag nothing reads.
+- **udev rule** — any uncommented line under udev's rules directories that
+  names the vendor id, whoever wrote it: by hand, or shipped by linuxtrack or
+  an opentrack package. Finding one says a rule *exists*, never that it
+  *works* — access is a fact about the device node, and the two are reported
+  separately for that reason. Only the rule this tool emits earns the shorter
+  "reload and reconnect" advice; any other rule that is in place while the
+  device stays shut is a rule that cannot work, and gets the working one.
+  Installing it needs root, so the tool **prints the exact command and runs
+  none of it**. The rule uses `TAG+="uaccess"` rather than the `MODE="0666"`
+  of the old TrackIR recipes, which hands the device to every account on the
+  machine — and is numbered **70**, not the customary 99, because systemd
+  applies uaccess ACLs from `73-seat-late.rules` and a tag set after that is a
+  tag nothing reads.
+
+  It is the one remediation in the tool with **no per-distro variant**, and
+  that is a deliberate exception to ADR-0006 rather than an oversight: a udev
+  rule is not a package, so there is nothing for a package manager to install,
+  and the container answer ADR-0006 gives an image-based base governs nothing
+  — a distrobox has no udev of its own. `/etc` is writable on every base this
+  tool targets. **Unverified on SteamOS**: that its `/etc` changes survive an
+  update is reasoned from how those updates are documented, not observed.
 - **wine bridge** — the `NPClient Location` registry key in the prefix, which
   is how DCS finds NaturalPoint's client DLL and therefore the only part of
   the opentrack chain that is readable from disk. Whether opentrack is

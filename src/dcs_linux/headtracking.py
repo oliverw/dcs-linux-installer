@@ -30,9 +30,17 @@ USB_DEVICES = Path("/sys/bus/usb/devices")
 # NaturalPoint, who make TrackIR. The only vendor this module knows.
 NATURALPOINT_VENDOR = "131d"
 
-# Where udev reads rules from, in the order it does. `/etc` is last-word and
-# is writable even on the image-based distros, which is why the remediation
-# below needs no per-distro variant (ADR-0006).
+# Where udev reads rules from, in the order it does.
+#
+# The rule this module emits is the one remediation in the tool with no
+# per-distro variant, and that is deliberate rather than an oversight of
+# ADR-0006. A udev rule is not a package: there is nothing for a package
+# manager to install, and the container answer ADR-0006 gives an image-based
+# base is actively wrong here — a distrobox has no udev of its own, and a rule
+# written inside one governs nothing. `/etc` is writable on every base this
+# tool targets, and both ostree and SteamOS carry `/etc` changes across an
+# update. **Unverified on SteamOS**: reasoned from how its updates are
+# documented, not observed.
 UDEV_RULE_DIRS = (
     Path("/etc/udev/rules.d"),
     Path("/run/udev/rules.d"),
@@ -62,6 +70,13 @@ OPENTRACK_FLATPAK = "io.github.opentrack.opentrack"
 # bases as well. Naming a package manager here would be the invented command
 # ADR-0006 exists to prevent.
 OPENTRACK_INSTALL = f"flatpak install flathub {OPENTRACK_FLATPAK}"
+
+# A flatpak that was only just installed has no remotes, so the install above
+# exits with `Remote "flathub" not found`. Idempotent, so it costs a user who
+# already has the remote nothing.
+FLATHUB_REMOTE = (
+    "flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
+)
 
 # The key every TrackIR-aware game reads to find NPClient.dll, and what
 # opentrack's Wine output protocol writes into the prefix. Reasoned from the
@@ -112,7 +127,7 @@ class HeadTracking:
         return tuple(tracker for tracker in self.trackers if not tracker.accessible)
 
 
-def detect(system: System, paths: TargetPaths) -> HeadTracking:
+def detect_head_tracking(system: System, paths: TargetPaths) -> HeadTracking:
     """Read the machine's head-tracking state. Read-only, like every probe."""
     return HeadTracking(
         trackers=detect_trackers(system),
@@ -173,26 +188,35 @@ def _attribute(system: System, device: Path, name: str) -> str | None:
     return text.strip() if text else None
 
 
+# `ATTR{idVendor}=="131d"` and the `ATTRS{...}` spelling both count, and so
+# does an upper-case id — all three appear in rules found in the wild.
+_VENDOR_MATCH = re.compile(rf'idVendor}}\s*==\s*"{NATURALPOINT_VENDOR}"', re.IGNORECASE)
+
+
 def find_udev_rule(system: System) -> Path | None:
     """The first rules file that mentions the vendor, in udev's own order.
 
     Matched on the vendor id rather than on a filename, because the rule that
     matters may have arrived under any name — hand-written, or shipped by
     linuxtrack or an opentrack package.
+
+    Finding one is not the same as it working: it says a rule exists, never
+    that it grants access. `check` reads the device node for that.
     """
     for directory in UDEV_RULE_DIRS:
         for name in system.list_dir(directory):
             if not name.endswith(".rules"):
                 continue
             text = system.read_text(directory / name) or ""
-            if _VENDOR_MATCH.search(text):
+            # A commented-out rule is the shape of somebody who already tried
+            # this and gave up. It is not an installed rule.
+            if any(_VENDOR_MATCH.search(line) for line in _uncommented(text)):
                 return directory / name
     return None
 
 
-# `ATTR{idVendor}=="131d"` and the `ATTRS{...}` spelling both count, and so
-# does an upper-case id — all three appear in rules found in the wild.
-_VENDOR_MATCH = re.compile(rf'idVendor}}\s*==\s*"{NATURALPOINT_VENDOR}"', re.IGNORECASE)
+def _uncommented(text: str) -> list[str]:
+    return [line for line in text.splitlines() if not line.lstrip().startswith("#")]
 
 
 def install_rule_command() -> str:
