@@ -58,7 +58,7 @@ uv tool install dcs-linux-installer
 
 dcs-linux check             # is this machine ready? what DCS installs exist?
 dcs-linux install           # build the prefix, then hand off to the DCS updater
-dcs-linux create-shortcut   # add a KDE/GNOME launcher for a prepared install
+dcs-linux shortcut          # add a KDE/GNOME launcher for a prepared install
 dcs-linux launch            # start a prepared install without judging it
 dcs-linux patch             # apply the Linux fixes (IC-safe ones by default)
 dcs-linux verify            # launch DCS and confirm it actually works
@@ -189,13 +189,13 @@ dcs-linux launch --install 7976     # choose by ID or game path
 
 It uses the pinned umu and GE-Proton runtime, the mapped game directory and Saved Games, the Integrity Check-safe launch environment, and `--no-launcher`. It waits for the complete umu/Proton/Wine process tree and cleans it up if interrupted. The DCS exit code is reported but not treated as proof that the game worked; use `verify` when you want the log judged.
 
-### `dcs-linux create-shortcut`
+### `dcs-linux shortcut`
 
 Create the same KDE/GNOME desktop launcher later, without re-running `install`:
 
 ```sh
-dcs-linux create-shortcut                    # the single prepared install
-dcs-linux create-shortcut --install 7976     # choose by ID or game path
+dcs-linux shortcut                    # the single prepared install
+dcs-linux shortcut --install 7976     # choose by ID or game path
 ```
 
 The launcher runs `dcs-linux launch --install ID`, so it keeps using the prepared prefix and durable mappings. Re-running the command does not create a duplicate.

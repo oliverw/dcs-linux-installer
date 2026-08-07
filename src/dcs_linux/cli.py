@@ -637,8 +637,8 @@ def reset(
     typer.echo("Reset complete.")
 
 
-@app.command("create-shortcut")
-def create_shortcut_command(
+@app.command("shortcut")
+def shortcut_command(
     ctx: typer.Context,
     install: str | None = INSTALL_OPTION,
 ) -> None:
@@ -661,12 +661,12 @@ def create_shortcut_command(
 
 
 def _emit_shortcut_result(options: OutputOptions, result: ShortcutResult) -> None:
-    """Report one explicit create-shortcut outcome."""
+    """Report one explicit shortcut outcome."""
     ok = result.status in {ShortcutStatus.CREATED, ShortcutStatus.EXISTS}
     if options.json_output:
         typer.echo(
             json.dumps(
-                {"command": "create-shortcut", "ok": ok, "shortcut": shortcut_json(result)},
+                {"command": "shortcut", "ok": ok, "shortcut": shortcut_json(result)},
                 indent=2,
             )
         )

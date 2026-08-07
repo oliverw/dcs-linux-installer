@@ -1,4 +1,4 @@
-"""`dcs-linux create-shortcut` through its public command-line interface."""
+"""`dcs-linux shortcut` through its public command-line interface."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def prepared_system(desktop: str) -> FakeSystem:
     )
 
 
-def test_create_shortcut_creates_a_launcher_for_the_targeted_install(
+def test_shortcut_creates_a_launcher_for_the_targeted_install(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     system = prepared_system("KDE")
@@ -55,7 +55,7 @@ def test_create_shortcut_creates_a_launcher_for_the_targeted_install(
         lambda system, identifier=None: healthy_environment(),  # noqa: ARG005
     )
 
-    result = runner.invoke(cli.app, ["create-shortcut"])
+    result = runner.invoke(cli.app, ["shortcut"])
 
     assert result.exit_code == 0, result.output
     launcher = (
@@ -69,7 +69,7 @@ def test_create_shortcut_creates_a_launcher_for_the_targeted_install(
     )
 
 
-def test_create_shortcut_refuses_an_install_not_prepared_by_this_tool(
+def test_shortcut_refuses_an_install_not_prepared_by_this_tool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "KDE"})
@@ -84,14 +84,14 @@ def test_create_shortcut_refuses_an_install_not_prepared_by_this_tool(
         lambda system, identifier=None: environment,  # noqa: ARG005
     )
 
-    result = runner.invoke(cli.app, ["create-shortcut"])
+    result = runner.invoke(cli.app, ["shortcut"])
 
     assert result.exit_code == 1
     assert "not prepared by this tool" in result.output
     assert not [path for path in system.files if path.suffix == ".desktop"]
 
 
-def test_create_shortcut_forwards_the_selector_and_reports_json(
+def test_shortcut_forwards_the_selector_and_reports_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     system = prepared_system("GNOME")
@@ -108,15 +108,17 @@ def test_create_shortcut_forwards_the_selector_and_reports_json(
 
     result = runner.invoke(
         cli.app,
-        ["--json", "create-shortcut", "--install", OWN_INSTALL.install_id],
+        ["--json", "shortcut", "--install", OWN_INSTALL.install_id],
     )
 
     assert result.exit_code == 0, result.output
     assert identifiers == [OWN_INSTALL.install_id]
-    assert json.loads(result.stdout)["shortcut"]["status"] == "created"
+    payload = json.loads(result.stdout)
+    assert payload["command"] == "shortcut"
+    assert payload["shortcut"]["status"] == "created"
 
 
-def test_create_shortcut_reports_an_unsupported_desktop(
+def test_shortcut_reports_an_unsupported_desktop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     system = prepared_system("sway")
@@ -128,13 +130,13 @@ def test_create_shortcut_reports_an_unsupported_desktop(
         lambda system, identifier=None: healthy_environment(),  # noqa: ARG005
     )
 
-    result = runner.invoke(cli.app, ["create-shortcut"])
+    result = runner.invoke(cli.app, ["shortcut"])
 
     assert result.exit_code == 1
     assert "current desktop is not KDE or GNOME" in result.output
 
 
-def test_create_shortcut_is_idempotent_through_the_command(
+def test_shortcut_is_idempotent_through_the_command(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     system = prepared_system("KDE")
@@ -147,8 +149,8 @@ def test_create_shortcut_is_idempotent_through_the_command(
         lambda system, identifier=None: healthy_environment(),  # noqa: ARG005
     )
 
-    first = runner.invoke(cli.app, ["create-shortcut"])
-    second = runner.invoke(cli.app, ["create-shortcut"])
+    first = runner.invoke(cli.app, ["shortcut"])
+    second = runner.invoke(cli.app, ["shortcut"])
 
     assert first.exit_code == 0, first.output
     assert second.exit_code == 0, second.output
