@@ -48,8 +48,8 @@ from dcs_linux.report import (
     verify_json,
 )
 from dcs_linux.reset import apply as apply_reset
+from dcs_linux.reset import overlaps_lifetime, unsafe_stores
 from dcs_linux.reset import plan as reset_plan
-from dcs_linux.reset import stores_with_records
 from dcs_linux.runner import RealRunner
 from dcs_linux.system import RealSystem, System
 from dcs_linux.updater import WEB_INSTALLER_NAME, handoff
@@ -473,8 +473,14 @@ def reset(
     """
     system = RealSystem()
     layout = resolve_layout(system)
+    if overlaps_lifetime(system, layout):
+        typer.echo(
+            "state directory overlaps the prefix, game directory or saved games; "
+            "set DCS_LINUX_STATE outside them"
+        )
+        raise typer.Exit(code=1)
     planned = reset_plan(system, layout, patches=patches)
-    protected = stores_with_records(system, planned.stores)
+    protected = unsafe_stores(system, planned.stores)
     if protected:
         typer.echo(
             "patch stores still contain reversible patches; run `dcs-linux patch revert` first"

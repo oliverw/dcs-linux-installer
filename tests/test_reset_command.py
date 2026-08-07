@@ -16,6 +16,7 @@ STORE = LAYOUT.patch_store("abc12345")
 
 
 def use(monkeypatch: pytest.MonkeyPatch, system: FakeSystem) -> FakeSystem:
+    system.env.setdefault("DCS_LINUX_ROOT", str(LAYOUT.root))
     if "DCS_LINUX_STATE" not in system.env and "XDG_STATE_HOME" not in system.env:
         system.env["DCS_LINUX_STATE"] = str(LAYOUT.state)
     monkeypatch.setattr(cli, "RealSystem", lambda: system)
@@ -93,6 +94,51 @@ def test_reset_patches_refuses_while_a_patch_remains_revertible(
     assert "dcs-linux patch revert" in result.stdout
     assert system.read_text(LAYOUT.installs_register) == "{}"
     assert system.read_text(STORE / "state.json") == state
+
+
+def test_reset_patches_refuses_when_patch_state_cannot_be_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    system = use(
+        monkeypatch,
+        FakeSystem(files={str(LAYOUT.installs_register): "{}", str(STORE / "state.json"): "{"}),
+    )
+
+    result = runner.invoke(cli.app, ["reset", "--patches", "--yes"])
+
+    assert result.exit_code == 1
+    assert "dcs-linux patch revert" in result.stdout
+    assert system.read_text(LAYOUT.installs_register) == "{}"
+    assert system.read_text(STORE / "state.json") == "{"
+
+
+def test_reset_patches_removes_a_backup_only_patch_store(monkeypatch: pytest.MonkeyPatch) -> None:
+    backup = STORE / "backups" / "segoe-fonts" / "0"
+    system = use(monkeypatch, FakeSystem(files={str(backup): "pristine"}))
+
+    result = runner.invoke(cli.app, ["reset", "--patches", "--yes"])
+
+    assert result.exit_code == 0
+    assert system.read_text(backup) is None
+
+
+def test_reset_refuses_a_state_directory_that_overlaps_the_game(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    register = LAYOUT.game / "installs.json"
+    system = use(
+        monkeypatch,
+        FakeSystem(
+            files={str(register): "{}", str(LAYOUT.game / "bin" / "DCS.exe"): "game"},
+            env={"DCS_LINUX_STATE": str(LAYOUT.game)},
+        ),
+    )
+
+    result = runner.invoke(cli.app, ["reset", "--yes"])
+
+    assert result.exit_code == 1
+    assert system.read_text(register) == "{}"
+    assert system.read_text(LAYOUT.game / "bin" / "DCS.exe") == "game"
 
 
 def test_reset_honours_the_state_override_and_never_touches_the_three_lifetimes(
