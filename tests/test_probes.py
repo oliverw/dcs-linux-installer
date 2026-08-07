@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from dcs_linux.installs import DcsInstall, InstallNotFound, Launcher
+from dcs_linux.installs import DcsInstall, Edition, InstallNotFound, Launcher
 from dcs_linux.paths import Layout, resolve_layout
 from dcs_linux.probes import (
     InstallState,
@@ -589,6 +589,74 @@ class TestProbeTargeting:
         environment = probe(FakeSystem(files=self.FILES, home="/home/pilot"), self.GAME)
         assert environment.targeted is not None
         assert environment.targeted.game == Path(self.GAME)
+
+    def test_a_trailing_slash_keeps_a_discovered_install(self) -> None:
+        game = "/data/dcs/game/DCS World"
+        system = FakeSystem(files={f"{game}/bin/DCS.exe": ""}, home="/home/pilot")
+
+        environment = probe(system, f"{game}/", layout=LAYOUT)
+
+        assert environment.targeted is not None
+        assert environment.targeted.launcher is Launcher.DCS_LINUX
+
+    def test_a_home_relative_path_keeps_a_discovered_install(self) -> None:
+        layout = Layout(
+            root=Path("/home/pilot/dcs-linux"),
+            toolchain=LAYOUT.toolchain,
+            state=LAYOUT.state,
+        )
+        game = "/home/pilot/dcs-linux/game/DCS World"
+        system = FakeSystem(files={f"{game}/bin/DCS.exe": ""}, home="/home/pilot")
+
+        environment = probe(system, "~/dcs-linux/game/DCS World", layout=layout)
+
+        assert environment.targeted is not None
+        assert environment.targeted.launcher is Launcher.DCS_LINUX
+
+    def test_a_path_with_parent_segments_keeps_a_discovered_install(self) -> None:
+        game = "/data/dcs/game/DCS World"
+        system = FakeSystem(files={f"{game}/bin/DCS.exe": ""}, home="/home/pilot")
+
+        environment = probe(system, "/data/dcs/game/unused/../DCS World", layout=LAYOUT)
+
+        assert environment.targeted is not None
+        assert environment.targeted.launcher is Launcher.DCS_LINUX
+
+    def test_a_symlinked_path_keeps_discovered_install_details(self) -> None:
+        game = "/data/dcs/game/DCS World"
+        system = FakeSystem(
+            files={
+                f"{game}/bin/DCS.exe": "",
+                f"{game}/bin/DCS_updater.exe": "",
+                f"{LAYOUT.prefix}/system.reg": "",
+            },
+            links={"/games/dcs": game},
+            home="/home/pilot",
+        )
+
+        environment = probe(system, "/games/dcs", layout=LAYOUT)
+
+        assert environment.targeted is environment.installs[0]
+        assert environment.targeted.launcher is Launcher.DCS_LINUX
+        assert environment.targeted.edition is Edition.STANDALONE
+        assert environment.targeted.prefix == LAYOUT.prefix
+
+    def test_an_undiscovered_symlinked_path_keeps_its_sibling_prefix(self) -> None:
+        game = "/real/dcs/game/DCS World"
+        system = FakeSystem(
+            files={
+                f"{game}/bin/DCS.exe": "",
+                "/alias/dcs/prefix/system.reg": "",
+            },
+            links={"/alias/dcs/game/DCS World": game},
+            home="/home/pilot",
+        )
+
+        environment = probe(system, "/alias/dcs/game/DCS World", layout=LAYOUT)
+
+        assert environment.targeted is not None
+        assert environment.targeted.launcher is Launcher.ADOPTED
+        assert environment.targeted.prefix == Path("/alias/dcs/prefix")
 
     def test_the_adopted_install_is_listed_so_a_later_run_can_use_its_id(self) -> None:
         environment = probe(FakeSystem(files=self.FILES, home="/home/pilot"), self.GAME)

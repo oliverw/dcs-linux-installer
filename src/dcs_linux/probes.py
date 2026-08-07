@@ -154,7 +154,12 @@ def _installs(
     try:
         return installs, select(installs, identifier)
     except InstallNotFound:
-        adopted = adopt(system, normalise(system, identifier))
+        path = normalise(system, identifier)
+        try:
+            return installs, select(installs, str(system.resolve(path)))
+        except InstallNotFound:
+            pass
+        adopted = adopt(system, path)
         if adopted is None:
             raise
         return (*installs, adopted), adopted
