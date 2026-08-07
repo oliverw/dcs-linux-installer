@@ -556,12 +556,11 @@ def _tracker_access_hint(rule: Path | None) -> str:
     the rule — udev applies rules when a device appears, and this one has not
     been applied yet.
 
-    Any other rule is a rule that demonstrably is not working, and the usual
-    reason is that it cannot: the recipes in circulation number theirs `99-`,
-    which sets a `uaccess` tag after the only thing that reads it has run, or
-    give it a group the user is not in. Withholding the working rule because
-    a broken one exists would leave the user re-running a reload that can
-    never help.
+    Any other rule is a rule that, on this machine, is demonstrably not
+    granting access — whatever it does elsewhere. The usual reasons are a
+    group the user is not in, or a `uaccess` tag numbered above 73 where
+    nothing reads it. Withholding the working rule because some rule exists
+    would leave the user re-running a reload that cannot help them.
 
     Either way the tool prints the privileged command and runs none of it.
     """

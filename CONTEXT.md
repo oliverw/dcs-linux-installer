@@ -232,7 +232,14 @@ device permissions — so the scope line is drawn in code: detection matches the
 - **tracker** — a connected NaturalPoint device, named by the `product` string
   the device itself advertises. There is no product-id table on purpose: a
   hard-coded catalogue would claim to recognise hardware nobody here has seen,
-  and misname half of it. An unnamed device reports as `131d:<idProduct>`.
+  and misname half of it.
+
+  Observed on hardware: a **TrackIR 5 advertises nothing**. `131d:0159` leaves
+  both `product` and `manufacturer` present and empty, so `lsusb` calling it
+  "Natural Point" is the USB id database talking, not the device. The fallback
+  is therefore the *normal* path for the commonest tracker there is, not an
+  edge case — which is why it reads `NaturalPoint 131d:0159` and not a bare
+  pair of hex ids. The vendor is ours to state; it is the only one matched.
 - **access** — whether *this user* can open the tracker's `/dev/bus/usb` node.
   The mundane reason head tracking fails on Linux: the device is present, and
   the account is not allowed to talk to it. Read with `os.access`, never from
@@ -243,14 +250,24 @@ device permissions — so the scope line is drawn in code: detection matches the
   an opentrack package. Finding one says a rule *exists*, never that it
   *works* — access is a fact about the device node, and the two are reported
   separately for that reason. Only the rule this tool emits earns the shorter
-  "reload and reconnect" advice; any other rule that is in place while the
-  device stays shut is a rule that cannot work, and gets the working one.
-  Installing it needs root, so the tool **prints the exact command and runs
-  none of it**. The rule uses `TAG+="uaccess"` rather than the `MODE="0666"`
-  of the old TrackIR recipes, which hands the device to every account on the
-  machine — and is numbered **70**, not the customary 99, because systemd
-  applies uaccess ACLs from `73-seat-late.rules` and a tag set after that is a
-  tag nothing reads.
+  "reload and reconnect" advice; any other rule in place while the device
+  stays shut is, on that machine, not granting access, and gets the working
+  one. Installing it needs root, so the tool **prints the exact command and
+  runs none of it**.
+
+  The rule uses `TAG+="uaccess"` rather than the `MODE="0666"` of the old
+  TrackIR recipes, which hands the device to every account on the machine —
+  and is numbered **70**, not the customary 99, because systemd applies
+  uaccess ACLs from `73-seat-late.rules` and a tag set after that is a tag
+  nothing reads.
+
+  **That numbering binds `uaccess` and nothing else.** `MODE=` is applied by
+  udev itself as it creates the node, so the old recipes work at any number:
+  a `96-trackir.rules` holding
+  `SUBSYSTEM=="usb", ATTRS{idVendor}=="131d", MODE="0666"` was observed
+  granting access on Fedora 44 (`crw-rw-rw-`, no ACL involved). A rule
+  numbered above 73 is not broken by that alone, and the tool must not say it
+  is.
 
   It is the one remediation in the tool with **no per-distro variant**, and
   that is a deliberate exception to ADR-0006 rather than an oversight: a udev

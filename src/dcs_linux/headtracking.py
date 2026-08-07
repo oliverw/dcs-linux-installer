@@ -52,6 +52,12 @@ UDEV_RULE_DIRS = (
 # ACLs from `73-seat-late.rules`, so a rule numbered above 73 sets the tag
 # after the only thing that reads it has already run — the rule installs
 # cleanly, changes nothing, and looks like the tag does not work.
+#
+# This binds `uaccess` and nothing else. `MODE=` is applied by udev itself as
+# it creates the node, so the old `MODE="0666"` recipes work at any number —
+# a `96-` one was observed granting access on Fedora 44. They are still not
+# what this tool emits, because 0666 hands the device to every account on the
+# machine, but a rule numbered above 73 is not broken by that alone.
 RULE_FILE = Path("/etc/udev/rules.d/70-trackir.rules")
 
 # `uaccess` hands the device to whoever is logged in at the seat. Narrower
@@ -162,16 +168,23 @@ def detect_trackers(system: System) -> tuple[Tracker, ...]:
 
 
 def _tracker_name(system: System, device: Path) -> str:
-    """What the device calls itself, or its ids.
+    """What the device calls itself, or the vendor and its ids.
 
-    The ids are the fallback on purpose: a hard-coded product table would
-    claim to recognise devices nobody here has ever seen, and get the names
-    of half of them wrong.
+    The fallback is the *normal* path, not an edge case: a TrackIR 5 leaves
+    `product` and `manufacturer` empty, so `lsusb` naming it "Natural Point"
+    comes from the USB id database and not from the device (observed on
+    `131d:0159`, Fedora 44). The vendor is still ours to state — it is the
+    only vendor this module matches — so a nameless tracker reads as
+    `NaturalPoint 131d:0159` rather than a bare pair of hex ids.
+
+    There is still no product table: a hard-coded catalogue would claim to
+    recognise devices nobody here has ever seen, and misname half of them.
     """
     product = _attribute(system, device, "product")
     if product:
         return product
-    return f"{NATURALPOINT_VENDOR}:{_attribute(system, device, 'idProduct') or '????'}"
+    ids = f"{NATURALPOINT_VENDOR}:{_attribute(system, device, 'idProduct') or '????'}"
+    return f"NaturalPoint {ids}"
 
 
 def _device_node(system: System, device: Path) -> Path | None:

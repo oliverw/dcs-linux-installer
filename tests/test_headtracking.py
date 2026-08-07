@@ -66,10 +66,24 @@ class TestDeviceDetection:
         assert tracker.name == "TrackIR 5"
         assert tracker.node == Path("/dev/bus/usb/001/007")
 
-    def test_a_nameless_device_falls_back_to_its_usb_ids(self) -> None:
-        """No invented catalogue: an unknown NaturalPoint device says what it is."""
+    def test_a_nameless_device_falls_back_to_the_vendor_and_its_ids(self) -> None:
+        """No invented catalogue, but the vendor is still ours to state."""
         system = FakeSystem(files=usb_device(product=None, product_id="0155"))
-        assert detect_head_tracking(system, PATHS).trackers[0].name == "131d:0155"
+        name = detect_head_tracking(system, PATHS).trackers[0].name
+        assert name == "NaturalPoint 131d:0155"
+
+    def test_a_real_trackir_5_names_itself_nothing(self) -> None:
+        """Observed on hardware: `product` is present and empty, not absent.
+
+        The fallback is the normal path for a TrackIR 5, not an edge case —
+        `lsusb` calling it "Natural Point" comes from the USB id database.
+        """
+        files = usb_device(product_id="0159", devnum=53)
+        files["/sys/bus/usb/devices/1-2/product"] = "\n"
+        files["/sys/bus/usb/devices/1-2/manufacturer"] = "\n"
+        tracker = detect_head_tracking(FakeSystem(files=files), PATHS).trackers[0]
+        assert tracker.name == "NaturalPoint 131d:0159"
+        assert tracker.node == Path("/dev/bus/usb/001/053")
 
     def test_nothing_connected_is_reported_as_nothing_not_as_an_error(self) -> None:
         assert detect_head_tracking(FakeSystem(), PATHS).trackers == ()
@@ -116,6 +130,23 @@ class TestUdevRule:
         assert detect_head_tracking(system, PATHS).udev_rule == Path(
             "/etc/udev/rules.d/99-trackir.rules"
         )
+
+    def test_the_mode_recipe_in_circulation_counts_at_any_number(self) -> None:
+        """Observed granting access on Fedora 44, at `96-`.
+
+        Numbering only binds `uaccess`; udev applies `MODE=` itself as it
+        creates the node.
+        """
+        system = FakeSystem(
+            files={
+                **usb_device(),
+                "/etc/udev/rules.d/96-trackir.rules": (
+                    'SUBSYSTEM=="usb", ATTRS{idVendor}=="131d", MODE="0666"\n'
+                ),
+            }
+        )
+        found = detect_head_tracking(system, PATHS).udev_rule
+        assert found == Path("/etc/udev/rules.d/96-trackir.rules")
 
     def test_a_rule_shipped_by_a_package_counts(self) -> None:
         """linuxtrack and opentrack packages drop theirs under /usr/lib."""
