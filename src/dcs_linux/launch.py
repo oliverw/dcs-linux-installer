@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from dcs_linux.installs import DCS_EXE
+from dcs_linux.installs import DCS_EXE, DcsInstall
 from dcs_linux.prefix import (
     GAMEID,
     GE_PROTON_VERSION,
@@ -20,6 +20,19 @@ from dcs_linux.runner import Runner
 from dcs_linux.system import System
 
 NO_LAUNCHER = "--no-launcher"
+
+
+def is_prepared_install(system: System, install: DcsInstall) -> bool:
+    """Whether this tool's manifest binds the install to its prefix."""
+    prefix = install.prefix
+    if prefix is None or not system.exists(prefix / PREFIX_MARKER):
+        return False
+    runtime = read_prefix_manifest(system, prefix)
+    if runtime is None or system.resolve(runtime.prefix) != system.resolve(prefix):
+        return False
+    game = system.resolve(install.game)
+    runtime_game = system.resolve(runtime.game)
+    return runtime_game == game or runtime_game == game.parent
 
 
 @dataclass(frozen=True)

@@ -231,6 +231,51 @@ def test_json_shortcut_choice_is_scriptable_and_stays_machine_readable(
     assert "Create a" not in result.stderr
 
 
+def test_an_adoption_shortcut_uses_the_resolved_game_directory_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    linked_game = Path("/mnt/link/DCS World")
+    resolved_game = Path("/mnt/games/DCS World")
+    adopted = DcsInstall(game=resolved_game, launcher=Launcher.ADOPTED)
+    system = FakeSystem(
+        env={"XDG_CURRENT_DESKTOP": "KDE"},
+        links={str(linked_game): str(resolved_game)},
+    )
+    writer = FakeWriter(system)
+    use(monkeypatch, bare_environment(), handoff=completed_adoption(linked_game))
+    use_adopt_result(monkeypatch, adopted)
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: writer)
+
+    result = runner.invoke(
+        cli.app,
+        ["install", "--game-dir", str(linked_game), "--shortcut"],
+    )
+
+    assert result.exit_code == 0, result.output
+    launcher = (
+        system.home() / ".local/share/applications" / (f"dcs-linux-{adopted.install_id}.desktop")
+    )
+    assert f"--install {adopted.install_id}" in (system.read_text(launcher) or "")
+
+
+def test_an_install_already_owned_by_this_tool_is_not_offered_an_adoption_shortcut(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ours = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.DCS_LINUX)
+    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "KDE"})
+    use(monkeypatch, bare_environment(), handoff=completed_adoption(ours.game))
+    use_adopt_result(monkeypatch, ours)
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: FakeWriter(system))
+    monkeypatch.setattr(cli, "_is_interactive", lambda: True)
+
+    result = runner.invoke(cli.app, ["install", "--game-dir", str(ours.game)])
+
+    assert result.exit_code == 0, result.output
+    assert "Create a" not in result.output
+
+
 def test_declining_the_shortcut_prompt_creates_nothing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -9,17 +9,43 @@ import pytest
 from typer.testing import CliRunner
 
 from dcs_linux import cli
-from dcs_linux.installs import Launcher
-from tests.environments import OWN_INSTALL, healthy_environment
+from dcs_linux.prefix import (
+    GAMEID,
+    GE_PROTON_VERSION,
+    LAUNCH_ENVIRONMENT,
+    UMU_VERSION,
+    WINETRICKS_VERBS,
+)
+from tests.environments import LAYOUT, OWN_INSTALL, healthy_environment
 from tests.fakes import FakeSystem, FakeWriter
 
 runner = CliRunner()
 
 
+def prepared_system(desktop: str) -> FakeSystem:
+    manifest = {
+        "umu_version": UMU_VERSION,
+        "ge_proton": GE_PROTON_VERSION,
+        "gameid": GAMEID,
+        "verbs": list(WINETRICKS_VERBS),
+        "environment": LAUNCH_ENVIRONMENT,
+        "prefix": str(LAYOUT.prefix),
+        "game": str(LAYOUT.game),
+        "saved_games": str(LAYOUT.saved_games),
+    }
+    return FakeSystem(
+        env={"XDG_CURRENT_DESKTOP": desktop},
+        files={
+            str(LAYOUT.prefix / "system.reg"): "WINE REGISTRY Version 2",
+            str(LAYOUT.manifest): json.dumps(manifest),
+        },
+    )
+
+
 def test_create_shortcut_creates_a_launcher_for_the_targeted_install(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "KDE"})
+    system = prepared_system("KDE")
     writer = FakeWriter(system)
     monkeypatch.setattr(cli, "RealSystem", lambda: system)
     monkeypatch.setattr(cli, "RealWriter", lambda: writer)
@@ -48,7 +74,7 @@ def test_create_shortcut_refuses_an_install_not_prepared_by_this_tool(
 ) -> None:
     system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "KDE"})
     writer = FakeWriter(system)
-    unprepared = replace(OWN_INSTALL, launcher=Launcher.STEAM, prefix=None, runtime=None)
+    unprepared = replace(OWN_INSTALL, runtime=None)
     environment = healthy_environment(installs=(unprepared,), targeted=unprepared)
     monkeypatch.setattr(cli, "RealSystem", lambda: system)
     monkeypatch.setattr(cli, "RealWriter", lambda: writer)
@@ -68,7 +94,7 @@ def test_create_shortcut_refuses_an_install_not_prepared_by_this_tool(
 def test_create_shortcut_forwards_the_selector_and_reports_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "GNOME"})
+    system = prepared_system("GNOME")
     writer = FakeWriter(system)
     identifiers: list[str | None] = []
 
@@ -93,7 +119,7 @@ def test_create_shortcut_forwards_the_selector_and_reports_json(
 def test_create_shortcut_reports_an_unsupported_desktop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "sway"})
+    system = prepared_system("sway")
     monkeypatch.setattr(cli, "RealSystem", lambda: system)
     monkeypatch.setattr(cli, "RealWriter", lambda: FakeWriter(system))
     monkeypatch.setattr(
@@ -111,7 +137,7 @@ def test_create_shortcut_reports_an_unsupported_desktop(
 def test_create_shortcut_is_idempotent_through_the_command(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "KDE"})
+    system = prepared_system("KDE")
     writer = FakeWriter(system)
     monkeypatch.setattr(cli, "RealSystem", lambda: system)
     monkeypatch.setattr(cli, "RealWriter", lambda: writer)

@@ -28,7 +28,7 @@ from dcs_linux.installs import (
     Launcher,
     adopted_location_warning,
 )
-from dcs_linux.launch import launch_dcs
+from dcs_linux.launch import is_prepared_install, launch_dcs
 from dcs_linux.launchers import adopt, discover
 from dcs_linux.output import OutputOptions, console_for, output_options
 from dcs_linux.patches import (
@@ -208,6 +208,7 @@ def install(
     writer, runner = RealWriter(), RealRunner()
     layout = _install_layout(system, game_dir)
     existing_install = adopt(system, layout.game) if game_dir is not None else None
+    adopting = existing_install is not None and existing_install.launcher is Launcher.ADOPTED
 
     verbs = resolve_verbs(verb)
     if verbs.refusal is not None:
@@ -251,7 +252,7 @@ def install(
             announce=lambda text: typer.echo(f"\n{text}\n", err=True),
         )
         if (
-            existing_install is not None
+            adopting
             and handed_off.ok
             and handed_off.progress.stage is Stage.COMPLETE
             and handed_off.progress.game_root is not None
@@ -260,7 +261,7 @@ def install(
                 system,
                 writer,
                 DcsInstall(
-                    game=handed_off.progress.game_root,
+                    game=system.resolve(handed_off.progress.game_root),
                     launcher=Launcher.DCS_LINUX,
                     prefix=layout.prefix,
                 ),
@@ -635,7 +636,7 @@ def create_shortcut_command(
     options = output_options(ctx)
     system = RealSystem()
     targeted = _targeted(_probe(system, install))
-    if targeted.launcher is not Launcher.DCS_LINUX or targeted.prefix is None:
+    if targeted.launcher is not Launcher.DCS_LINUX or not is_prepared_install(system, targeted):
         detail = "the targeted install was not prepared by this tool; run dcs-linux install"
         _emit_shortcut_result(options, ShortcutResult(ShortcutStatus.FAILED, detail))
         return
