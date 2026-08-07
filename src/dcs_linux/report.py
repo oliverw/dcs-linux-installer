@@ -84,6 +84,13 @@ def render_installs(console: Console, environment: Environment) -> None:
             "[bold]dcs-linux install[/bold] creates one; existing Lutris, Heroic and "
             "Steam installs are adopted automatically."
         )
+        # Discovery only knows the installs some other program wrote a record
+        # of, so "none found" and "none here" are different claims. A user who
+        # can see DCS on their disk needs the second line, not the first.
+        console.print(
+            "Already have one somewhere else? Name its directory: "
+            "[bold]dcs-linux check --install /path/to/DCS World[/bold]"
+        )
         return
 
     table = Table(show_header=True, header_style="bold", expand=False)

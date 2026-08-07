@@ -30,6 +30,7 @@ from dcs_linux.installs import (
     read_version,
 )
 from dcs_linux.paths import Layout
+from dcs_linux.prefix import PREFIX_MARKER, read_prefix_manifest
 from dcs_linux.registry import registered
 from dcs_linux.system import System
 from dcs_linux.vdf import KeyValues, dig, parse
@@ -71,6 +72,70 @@ def discover(system: System, layout: Layout) -> tuple[DcsInstall, ...]:
         described = _describe(system, install)
         found.setdefault(described.game, described)
     return tuple(found.values())
+
+
+def adopt(system: System, path: Path) -> DcsInstall | None:
+    """The install at a path the user named, whether or not discovery found it.
+
+    Discovery reads what other programs wrote — launcher configs, our own
+    register — so an install nothing on the machine recorded is invisible to
+    it: one built by hand, moved after the fact, or restored from a backup.
+    Naming its directory is the escape hatch, and it is a sound one, because
+    the game directory *is* the install (ADR-0007). The disk is still the
+    authority: a path holding no DCS is not adopted just because it was typed.
+
+    A prefix carrying our runtime manifest identifies itself, so an install
+    of ours found this way keeps its own prefix and saved games instead of
+    being answered for against the default layout — the failure that makes a
+    relocated install report on a prefix it never used.
+    """
+    root = find_install_root(system, path)
+    if root is None:
+        return None
+    runtime = read_prefix_manifest(system, _sibling_prefix(root))
+    if runtime is not None and runtime.game == root:
+        return _describe(
+            system,
+            DcsInstall(
+                game=root,
+                launcher=Launcher.DCS_LINUX,
+                prefix=runtime.prefix,
+                runtime=runtime.ge_proton,
+                saved_games=runtime.saved_games,
+            ),
+        )
+    # No manifest, so this is not provably ours and the launcher stays
+    # `adopted` — which keeps our saved-games location from being claimed as
+    # this install's. The prefix is still reported when one is actually
+    # standing where our layout puts it, because reading the wrong prefix is
+    # the failure this whole path exists to stop.
+    return _describe(
+        system,
+        DcsInstall(game=root, launcher=Launcher.ADOPTED, prefix=_prefix_beside(system, root)),
+    )
+
+
+def _sibling_prefix(game: Path) -> Path:
+    """Where our own layout puts the prefix, relative to a game directory.
+
+    Our three lifetimes are siblings under one root and the game directory is
+    `<root>/game/DCS World`, so the prefix is two levels up. Only a starting
+    point — never trusted on its own; see the two callers for what each one
+    demands of it before believing it.
+    """
+    return game.parent.parent / "prefix"
+
+
+def _prefix_beside(system: System, game: Path) -> Path | None:
+    """A wine prefix standing where our layout puts one for this game.
+
+    The marker is what makes this a reading rather than a guess: wine writes
+    `system.reg` when it creates a prefix, so the directory either is one or
+    is not. Without it the answer is None, and the checks fall back to the
+    default layout rather than naming somewhere nothing was ever built.
+    """
+    candidate = _sibling_prefix(game)
+    return candidate if system.exists(candidate / PREFIX_MARKER) else None
 
 
 def _describe(system: System, install: DcsInstall) -> DcsInstall:

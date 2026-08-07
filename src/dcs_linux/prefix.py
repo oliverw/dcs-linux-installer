@@ -33,7 +33,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from dcs_linux.fetcher import Fetcher
-from dcs_linux.paths import Layout
+from dcs_linux.paths import MANIFEST_NAME, Layout
 from dcs_linux.runner import Runner
 from dcs_linux.system import System
 from dcs_linux.writer import Writer
@@ -455,12 +455,21 @@ def _installed_runtime(system: System, layout: Layout) -> Runtime | None:
 
 
 def read_manifest(system: System, layout: Layout) -> Runtime | None:
-    """The recorded runtime for this prefix, or None if there is not one.
+    """The recorded runtime for this prefix, or None if there is not one."""
+    return read_prefix_manifest(system, layout.prefix)
+
+
+def read_prefix_manifest(system: System, prefix: Path) -> Runtime | None:
+    """The recorded runtime inside a prefix named directly.
+
+    Takes a path rather than a `Layout` because a prefix the user pointed at
+    has no layout around it yet: reading its manifest is how an install
+    adopted by path learns which prefix and saved games are its own.
 
     Unreadable or malformed reads as absent: the manifest is a record, and a
     damaged record must cause a rebuild rather than an error.
     """
-    text = system.read_text(layout.manifest)
+    text = system.read_text(prefix / MANIFEST_NAME)
     if text is None:
         return None
     try:

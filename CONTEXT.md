@@ -39,9 +39,21 @@ loses the user's login and keybinds on every repair.
 - **discovery** — finding the DCS installs already on the machine, whoever put
   them there. Read-only, always: it reads Lutris, Heroic and Steam
   configuration that may be being written while we look (ADR-0007).
-- **launcher** — who manages an install: `lutris`, `heroic`, `steam`, or
-  `dcs-linux` for one of ours. Not a property of the install itself; the same
-  directory can be claimed by two launchers.
+- **launcher** — who manages an install: `lutris`, `heroic`, `steam`,
+  `dcs-linux` for one of ours, or `adopted`. Not a property of the install
+  itself; the same directory can be claimed by two launchers.
+- **adoption** — reaching an install by naming its directory, when discovery
+  found nothing that records it: one built by hand, moved after the fact, or
+  restored from a backup. Sound because the game directory *is* the install
+  (ADR-0007), and still read from the disk — a path holding no DCS is not
+  adopted just because it was typed. The install's own **runtime manifest**
+  is what makes it more than a bare path: a prefix carrying one states its
+  own prefix and saved games, so an install of ours living outside the
+  default layout is answered for against its own directories rather than
+  against `~/dcs-linux`. Without a manifest the launcher stays `adopted`
+  rather than `dcs-linux` — a prefix is still reported when `system.reg`
+  proves one is standing where our layout puts it, but saved games are left
+  unknown, because nothing on disk states them.
 - **edition** — **Standalone** or **Steam**. Only two signals are trusted:
   Steam's app manifest for appid `223750` (proof), and `bin/DCS_updater.exe`,
   which the Steam edition is believed not to ship because Steam does its

@@ -340,9 +340,14 @@ def check_upscaling(environment: Environment) -> CheckResult:
     return CheckResult(name=UPSCALING, status=Status.PASS, detail=upscaling)
 
 
-def _no_prefix_yet(name: str) -> CheckResult:
-    """The row every prefix-dependent check shows before there is a prefix."""
-    return CheckResult(name=name, status=Status.SKIP, detail="no prefix yet")
+def _no_prefix_yet(name: str, prefix: Path) -> CheckResult:
+    """The row every prefix-dependent check shows before there is a prefix.
+
+    Names where it looked: on a machine with more than one prefix around, "no
+    prefix yet" against an unstated path is indistinguishable from this tool
+    reading the wrong one.
+    """
+    return CheckResult(name=name, status=Status.SKIP, detail=f"no prefix yet at {prefix}")
 
 
 def check_segoe_fonts(environment: Environment) -> CheckResult:
@@ -352,39 +357,50 @@ def check_segoe_fonts(environment: Environment) -> CheckResult:
     having run corefonts is not sufficient.
     """
     install = environment.install_state
+    prefix = environment.paths.prefix
     if not install.prefix_exists:
-        return _no_prefix_yet(SEGOE_FONTS)
+        return _no_prefix_yet(SEGOE_FONTS, prefix)
     missing = install.missing_segoe_fonts
     if missing:
+        # Only a fault once there is a game to crash. A prefix standing on its
+        # own — left behind by a rebuild, or built ahead of an install — is
+        # missing fonts nothing is reading yet, and blocking on that stops the
+        # user over a prefix they may never use again.
+        orphan = environment.targeted is None
         return CheckResult(
             name=SEGOE_FONTS,
-            status=Status.FAIL,
-            detail=f"missing from the prefix: {', '.join(missing)}; the AH-64D crashes "
-            "entering a mission",
+            status=Status.WARN if orphan else Status.FAIL,
+            detail=f"missing from {prefix}: {', '.join(missing)}"
+            + (
+                "; no DCS install uses this prefix yet"
+                if orphan
+                else "; the AH-64D crashes entering a mission"
+            ),
             remediation="dcs-linux patch copies a local sans font in under the Segoe "
             "names (integrity-check safe: prefix only)",
         )
-    return CheckResult(name=SEGOE_FONTS, status=Status.PASS, detail="present in the prefix")
+    return CheckResult(name=SEGOE_FONTS, status=Status.PASS, detail=f"present in {prefix}")
 
 
 def check_d3dcompiler(environment: Environment) -> CheckResult:
+    prefix = environment.paths.prefix
     if not environment.install_state.prefix_exists:
-        return _no_prefix_yet(D3DCOMPILER)
+        return _no_prefix_yet(D3DCOMPILER, prefix)
     if not environment.install_state.d3dcompiler_installed:
         return CheckResult(
             name=D3DCOMPILER,
             status=Status.FAIL,
-            detail="not installed in the prefix; fx_5_0 shader compiles fail",
+            detail=f"not installed in {prefix}; fx_5_0 shader compiles fail",
             remediation="umu-run winetricks d3dcompiler_47",
         )
-    return CheckResult(name=D3DCOMPILER, status=Status.PASS, detail="installed in the prefix")
+    return CheckResult(name=D3DCOMPILER, status=Status.PASS, detail=f"installed in {prefix}")
 
 
 def check_saved_games_mapping(environment: Environment) -> CheckResult:
     """Saved games must live outside the disposable prefix (ADR-0001)."""
     install = environment.install_state
     if not install.prefix_exists:
-        return _no_prefix_yet(SAVED_GAMES_MAPPING)
+        return _no_prefix_yet(SAVED_GAMES_MAPPING, environment.paths.prefix)
     if not install.saved_games_mapped:
         # Where to map it to is only ours to say for our own install; for
         # anyone else's, any durable directory outside the prefix will do.
@@ -392,8 +408,8 @@ def check_saved_games_mapping(environment: Environment) -> CheckResult:
         return CheckResult(
             name=SAVED_GAMES_MAPPING,
             status=Status.FAIL,
-            detail="Saved Games sits inside the prefix, so rebuilding the prefix would "
-            "destroy the ED login and keybinds",
+            detail=f"Saved Games sits inside {environment.paths.prefix}, so rebuilding "
+            "the prefix would destroy the ED login and keybinds",
             remediation=f"symlink it out: ln -sfn {durable} "
             f'"{environment.paths.prefix_saved_games}"',
         )
@@ -631,18 +647,18 @@ def check_dcs_head_tracking(environment: Environment) -> CheckResult:
             detail="not in use",
         )
     if not environment.install_state.prefix_exists:
-        return _no_prefix_yet(DCS_HEAD_TRACKING)
+        return _no_prefix_yet(DCS_HEAD_TRACKING, environment.paths.prefix)
     if tracking.wine_bridge:
         return CheckResult(
             name=DCS_HEAD_TRACKING,
             status=Status.PASS,
-            detail="the prefix points DCS at an NPClient bridge",
+            detail=f"{environment.paths.prefix} points DCS at an NPClient bridge",
         )
     return CheckResult(
         name=DCS_HEAD_TRACKING,
         status=Status.WARN,
-        detail="nothing in the prefix points DCS at an NPClient bridge, so head "
-        "movement will not reach the cockpit",
+        detail=f"nothing in {environment.paths.prefix} points DCS at an NPClient "
+        "bridge, so head movement will not reach the cockpit",
         remediation=f"in opentrack set Output to 'Wine' and point it at {environment.paths.prefix}",
     )
 

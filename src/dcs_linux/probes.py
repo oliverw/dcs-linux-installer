@@ -12,11 +12,17 @@ from pathlib import Path
 
 from dcs_linux.distro import Distro, detect_distro
 from dcs_linux.headtracking import HeadTracking, detect_head_tracking
-from dcs_linux.installs import DcsInstall, Launcher, default_install, select
-from dcs_linux.launchers import discover
+from dcs_linux.installs import (
+    DcsInstall,
+    InstallNotFound,
+    Launcher,
+    default_install,
+    select,
+)
+from dcs_linux.launchers import adopt, discover
 from dcs_linux.patches import SEGOE_FONT_NAMES, PatchState, states, unknown_states
 from dcs_linux.patchstate import PatchStore
-from dcs_linux.paths import Layout, TargetPaths, resolve_layout
+from dcs_linux.paths import Layout, TargetPaths, normalise, resolve_layout
 from dcs_linux.system import DiskUsage, System
 
 DRM_ROOT = Path("/sys/class/drm")
@@ -109,8 +115,7 @@ def probe(
     default one they are overriding.
     """
     layout = layout if layout is not None else resolve_layout(system)
-    installs = discover(system, layout)
-    targeted = select(installs, identifier) if identifier else default_install(installs)
+    installs, targeted = _installs(system, layout, identifier)
     paths = target_paths(system, layout, targeted)
     return Environment(
         layout=layout,
@@ -129,6 +134,30 @@ def probe(
         patches=probe_patches(system, layout, targeted),
         head_tracking=detect_head_tracking(system, paths),
     )
+
+
+def _installs(
+    system: System, layout: Layout, identifier: str | None
+) -> tuple[tuple[DcsInstall, ...], DcsInstall | None]:
+    """Every install found, and the one being reported on.
+
+    An identifier that matches nothing discovered is tried against the disk
+    before it is refused: discovery only knows the installs some other
+    program wrote a record of, so naming a directory is how a user reaches
+    one that nothing on the machine records (`dcs_linux.launchers.adopt`).
+    An adopted install joins the list, so it is listed and acted on exactly
+    like a discovered one.
+    """
+    installs = discover(system, layout)
+    if not identifier:
+        return installs, default_install(installs)
+    try:
+        return installs, select(installs, identifier)
+    except InstallNotFound:
+        adopted = adopt(system, normalise(system, identifier))
+        if adopted is None:
+            raise
+        return (*installs, adopted), adopted
 
 
 def probe_patches(
@@ -162,9 +191,22 @@ def target_paths(system: System, layout: Layout, targeted: DcsInstall | None) ->
     return TargetPaths(
         game=game,
         prefix=prefix,
-        saved_games=layout.saved_games if ours else None,
+        saved_games=_saved_games(layout, targeted, ours=ours),
         prefix_saved_games=find_prefix_saved_games(system, prefix),
     )
+
+
+def _saved_games(layout: Layout, targeted: DcsInstall | None, *, ours: bool) -> Path | None:
+    """Where the targeted install's saved games are, if that is knowable.
+
+    An install that carries our runtime manifest states its own, which is the
+    answer for one of ours that does not sit under the default layout — the
+    default would otherwise name a directory belonging to a different install
+    entirely.
+    """
+    if targeted is not None and targeted.saved_games is not None:
+        return targeted.saved_games
+    return layout.saved_games if ours else None
 
 
 def _discovered_game(layout: Layout, targeted: DcsInstall | None) -> Path:

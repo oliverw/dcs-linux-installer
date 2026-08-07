@@ -1,7 +1,10 @@
+import json
 from dataclasses import replace
 from pathlib import Path
 
-from dcs_linux.installs import DcsInstall, Launcher
+import pytest
+
+from dcs_linux.installs import DcsInstall, InstallNotFound, Launcher
 from dcs_linux.paths import Layout, resolve_layout
 from dcs_linux.probes import (
     InstallState,
@@ -550,3 +553,51 @@ class TestTargetPaths:
 
     def test_with_nothing_found_it_falls_back_to_our_own_layout(self) -> None:
         assert target_paths(FakeSystem(), LAYOUT, None).game == LAYOUT.game
+
+    def test_an_adopted_install_states_its_own_saved_games(self) -> None:
+        """A relocated install of ours is not answered for against the default.
+
+        Its manifest names its own saved games, and reporting the default
+        layout's would name a directory belonging to a different install.
+        """
+        found = DcsInstall(
+            game=Path("/mnt/big/dcs-linux/game/DCS World"),
+            launcher=Launcher.DCS_LINUX,
+            prefix=Path("/mnt/big/dcs-linux/prefix"),
+            saved_games=Path("/mnt/big/dcs-linux/saved-games"),
+        )
+        paths = target_paths(FakeSystem(), LAYOUT, found)
+        assert paths.prefix == Path("/mnt/big/dcs-linux/prefix")
+        assert paths.saved_games == Path("/mnt/big/dcs-linux/saved-games")
+
+    def test_saved_games_stay_unknown_for_an_install_that_is_not_ours(self) -> None:
+        found = DcsInstall(game=Path("/mnt/big/DCS World"), launcher=Launcher.ADOPTED)
+        assert target_paths(FakeSystem(), LAYOUT, found).saved_games is None
+
+
+class TestProbeTargeting:
+    """Reaching an install by name, including one discovery never found."""
+
+    GAME = "/mnt/big/dcs-linux/game/DCS World"
+    FILES = {
+        f"{GAME}/bin/DCS.exe": "",
+        f"{GAME}/bin/DCS_updater.exe": "",
+        f"{GAME}/autoupdate.cfg": json.dumps({"version": "2.9.28.26385"}),
+    }
+
+    def test_naming_a_game_directory_reaches_an_undiscovered_install(self) -> None:
+        environment = probe(FakeSystem(files=self.FILES, home="/home/pilot"), self.GAME)
+        assert environment.targeted is not None
+        assert environment.targeted.game == Path(self.GAME)
+
+    def test_the_adopted_install_is_listed_so_a_later_run_can_use_its_id(self) -> None:
+        environment = probe(FakeSystem(files=self.FILES, home="/home/pilot"), self.GAME)
+        assert [install.game for install in environment.installs] == [Path(self.GAME)]
+
+    def test_an_identifier_matching_nothing_on_disk_is_still_an_error(self) -> None:
+        with pytest.raises(InstallNotFound):
+            probe(FakeSystem(files=self.FILES, home="/home/pilot"), "/mnt/big/nothing-here")
+
+    def test_a_bad_id_is_still_an_error_rather_than_a_path_lookup(self) -> None:
+        with pytest.raises(InstallNotFound):
+            probe(FakeSystem(files=self.FILES, home="/home/pilot"), "deadbeef")

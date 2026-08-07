@@ -224,6 +224,38 @@ class TestPrefixRows:
     def test_segoe_check_is_skipped_with_no_prefix(self) -> None:
         assert check_segoe_fonts(bare_environment()).status is Status.SKIP
 
+    def test_every_prefix_row_names_the_prefix_it_read(self) -> None:
+        """A machine can hold several prefixes, so "the prefix" names nothing.
+
+        The row that fails has to say which directory it failed about, or a
+        user with a leftover prefix beside a live one cannot tell whether the
+        tool read the one they care about.
+        """
+        install = InstallState(prefix_exists=True, missing_segoe_fonts=("segoeui.ttf",))
+        environment = healthy_environment(install_state=install)
+        prefix = str(environment.paths.prefix)
+        assert prefix in check_segoe_fonts(environment).detail
+        assert prefix in check_d3dcompiler(environment).detail
+
+    def test_a_prefix_no_install_uses_warns_rather_than_blocking(self) -> None:
+        """Missing fonts are a fault once there is a game to crash, not before.
+
+        A prefix left behind by a rebuild, or built ahead of an install, is
+        missing fonts nothing is reading — blocking on that stops a user over
+        a prefix they may never use again.
+        """
+        install = InstallState(prefix_exists=True, missing_segoe_fonts=("segoeui.ttf",))
+        result = check_segoe_fonts(bare_environment(install_state=install))
+        assert result.status is Status.WARN
+        assert not result.is_blocking
+        assert "no DCS install uses this prefix yet" in result.detail
+
+    def test_the_same_missing_fonts_block_once_an_install_uses_that_prefix(self) -> None:
+        install = InstallState(prefix_exists=True, missing_segoe_fonts=("segoeui.ttf",))
+        result = check_segoe_fonts(healthy_environment(install_state=install))
+        assert result.status is Status.FAIL
+        assert "AH-64D" in result.detail
+
     def test_missing_d3dcompiler_blocks(self) -> None:
         environment = healthy_environment(install_state=InstallState(prefix_exists=True))
         result = check_d3dcompiler(environment)

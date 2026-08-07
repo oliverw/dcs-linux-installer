@@ -26,6 +26,11 @@ XDG_STATE_ENV = "XDG_STATE_HOME"
 # in place, so both are cleared.
 SHADER_CACHE_DIRS = ("fxo", "metashaders2", "metashaders")
 
+# The runtime manifest's filename. Named here rather than inside `Layout`
+# because a prefix the user points at has no `Layout` around it yet, and
+# reading its manifest is how an adopted install learns its own paths.
+MANIFEST_NAME = ".dcs-linux.json"
+
 
 @dataclass(frozen=True)
 class Layout:
@@ -87,7 +92,7 @@ class Layout:
         that has since been wiped: deleting the prefix deletes the claim that
         anything was installed into it.
         """
-        return self.prefix / ".dcs-linux.json"
+        return self.prefix / MANIFEST_NAME
 
     @property
     def umu_run(self) -> Path:

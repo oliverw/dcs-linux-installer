@@ -64,7 +64,8 @@ INSTALL_OPTION = typer.Option(
     None,
     "--install",
     metavar="ID",
-    help="Act on one discovered install, by id or game path.",
+    help="Act on one install, by id or game path. A path is read from disk, "
+    "so it reaches an install discovery did not find.",
 )
 
 

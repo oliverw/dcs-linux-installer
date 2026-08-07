@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 from dcs_linux.installs import Edition, Launcher
-from dcs_linux.launchers import discover
+from dcs_linux.launchers import adopt, discover
 from dcs_linux.paths import Layout
 from tests.fakes import FakeSystem
 
@@ -298,6 +298,103 @@ class TestOurOwn:
         (found,) = discover(FakeSystem(files=dcs_files(game), home=HOME), LAYOUT)
         assert found.game == Path(game)
         assert found.under_prefix
+
+
+# --- Adoption by path ------------------------------------------------------
+
+# An install nothing on the machine recorded: built by hand, moved after the
+# fact, or restored from a backup. Discovery cannot see it, so naming its
+# directory is the only way to reach it.
+ELSEWHERE = "/mnt/big/dcs-linux"
+ELSEWHERE_GAME = f"{ELSEWHERE}/game/DCS World"
+
+
+def manifest(*, game: str, root: str) -> str:
+    return json.dumps(
+        {
+            "umu_version": "1.4.4",
+            "ge_proton": "GE-Proton11-3",
+            "gameid": "umu-223750",
+            "verbs": ["corefonts"],
+            "environment": {},
+            "prefix": f"{root}/prefix",
+            "game": game,
+            "saved_games": f"{root}/saved-games",
+        }
+    )
+
+
+class TestAdopt:
+    def test_a_directory_discovery_never_saw_is_still_an_install(self) -> None:
+        system = FakeSystem(files=dcs_files(ELSEWHERE_GAME), home=HOME)
+        assert discover(system, LAYOUT) == ()
+
+        found = adopt(system, Path(ELSEWHERE_GAME))
+        assert found is not None
+        assert found.game == Path(ELSEWHERE_GAME)
+        assert found.edition is Edition.STANDALONE
+        assert found.version == "2.9.28.26385"
+
+    def test_the_parent_directory_works_too(self) -> None:
+        """The updater makes `<chosen>/DCS World`, so users name the parent."""
+        system = FakeSystem(files=dcs_files(ELSEWHERE_GAME), home=HOME)
+        found = adopt(system, Path(f"{ELSEWHERE}/game"))
+        assert found is not None
+        assert found.game == Path(ELSEWHERE_GAME)
+
+    def test_a_path_holding_no_dcs_is_not_adopted_just_because_it_was_typed(self) -> None:
+        system = FakeSystem(files={"/mnt/big/notes.txt": ""}, home=HOME)
+        assert adopt(system, Path("/mnt/big")) is None
+
+    def test_our_own_manifest_hands_over_the_prefix_and_saved_games(self) -> None:
+        """A relocated install of ours must not be answered for against the default."""
+        files = {
+            **dcs_files(ELSEWHERE_GAME),
+            f"{ELSEWHERE}/prefix/system.reg": "",
+            f"{ELSEWHERE}/prefix/.dcs-linux.json": manifest(game=ELSEWHERE_GAME, root=ELSEWHERE),
+        }
+        found = adopt(FakeSystem(files=files, home=HOME), Path(ELSEWHERE_GAME))
+        assert found is not None
+        assert found.launcher is Launcher.DCS_LINUX
+        assert found.prefix == Path(f"{ELSEWHERE}/prefix")
+        assert found.saved_games == Path(f"{ELSEWHERE}/saved-games")
+        assert found.runtime == "GE-Proton11-3"
+
+    def test_a_manifest_naming_a_different_game_is_not_believed(self) -> None:
+        """The prefix beside this game belongs to some other install."""
+        files = {
+            **dcs_files(ELSEWHERE_GAME),
+            f"{ELSEWHERE}/prefix/system.reg": "",
+            f"{ELSEWHERE}/prefix/.dcs-linux.json": manifest(
+                game="/somewhere/else/DCS World", root="/somewhere/else"
+            ),
+        }
+        found = adopt(FakeSystem(files=files, home=HOME), Path(ELSEWHERE_GAME))
+        assert found is not None
+        assert found.launcher is Launcher.ADOPTED
+        assert found.saved_games is None
+
+    def test_a_prefix_without_a_manifest_is_reported_but_not_claimed_as_ours(self) -> None:
+        """Built by hand: `system.reg` proves a prefix, nothing proves it is ours.
+
+        The prefix is still named, because reading the *default* prefix for an
+        install that plainly has its own is the failure adoption exists to fix.
+        Saved games stay unknown: nothing on disk states them.
+        """
+        files = {
+            **dcs_files(ELSEWHERE_GAME),
+            f"{ELSEWHERE}/prefix/system.reg": "",
+        }
+        found = adopt(FakeSystem(files=files, home=HOME), Path(ELSEWHERE_GAME))
+        assert found is not None
+        assert found.launcher is Launcher.ADOPTED
+        assert found.prefix == Path(f"{ELSEWHERE}/prefix")
+        assert found.saved_games is None
+
+    def test_no_prefix_beside_it_means_no_prefix_claimed(self) -> None:
+        found = adopt(FakeSystem(files=dcs_files(ELSEWHERE_GAME), home=HOME), Path(ELSEWHERE_GAME))
+        assert found is not None
+        assert found.prefix is None
 
 
 # --- Across launchers ------------------------------------------------------

@@ -44,6 +44,11 @@ class Launcher(StrEnum):
     STEAM = "steam"
     LUTRIS = "lutris"
     HEROIC = "heroic"
+    # An install the user named by path that no launcher and no register
+    # records. It exists — the game directory proves that (ADR-0007) — but
+    # who manages it is genuinely unknown, so it is not claimed as ours: our
+    # saved-games location would be somebody else's wrong answer.
+    ADOPTED = "adopted"
 
 
 class Edition(StrEnum):
@@ -80,6 +85,11 @@ class DcsInstall:
     runtime: str | None = None
     edition: Edition = Edition.UNKNOWN
     version: str | None = None
+    # Where this install's saved games are, when the install itself says so.
+    # Only a prefix carrying our runtime manifest does; discovery leaves it
+    # unset, because our default layout already answers for our own installs
+    # and nobody else's mapping is knowable (ADR-0007).
+    saved_games: Path | None = None
 
     @property
     def install_id(self) -> str:
