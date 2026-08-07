@@ -21,6 +21,7 @@ from dcs_linux.installs import (
     Launcher,
     adopted_location_warning,
 )
+from dcs_linux.launch import launch_dcs
 from dcs_linux.launchers import adopt, discover
 from dcs_linux.output import OutputOptions, console_for, output_options
 from dcs_linux.patches import (
@@ -552,6 +553,33 @@ def reset(
 
     apply_reset(RealWriter(), layout, planned)
     typer.echo("Reset complete.")
+
+
+@app.command()
+def launch(ctx: typer.Context, install: str | None = INSTALL_OPTION) -> None:
+    """Start a prepared DCS install and wait for it to close."""
+    options = output_options(ctx)
+    system = RealSystem()
+    environment = _probe(system, install)
+    _targeted(environment)
+    result = launch_dcs(system, RealRunner(), environment)
+    if options.json_output:
+        typer.echo(
+            json.dumps(
+                {
+                    "command": "launch",
+                    "ok": result.ok,
+                    "started": result.started,
+                    "exit_code": result.returncode,
+                    "detail": result.detail,
+                },
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(result.detail)
+    if not result.ok:
+        raise typer.Exit(code=1)
 
 
 @app.command()

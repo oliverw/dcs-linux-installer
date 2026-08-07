@@ -7,12 +7,21 @@ install minutes apart — one that flew and one that crashed entering a mission
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from pathlib import Path
 
 from dcs_linux import verify
 from dcs_linux.checks import UPSCALING, Status
 from dcs_linux.dcslog import DcsLog
+from dcs_linux.launch import NO_LAUNCHER
+from dcs_linux.prefix import (
+    GAMEID,
+    GE_PROTON_VERSION,
+    LAUNCH_ENVIRONMENT,
+    UMU_VERSION,
+    WINETRICKS_VERBS,
+)
 from dcs_linux.probes import Environment, InstallState
 from dcs_linux.report import findings_json
 from dcs_linux.runner import Completed
@@ -207,11 +216,29 @@ class TestLaunching:
     """Starting DCS, and what the tool does around the part it cannot automate."""
 
     def machine(self, text: str = HEALTHY) -> FakeSystem:
+        manifest = {
+            "umu_version": UMU_VERSION,
+            "ge_proton": GE_PROTON_VERSION,
+            "gameid": GAMEID,
+            "verbs": list(WINETRICKS_VERBS),
+            "environment": LAUNCH_ENVIRONMENT,
+            "prefix": str(LAYOUT.prefix),
+            "game": str(LAYOUT.game),
+            "saved_games": str(LAYOUT.saved_games),
+        }
         return FakeSystem(
             files={
                 str(OWN_INSTALL.game / "bin" / "DCS.exe"): "MZ",
+                str(LAYOUT.umu_run): "#!/usr/bin/env python",
+                str(LAYOUT.ge_proton_build(GE_PROTON_VERSION) / "proton"): "#!/usr/bin/env python",
+                str(LAYOUT.prefix / "system.reg"): "WINE REGISTRY Version 2",
+                str(LAYOUT.manifest): json.dumps(manifest),
                 str(LAYOUT.saved_games / "DCS" / "Logs" / "dcs.log"): text,
-            }
+            },
+            links={
+                str(LAYOUT.prefix_game_drive): str(LAYOUT.game),
+                str(LAYOUT.prefix_saved_games): str(LAYOUT.saved_games),
+            },
         )
 
     def test_dcs_is_launched_through_umu_with_the_launcher_suppressed(self) -> None:
@@ -221,7 +248,7 @@ class TestLaunching:
         command, environment = runner.calls[0]
         assert command[0] == str(LAYOUT.umu_run)
         assert command[1] == str(OWN_INSTALL.game / "bin" / "DCS.exe")
-        assert command[2] == verify.NO_LAUNCHER
+        assert command[2] == NO_LAUNCHER
         assert environment["WINEPREFIX"] == str(LAYOUT.prefix)
         # IC-safe by construction: in the process, never in a hashed game file.
         assert environment["WINEDLLOVERRIDES"] == "wbemprox=n"

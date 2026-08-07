@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
+import time
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -108,36 +109,43 @@ class RealRunner:
         to abort a four-hour wait would leave DCS running.
         """
         process = subprocess.Popen(command, env=environment, start_new_session=True)
+        group = process.pid
         try:
-            return Completed(returncode=process.wait(timeout=timeout))
+            returncode = process.wait(timeout=timeout)
+            _stop_group(process, group)
+            return Completed(returncode=returncode)
         except subprocess.TimeoutExpired:
-            _stop_group(process)
+            _stop_group(process, group)
             return Completed(
                 returncode=None,
                 detail=f"timed out after {timeout:.0f}s and was stopped",
             )
         except KeyboardInterrupt:
-            _stop_group(process)
+            _stop_group(process, group)
             raise
 
 
-def _stop_group(process: subprocess.Popen[bytes]) -> None:
+def _stop_group(process: subprocess.Popen[bytes], group: int | None = None) -> None:
     """Ask the process group to stop, then insist.
 
     Best-effort throughout: every failure here means the group is already gone,
     which is the outcome being asked for.
     """
-    try:
-        group = os.getpgid(process.pid)
-    except OSError:
-        return
+    if group is None:
+        try:
+            group = os.getpgid(process.pid)
+        except OSError:
+            return
     for stop in (signal.SIGTERM, signal.SIGKILL):
         try:
             os.killpg(group, stop)
         except OSError:
             return
-        try:
-            process.wait(timeout=TERMINATION_GRACE)
-            return
-        except subprocess.TimeoutExpired:
-            continue
+        deadline = time.monotonic() + TERMINATION_GRACE
+        while time.monotonic() < deadline:
+            process.poll()
+            try:
+                os.killpg(group, 0)
+            except OSError:
+                return
+            time.sleep(0.05)

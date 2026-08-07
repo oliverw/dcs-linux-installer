@@ -49,9 +49,8 @@ from dcs_linux.dcslog import (
     DcsLog,
     read_log,
 )
-from dcs_linux.installs import DCS_EXE
+from dcs_linux.launch import launch_dcs
 from dcs_linux.paths import Layout
-from dcs_linux.prefix import LAUNCH_ENVIRONMENT, prefix_environment
 from dcs_linux.probes import Environment
 from dcs_linux.runner import Runner
 from dcs_linux.system import System
@@ -67,17 +66,6 @@ SESSION = "Session"
 # There is deliberately no `UPSCALING` here. That finding is `check`'s own rule
 # reported verbatim, name included (`_from_check`), and a second spelling of
 # the name in this module is a second thing to keep in step.
-
-# DCS itself is launched with the launcher suppressed: the launcher is a second
-# window with its own updater in it, and this command is about the game.
-NO_LAUNCHER = "--no-launcher"
-
-# The user has to fly to the success bar — main menu, Instant Action, about a
-# minute in the air — and a first launch precompiles shaders for several
-# minutes before any of that. So this is a stop for a hang, not a deadline:
-# short enough that a wedged DCS does not sit there overnight, long enough that
-# nobody flying is ever cut off.
-LAUNCH_TIMEOUT = 4 * 60 * 60.0
 
 # `=== Log opened UTC 2026-08-02 21:30:03`, the first line of every log. It
 # identifies one run, which is how a launch that wrote nothing is told from one
@@ -235,30 +223,12 @@ def _launch(system: System, runner: Runner, environment: Environment, layout: La
             remediation=f"start it from {targeted.launcher}, then run this again",
         )
 
-    executable = targeted.game / DCS_EXE
-    if not system.exists(executable):
-        return Finding(
-            LAUNCH,
-            Status.FAIL,
-            f"no {DCS_EXE} in {targeted.game}; the install is unfinished",
-            remediation="dcs-linux install",
-        )
-
-    command = [str(layout.umu_run), str(executable), NO_LAUNCHER]
-    completed = runner.run(
-        command,
-        {**prefix_environment(layout), **LAUNCH_ENVIRONMENT},
-        LAUNCH_TIMEOUT,
-        # DCS is umu, Proton and wine — a tree of processes, not one. Killing
-        # only what was spawned here would leave the game running against a
-        # prefix the next command assumes is idle.
-        own_session=True,
-    )
-    if not completed.started:
-        return Finding(LAUNCH, Status.FAIL, f"DCS did not run: {completed.detail}")
-    # The exit code is reported, never judged: DCS exits non-zero on ordinary
-    # quits under wine, and the log is the evidence either way.
-    return Finding(LAUNCH, Status.PASS, f"DCS closed with exit code {completed.returncode}")
+    result = launch_dcs(system, runner, environment)
+    if not result.ok:
+        return Finding(LAUNCH, Status.FAIL, result.detail, remediation="dcs-linux install")
+    # The process result is reported, never used as the verification verdict:
+    # DCS exits non-zero on ordinary quits under wine, and the log is evidence.
+    return Finding(LAUNCH, Status.PASS, result.detail)
 
 
 def _with_freshness(

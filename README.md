@@ -2,7 +2,7 @@
 
 Install [DCS World](https://www.digitalcombatsimulator.com/) **Standalone** on Linux, and keep it working.
 
-> **Status: pre-alpha.** Every command works — `check`, `install`, `patch`, `verify` and `report` — including finding the DCS installs you already have, installing DCS itself through its own updater, and launching it to confirm it actually flies.
+> **Status: pre-alpha.** Every command works — `check`, `install`, `launch`, `patch`, `verify` and `report` — including finding the DCS installs you already have, installing DCS itself through its own updater, and launching it to confirm it actually flies.
 > The design is settled and the work is broken down in [issue #1](https://github.com/oliverw/dcs-linux-installer/issues/1). There is no usable release yet. Everything below describes the intended tool.
 
 ---
@@ -58,6 +58,7 @@ uv tool install dcs-linux-installer
 
 dcs-linux check      # is this machine ready? what DCS installs exist?
 dcs-linux install    # build the prefix, then hand off to the DCS updater
+dcs-linux launch     # start a prepared install without judging it
 dcs-linux patch      # apply the Linux fixes (IC-safe ones by default)
 dcs-linux verify     # launch DCS and confirm it actually works
 dcs-linux report     # diagnostics bundle for a bug report
@@ -170,9 +171,20 @@ You have to fetch `DCS_World_web.exe` yourself — the download page needs a bro
 
 In the updater, **set the install path to `D:\`** — that is your game directory, mapped in — and **leave torrent/P2P enabled**, which is roughly ten times faster. `C:\` would put the whole install inside the disposable prefix, so `install` refuses to open the updater at all unless the mapping is in place.
 
-The download is 150 GB and up, measured in hours. Interrupting is safe: close the terminal, reboot, and run `dcs-linux install` again — the updater resumes where it stopped, and nothing is recorded until the install is finished. After that the install is registered, so `check`, `patch` and `verify` find it without you repeating `--game-dir`.
+The download is 150 GB and up, measured in hours. Interrupting is safe: close the terminal, reboot, and run `dcs-linux install` again — the updater resumes where it stopped, and nothing is recorded until the install is finished. After that the install is registered, so `check`, `launch`, `patch` and `verify` find it without you repeating `--game-dir`.
 
 Once it is done, run `dcs-linux patch apply` — the Linux fixes are what turn an install that starts into one that flies.
+
+### `dcs-linux launch`
+
+Start a complete install whose prefix was prepared by this tool:
+
+```sh
+dcs-linux launch                    # the single eligible install
+dcs-linux launch --install 7976     # choose by ID or game path
+```
+
+It uses the pinned umu and GE-Proton runtime, the mapped game directory and Saved Games, the Integrity Check-safe launch environment, and `--no-launcher`. It waits for the complete umu/Proton/Wine process tree and cleans it up if interrupted. The DCS exit code is reported but not treated as proof that the game worked; use `verify` when you want the log judged.
 
 ### `dcs-linux verify`
 
@@ -254,7 +266,7 @@ Both risky patches are workarounds for symptoms that were **not** reproduced on 
 | --- | --- |
 | Runtime | Pinned GE-Proton via umu-launcher |
 | Layout | Game outside the prefix, mapped in; prefix small and disposable |
-| Install flow | Prepare prefix → hand off to the DCS updater GUI → patch → verify |
+| Install flow | Prepare prefix → hand off to the DCS updater GUI → patch → launch or verify |
 | Discovery | Adopts existing Lutris / Heroic / Steam installs, not just its own |
 | Patches | Backup plus state file, matched by content pattern rather than line number |
 | Patch state | Stored in `~/.local/state/dcs-linux/`, outside the install, where `DCS_updater repair` cannot delete it |

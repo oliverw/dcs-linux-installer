@@ -10,7 +10,7 @@ from dcs_linux.cli import app
 
 runner = CliRunner()
 
-SUBCOMMANDS = ["check", "install", "patch", "verify", "report"]
+SUBCOMMANDS = ["check", "install", "launch", "patch", "verify", "report"]
 
 # Every one of them is now implemented, so this file is down to the surface the
 # whole CLI shares: the flags, the help, and the installed script. What each
