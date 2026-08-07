@@ -270,6 +270,36 @@ The tool targets many distros, GPUs and launcher layouts, but is developed on on
 
 Work is tracked as issues under [#1](https://github.com/oliverw/dcs-linux-installer/issues/1). Anything labelled `ready-for-agent` with no open blockers is available to pick up.
 
+### Running from a checkout
+
+The package is not on PyPI yet, so the two commands under [Planned usage](#planned-usage) do not work. From a clone, `uv run` builds the environment from `uv.lock` and runs the command without putting anything on your PATH:
+
+```sh
+uv run dcs-linux check
+```
+
+Source edits take effect immediately — it is an editable install. `--version` is the one exception: the number is baked at build time, so it stays at whatever the last sync saw. Run `uv sync --reinstall-package dcs-linux-installer` when the number has to be right; the behaviour is current either way.
+
+`uv run --directory <clone> dcs-linux …` works from any directory, and `uvx --from . dcs-linux …` builds a throwaway wheel from local source — the closest thing to what a user gets from PyPI. There is no `python -m dcs_linux`.
+
+Every command defaults to `~/dcs-linux`, so on a machine whose DCS lives elsewhere `check` reports no install found and skips every install-dependent row. Point it at a real one:
+
+```sh
+export DCS_LINUX_ROOT=/path/to/dcs          # expects prefix/, game/, saved-games/
+export DCS_LINUX_TOOLCHAIN=/path/to/toolchain
+uv run dcs-linux check
+```
+
+Doing that is worth more than it sounds. `check` and `report` write nothing, so they are safe to run against a real install at any time — and the first probe ever compared against a real prefix turned out to disagree with the hand-written fixture it was tested on.
+
+What CI runs, in order:
+
+```sh
+uv run ruff check . && uv run ruff format --check .
+uv run mypy
+uv run pytest
+```
+
 ### Releasing
 
 Push a version tag; that is the whole process.
