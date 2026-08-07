@@ -12,6 +12,7 @@ from dcs_linux.prefix import (
     PREFIX_MARKER,
     UMU_VERSION,
     WINETRICKS_VERBS,
+    Runtime,
     points_at,
     read_prefix_manifest,
 )
@@ -22,17 +23,40 @@ from dcs_linux.system import System
 NO_LAUNCHER = "--no-launcher"
 
 
-def is_prepared_install(system: System, install: DcsInstall) -> bool:
-    """Whether this tool's manifest binds the install to its prefix."""
+@dataclass(frozen=True)
+class Preparation:
+    """A runtime manifest bound to an install, or why it is not bound."""
+
+    runtime: Runtime | None = None
+    refusal: str | None = None
+
+    @property
+    def ok(self) -> bool:
+        return self.runtime is not None
+
+
+def preparation_for(system: System, install: DcsInstall) -> Preparation:
+    """Read whether this tool's manifest binds the install to its prefix."""
     prefix = install.prefix
     if prefix is None or not system.exists(prefix / PREFIX_MARKER):
-        return False
+        return Preparation(
+            refusal="the targeted prefix was not prepared by this tool; run dcs-linux install"
+        )
     runtime = read_prefix_manifest(system, prefix)
-    if runtime is None or system.resolve(runtime.prefix) != system.resolve(prefix):
-        return False
+    if runtime is None:
+        return Preparation(
+            refusal="the targeted prefix was not prepared by this tool; run dcs-linux install"
+        )
     game = system.resolve(install.game)
     runtime_game = system.resolve(runtime.game)
-    return runtime_game == game or runtime_game == game.parent
+    if system.resolve(runtime.prefix) != system.resolve(prefix) or (
+        runtime_game != game and runtime_game != game.parent
+    ):
+        return Preparation(
+            refusal="the prefix manifest does not describe the targeted install; "
+            "run dcs-linux install"
+        )
+    return Preparation(runtime=runtime)
 
 
 @dataclass(frozen=True)
@@ -66,26 +90,17 @@ def launch_dcs(
             None,
             f"no {DCS_EXE} in {targeted.game}; the install is unfinished",
         )
+    preparation = preparation_for(system, targeted)
+    if not preparation.ok:
+        assert preparation.refusal is not None
+        return LaunchResult(False, None, preparation.refusal)
+    runtime = preparation.runtime
+    assert runtime is not None
     prefix = targeted.prefix
-    runtime = read_prefix_manifest(system, prefix) if prefix is not None else None
-    if prefix is None or not system.exists(prefix / PREFIX_MARKER) or runtime is None:
-        return LaunchResult(
-            False,
-            None,
-            "the targeted prefix was not prepared by this tool; run dcs-linux install",
-        )
+    assert prefix is not None
     resolved_prefix = system.resolve(prefix)
     resolved_game = system.resolve(runtime.game)
     resolved_saved_games = system.resolve(runtime.saved_games)
-    targeted_game = system.resolve(targeted.game)
-    if system.resolve(runtime.prefix) != resolved_prefix or (
-        resolved_game != targeted_game and resolved_game != targeted_game.parent
-    ):
-        return LaunchResult(
-            False,
-            None,
-            "the prefix manifest does not describe the targeted install; run dcs-linux install",
-        )
     if (
         runtime.umu_version != UMU_VERSION
         or runtime.ge_proton != GE_PROTON_VERSION

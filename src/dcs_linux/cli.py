@@ -28,7 +28,7 @@ from dcs_linux.installs import (
     Launcher,
     adopted_location_warning,
 )
-from dcs_linux.launch import is_prepared_install, launch_dcs
+from dcs_linux.launch import launch_dcs, preparation_for
 from dcs_linux.launchers import adopt, discover
 from dcs_linux.output import OutputOptions, console_for, output_options
 from dcs_linux.patches import (
@@ -208,7 +208,7 @@ def install(
     writer, runner = RealWriter(), RealRunner()
     layout = _install_layout(system, game_dir)
     existing_install = adopt(system, layout.game) if game_dir is not None else None
-    adopting = existing_install is not None and existing_install.launcher is Launcher.ADOPTED
+    adopting = _is_new_adoption(system, layout, existing_install)
 
     verbs = resolve_verbs(verb)
     if verbs.refusal is not None:
@@ -328,18 +328,9 @@ def _confirm_takeover(
     if not game_dir_explicit or takeover_accepted:
         return
     adopted = adopt(system, layout.game)
-    if adopted is None:
+    if not _is_new_adoption(system, layout, adopted):
         return
-    discovered_install = next(
-        (
-            install
-            for install in discover(system, replace(layout, game_dir=None))
-            if install.game == adopted.game
-        ),
-        None,
-    )
-    if discovered_install is not None and discovered_install.launcher is Launcher.DCS_LINUX:
-        return
+    assert adopted is not None
     warning = adopted_location_warning(adopted)
     if warning is None:
         return
@@ -349,6 +340,25 @@ def _confirm_takeover(
     typer.echo(f"  - claim {layout.saved_games} as its Saved Games location", err=True)
     if not typer.confirm("Take over this install?", default=False, err=True):
         raise typer.Exit()
+
+
+def _is_new_adoption(
+    system: System,
+    layout: Layout,
+    adopted: DcsInstall | None,
+) -> bool:
+    """Whether a named existing install is not already recorded as ours."""
+    if adopted is None or adopted.launcher is Launcher.DCS_LINUX:
+        return False
+    already_ours = next(
+        (
+            install
+            for install in discover(system, replace(layout, game_dir=None))
+            if install.game == adopted.game and install.launcher is Launcher.DCS_LINUX
+        ),
+        None,
+    )
+    return already_ours is None
 
 
 def _install_layout(system: System, game_dir: Path | None) -> Layout:
@@ -636,7 +646,7 @@ def create_shortcut_command(
     options = output_options(ctx)
     system = RealSystem()
     targeted = _targeted(_probe(system, install))
-    if targeted.launcher is not Launcher.DCS_LINUX or not is_prepared_install(system, targeted):
+    if targeted.launcher is not Launcher.DCS_LINUX or not preparation_for(system, targeted).ok:
         detail = "the targeted install was not prepared by this tool; run dcs-linux install"
         _emit_shortcut_result(options, ShortcutResult(ShortcutStatus.FAILED, detail))
         return
