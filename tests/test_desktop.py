@@ -4,7 +4,7 @@ from dcs_linux.desktop import ICON_URL, Desktop, ShortcutStatus, create_shortcut
 from dcs_linux.installs import DcsInstall, Launcher
 from tests.fakes import FakeFileFetcher, FakeSystem, FakeWriter
 
-ICON = b"\xff\xd8\xffDCS icon"
+ICON = b"\x00\x00\x01\x00DCS icon"
 
 
 def test_kde_is_detected_from_the_current_desktop_session() -> None:
@@ -47,11 +47,11 @@ def test_a_shortcut_launches_the_stable_install_and_is_executable() -> None:
         "Name=DCS World\n"
         "Comment=Launch DCS World through dcs-linux\n"
         f"Exec=dcs-linux launch --install {install.install_id}\n"
-        f"Icon={system.home()}/.local/share/icons/dcs-world.jpg\n"
+        f"Icon={system.home()}/.local/share/icons/dcs-world.ico\n"
         "Terminal=false\n"
         "Categories=Game;\n"
     )
-    assert system.read_bytes(system.home() / ".local/share/icons/dcs-world.jpg") == ICON
+    assert system.read_bytes(system.home() / ".local/share/icons/dcs-world.ico") == ICON
     assert fetcher.urls == [ICON_URL]
     assert result.path in system.executable_bits
 
@@ -109,7 +109,7 @@ def test_an_icon_download_failure_creates_no_shortcut() -> None:
     assert not system.files
 
 
-def test_a_non_jpeg_icon_response_is_refused() -> None:
+def test_a_non_ico_response_is_refused() -> None:
     system = FakeSystem()
     install = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.DCS_LINUX)
 
@@ -122,5 +122,5 @@ def test_a_non_jpeg_icon_response_is_refused() -> None:
     )
 
     assert result.status is ShortcutStatus.FAILED
-    assert "not a JPEG" in result.detail
+    assert "not an ICO" in result.detail
     assert not system.files

@@ -20,7 +20,7 @@ from tests.environments import LAYOUT, OWN_INSTALL, healthy_environment
 from tests.fakes import FakeFileFetcher, FakeSystem, FakeWriter
 
 runner = CliRunner()
-ICON = b"\xff\xd8\xffDCS icon"
+ICON = b"\x00\x00\x01\x00DCS icon"
 
 
 def use_icon(monkeypatch: pytest.MonkeyPatch) -> None:

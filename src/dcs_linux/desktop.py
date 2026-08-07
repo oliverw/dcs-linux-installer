@@ -11,14 +11,14 @@ from dcs_linux.installs import DcsInstall
 from dcs_linux.system import System
 from dcs_linux.writer import Writer
 
-# SteamDB records this as DCS World's community icon for Steam app 223750.
+# SteamDB records this as DCS World's multi-resolution client icon for app 223750.
 # The hash pins the exact asset rather than resolving mutable metadata at runtime.
 ICON_URL = (
     "https://shared.fastly.steamstatic.com/community_assets/images/apps/223750/"
-    "f709dbfd1d2ad385ae5baaa1824422c11a4a2dea.jpg"
+    "f4d05390df20b963048d2f3f5ebeb70d1eed499b.ico"
 )
-ICON_NAME = "dcs-world.jpg"
-JPEG_MAGIC = b"\xff\xd8\xff"
+ICON_NAME = "dcs-world.ico"
+ICO_MAGIC = b"\x00\x00\x01\x00"
 
 
 class Desktop(StrEnum):
@@ -84,7 +84,7 @@ def create_shortcut(
     ).encode()
     icon_data = system.read_bytes(icon)
     try:
-        if system.read_bytes(path) == content and _is_jpeg(icon_data):
+        if system.read_bytes(path) == content and _is_ico(icon_data):
             writer.make_executable(path)
             return ShortcutResult(
                 ShortcutStatus.EXISTS,
@@ -92,7 +92,7 @@ def create_shortcut(
                 desktop,
                 path,
             )
-        if not _is_jpeg(icon_data):
+        if not _is_ico(icon_data):
             downloaded = fetcher.fetch_file(ICON_URL)
             if downloaded.failure is not None:
                 return ShortcutResult(
@@ -101,10 +101,10 @@ def create_shortcut(
                     desktop,
                     path,
                 )
-            if not _is_jpeg(downloaded.data):
+            if not _is_ico(downloaded.data):
                 return ShortcutResult(
                     ShortcutStatus.FAILED,
-                    "downloaded DCS World icon is not a JPEG",
+                    "downloaded DCS World icon is not an ICO",
                     desktop,
                     path,
                 )
@@ -122,5 +122,5 @@ def create_shortcut(
     return ShortcutResult(ShortcutStatus.CREATED, "desktop shortcut created", desktop, path)
 
 
-def _is_jpeg(data: bytes | None) -> bool:
-    return data is not None and data.startswith(JPEG_MAGIC)
+def _is_ico(data: bytes | None) -> bool:
+    return data is not None and data.startswith(ICO_MAGIC)

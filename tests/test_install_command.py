@@ -22,7 +22,7 @@ from tests.environments import LAYOUT, bare_environment, healthy_environment
 from tests.fakes import FakeFileFetcher, FakeSystem, FakeWriter
 
 runner = CliRunner()
-ICON = b"\xff\xd8\xffDCS icon"
+ICON = b"\x00\x00\x01\x00DCS icon"
 
 RUNTIME = Runtime(
     umu_version="1.4.4",
