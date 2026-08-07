@@ -337,11 +337,18 @@ def has_dll_override(user_reg: str | None, dll: str) -> bool:
     `d3dcompiler_47.dll` as a builtin stub. What `winetricks d3dcompiler_47`
     actually changes is the DllOverrides entry in `user.reg`, so that is what
     distinguishes a patched prefix from a fresh one.
+
+    The name is matched with an optional leading `*`, which winetricks writes
+    for any DLL wine ships a builtin for -- `"*d3dcompiler_47"="native"`. Both
+    spellings appear in one real block, since vcrun2022's DLLs displace no
+    builtin and are written bare. Anchoring on the bare name alone reported a
+    correctly patched prefix as unpatched, and sent the user back to a
+    winetricks verb they had already run.
     """
     if user_reg is None:
         return False
     match = re.search(
-        rf'^"{re.escape(dll)}"\s*=\s*"([^"]*)"',
+        rf'^"\*?{re.escape(dll)}"\s*=\s*"([^"]*)"',
         user_reg,
         flags=re.MULTILINE | re.IGNORECASE,
     )

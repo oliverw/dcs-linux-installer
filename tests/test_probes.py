@@ -28,8 +28,15 @@ LAYOUT = Layout(
 )
 
 
-# What `winetricks d3dcompiler_47` actually writes into the prefix.
-DLL_OVERRIDE = '[Software\\\\Wine\\\\DllOverrides] 1700000000\n"d3dcompiler_47"="native,builtin"\n'
+# What `winetricks d3dcompiler_47` actually writes into the prefix, copied from
+# a real GE-Proton11-3 prefix built by `docs/manual-install.md`. Two things the
+# earlier hand-written fixture got wrong: winetricks prefixes the name with `*`
+# for any DLL wine ships a builtin for, and the value is a bare `native`.
+DLL_OVERRIDE = '[Software\\\\Wine\\\\DllOverrides] 1700000000\n"*d3dcompiler_47"="native"\n'
+
+# The same block, verbatim, holds both spellings: vcrun2022's DLLs have no
+# builtin to displace and so are written bare.
+BARE_OVERRIDE = '[Software\\\\Wine\\\\DllOverrides] 1700000000\n"d3dcompiler_47"="native,builtin"\n'
 
 
 def state_of(system: FakeSystem) -> InstallState:
@@ -348,6 +355,29 @@ class TestD3dcompiler:
             files={"/data/dcs/prefix/system.reg": "", "/data/dcs/prefix/user.reg": reg}
         )
         assert not state_of(system).d3dcompiler_installed
+
+    def test_the_bare_spelling_counts_too(self) -> None:
+        """Both spellings occur in one real DllOverrides block."""
+        system = FakeSystem(
+            files={"/data/dcs/prefix/system.reg": "", "/data/dcs/prefix/user.reg": BARE_OVERRIDE}
+        )
+        assert state_of(system).d3dcompiler_installed
+
+    def test_a_starred_builtin_override_does_not_count(self) -> None:
+        """The `*` must not smuggle a builtin past the native test."""
+        reg = '[Software\\\\Wine\\\\DllOverrides] 1700000000\n"*d3dcompiler_47"="builtin"\n'
+        system = FakeSystem(
+            files={"/data/dcs/prefix/system.reg": "", "/data/dcs/prefix/user.reg": reg}
+        )
+        assert not state_of(system).d3dcompiler_installed
+
+    def test_a_longer_name_is_not_a_match(self) -> None:
+        """A real block carries msvcp140, msvcp140_1 and msvcp140_atomic_wait."""
+        reg = (
+            "[Software\\\\Wine\\\\DllOverrides] 1700000000\n"
+            '"*msvcp140_1"="native,builtin"\n"msvcp140_atomic_wait"="native,builtin"\n'
+        )
+        assert not has_dll_override(reg, "msvcp140")
 
     def test_no_user_reg_at_all(self) -> None:
         assert not has_dll_override(None, "d3dcompiler_47")
