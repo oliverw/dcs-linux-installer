@@ -17,9 +17,14 @@ from dcs_linux.prefix import (
     WINETRICKS_VERBS,
 )
 from tests.environments import LAYOUT, OWN_INSTALL, healthy_environment
-from tests.fakes import FakeSystem, FakeWriter
+from tests.fakes import FakeFileFetcher, FakeSystem, FakeWriter
 
 runner = CliRunner()
+ICON = b"\xff\xd8\xffDCS icon"
+
+
+def use_icon(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "RealFileFetcher", lambda: FakeFileFetcher(data=ICON))
 
 
 def prepared_system(desktop: str) -> FakeSystem:
@@ -49,6 +54,7 @@ def test_shortcut_creates_a_launcher_for_the_targeted_install(
     writer = FakeWriter(system)
     monkeypatch.setattr(cli, "RealSystem", lambda: system)
     monkeypatch.setattr(cli, "RealWriter", lambda: writer)
+    use_icon(monkeypatch)
     monkeypatch.setattr(
         cli,
         "probe",
@@ -78,6 +84,7 @@ def test_shortcut_refuses_an_install_not_prepared_by_this_tool(
     environment = healthy_environment(installs=(unprepared,), targeted=unprepared)
     monkeypatch.setattr(cli, "RealSystem", lambda: system)
     monkeypatch.setattr(cli, "RealWriter", lambda: writer)
+    use_icon(monkeypatch)
     monkeypatch.setattr(
         cli,
         "probe",
@@ -104,6 +111,7 @@ def test_shortcut_forwards_the_selector_and_reports_json(
 
     monkeypatch.setattr(cli, "RealSystem", lambda: system)
     monkeypatch.setattr(cli, "RealWriter", lambda: writer)
+    use_icon(monkeypatch)
     monkeypatch.setattr(cli, "probe", probe)
 
     result = runner.invoke(
@@ -143,6 +151,7 @@ def test_shortcut_is_idempotent_through_the_command(
     writer = FakeWriter(system)
     monkeypatch.setattr(cli, "RealSystem", lambda: system)
     monkeypatch.setattr(cli, "RealWriter", lambda: writer)
+    use_icon(monkeypatch)
     monkeypatch.setattr(
         cli,
         "probe",
@@ -156,3 +165,28 @@ def test_shortcut_is_idempotent_through_the_command(
     assert second.exit_code == 0, second.output
     assert "already exists" in second.output
     assert len([path for path in system.files if path.suffix == ".desktop"]) == 1
+
+
+def test_json_reports_an_icon_download_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    system = prepared_system("KDE")
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: FakeWriter(system))
+    monkeypatch.setattr(
+        cli,
+        "RealFileFetcher",
+        lambda: FakeFileFetcher(failure="network unavailable"),
+    )
+    monkeypatch.setattr(
+        cli,
+        "probe",
+        lambda system, identifier=None: healthy_environment(),  # noqa: ARG005
+    )
+
+    result = runner.invoke(cli.app, ["--json", "shortcut"])
+
+    assert result.exit_code == 1
+    payload = json.loads(result.stdout)
+    assert payload["ok"] is False
+    assert payload["shortcut"]["status"] == "failed"
+    assert "network unavailable" in payload["shortcut"]["detail"]
+    assert not [path for path in system.files if path.suffix == ".desktop"]

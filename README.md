@@ -198,7 +198,7 @@ dcs-linux shortcut                    # the single prepared install
 dcs-linux shortcut --install 7976     # choose by ID or game path
 ```
 
-The launcher runs `dcs-linux launch --install ID`, so it keeps using the prepared prefix and durable mappings. Re-running the command does not create a duplicate.
+The launcher runs `dcs-linux launch --install ID`, so it keeps using the prepared prefix and durable mappings. It downloads DCS World's pinned community icon from Steam's CDN (identified through [SteamDB](https://steamdb.info/app/223750/)), stores it under your XDG data directory, and assigns the local image to the launcher. Re-running the command does not download or create a duplicate when both files are already present.
 
 ### `dcs-linux verify`
 

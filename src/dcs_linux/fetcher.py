@@ -1,15 +1,14 @@
-"""The seam through which this tool pulls the toolchain off the network.
+"""The seams through which this tool pulls files off the network.
 
-Only two things are ever fetched — the umu zipapp and the pinned GE-Proton
-build (ADR-0003) — and both arrive as an archive that is immediately unpacked.
-So the interface is one call, `fetch_archive`, rather than a download
-primitive plus an extract primitive: a half-downloaded tarball is never a
-state anything else needs to see, and a fake in a test can simply put the
-files where the real one would.
+The umu zipapp and pinned GE-Proton build (ADR-0003) arrive as archives that
+are immediately unpacked. Their interface is one call, `fetch_archive`, rather
+than a download primitive plus an extract primitive: a half-downloaded tarball
+is never a state anything else needs to see. The desktop shortcut's small,
+pinned game icon is fetched as bytes and written atomically through `Writer`.
 
-Both URLs are pinned to explicit versions in `dcs_linux.prefix`. Nothing here
-asks a release API what the newest build is, because a toolchain that changes
-under the user is a toolchain nobody can reproduce a bug report against.
+Every URL is pinned. Nothing here asks an API what the newest asset is, because
+network content that changes under the user is content nobody can reproduce a
+bug report against.
 """
 
 from __future__ import annotations
@@ -18,12 +17,43 @@ import tarfile
 import tempfile
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
 # Long enough for GE-Proton (about 500 MB) on a slow connection, short enough
 # that a dead mirror does not hang the command indefinitely.
 FETCH_TIMEOUT = 600
+FILE_FETCH_TIMEOUT = 30
+MAX_FILE_BYTES = 2 * 1024 * 1024
+
+
+@dataclass(frozen=True)
+class DownloadResult:
+    """One small downloaded file, or why it could not be fetched."""
+
+    data: bytes | None = None
+    failure: str | None = None
+
+
+class FileFetcher(Protocol):
+    """Fetches a small file without writing it to the machine."""
+
+    def fetch_file(self, url: str) -> DownloadResult: ...
+
+
+class RealFileFetcher:
+    """`FileFetcher` backed by HTTPS."""
+
+    def fetch_file(self, url: str) -> DownloadResult:
+        try:
+            with urllib.request.urlopen(url, timeout=FILE_FETCH_TIMEOUT) as response:
+                data = response.read(MAX_FILE_BYTES + 1)
+        except (urllib.error.URLError, OSError, ValueError) as error:
+            return DownloadResult(failure=f"could not download {url}: {error}")
+        if len(data) > MAX_FILE_BYTES:
+            return DownloadResult(failure=f"download from {url} exceeded {MAX_FILE_BYTES} bytes")
+        return DownloadResult(data=data)
 
 
 class Fetcher(Protocol):

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from dcs_linux.fetcher import DownloadResult
 from dcs_linux.runner import Completed
 from dcs_linux.system import CommandResult, DiskUsage
 
@@ -245,3 +246,15 @@ class FakeFetcher:
                 for relative, text in files.items():
                     self.system.files[destination / relative] = text.encode()
         return None
+
+
+class FakeFileFetcher:
+    """A small-file download fixture with recorded URLs."""
+
+    def __init__(self, *, data: bytes | None = None, failure: str | None = None) -> None:
+        self.result = DownloadResult(data=data, failure=failure)
+        self.urls: list[str] = []
+
+    def fetch_file(self, url: str) -> DownloadResult:
+        self.urls.append(url)
+        return self.result

@@ -19,9 +19,10 @@ from dcs_linux.probes import Environment
 from dcs_linux.system import DiskUsage
 from dcs_linux.updater import HandoffResult, Progress, Stage
 from tests.environments import LAYOUT, bare_environment, healthy_environment
-from tests.fakes import FakeSystem, FakeWriter
+from tests.fakes import FakeFileFetcher, FakeSystem, FakeWriter
 
 runner = CliRunner()
+ICON = b"\xff\xd8\xffDCS icon"
 
 RUNTIME = Runtime(
     umu_version="1.4.4",
@@ -98,6 +99,7 @@ def use(
     )
     monkeypatch.setattr(cli, "resolve_layout", lambda system: LAYOUT)  # noqa: ARG005
     monkeypatch.setattr(cli, "discover", lambda system, layout: (), raising=False)
+    monkeypatch.setattr(cli, "RealFileFetcher", lambda: FakeFileFetcher(data=ICON))
     spy = Spy(result)
     monkeypatch.setattr(cli, "build", spy)
     handoff_spy = HandoffSpy(handoff)
@@ -410,6 +412,32 @@ def test_a_shortcut_write_failure_does_not_roll_back_the_adoption(
     assert result.exit_code == 0, result.output
     assert "could not write desktop shortcut" in result.output
     assert "desktop directory is read-only" in result.output
+
+
+def test_an_icon_download_failure_does_not_roll_back_the_adoption(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adopted = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.ADOPTED)
+    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "KDE"})
+    use(monkeypatch, bare_environment(), handoff=completed_adoption(adopted.game))
+    use_adopt_result(monkeypatch, adopted)
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: FakeWriter(system))
+    monkeypatch.setattr(
+        cli,
+        "RealFileFetcher",
+        lambda: FakeFileFetcher(failure="network unavailable"),
+    )
+
+    result = runner.invoke(
+        cli.app,
+        ["install", "--game-dir", str(adopted.game), "--shortcut"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "could not download DCS World icon" in result.output
+    assert "network unavailable" in result.output
+    assert not [path for path in system.files if path.suffix == ".desktop"]
 
 
 def test_declining_a_risky_takeover_leaves_the_install_untouched(

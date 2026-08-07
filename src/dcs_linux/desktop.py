@@ -6,9 +6,19 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
+from dcs_linux.fetcher import FileFetcher
 from dcs_linux.installs import DcsInstall
 from dcs_linux.system import System
 from dcs_linux.writer import Writer
+
+# SteamDB records this as DCS World's community icon for Steam app 223750.
+# The hash pins the exact asset rather than resolving mutable metadata at runtime.
+ICON_URL = (
+    "https://shared.fastly.steamstatic.com/community_assets/images/apps/223750/"
+    "f709dbfd1d2ad385ae5baaa1824422c11a4a2dea.jpg"
+)
+ICON_NAME = "dcs-world.jpg"
+JPEG_MAGIC = b"\xff\xd8\xff"
 
 
 class Desktop(StrEnum):
@@ -52,14 +62,15 @@ def detect_desktop(system: System) -> Desktop | None:
 def create_shortcut(
     system: System,
     writer: Writer,
+    fetcher: FileFetcher,
     desktop: Desktop,
     install: DcsInstall,
 ) -> ShortcutResult:
     """Create the freedesktop launcher shared by KDE and GNOME."""
     data_home = system.environ("XDG_DATA_HOME")
-    applications = (
-        Path(data_home) if data_home else system.home() / ".local" / "share"
-    ) / "applications"
+    data_root = Path(data_home) if data_home else system.home() / ".local" / "share"
+    applications = data_root / "applications"
+    icon = data_root / "icons" / ICON_NAME
     path = applications / f"dcs-linux-{install.install_id}.desktop"
     content = (
         "[Desktop Entry]\n"
@@ -67,11 +78,13 @@ def create_shortcut(
         "Name=DCS World\n"
         "Comment=Launch DCS World through dcs-linux\n"
         f"Exec=dcs-linux launch --install {install.install_id}\n"
+        f"Icon={icon}\n"
         "Terminal=false\n"
         "Categories=Game;\n"
     ).encode()
+    icon_data = system.read_bytes(icon)
     try:
-        if system.read_bytes(path) == content:
+        if system.read_bytes(path) == content and _is_jpeg(icon_data):
             writer.make_executable(path)
             return ShortcutResult(
                 ShortcutStatus.EXISTS,
@@ -79,6 +92,24 @@ def create_shortcut(
                 desktop,
                 path,
             )
+        if not _is_jpeg(icon_data):
+            downloaded = fetcher.fetch_file(ICON_URL)
+            if downloaded.failure is not None:
+                return ShortcutResult(
+                    ShortcutStatus.FAILED,
+                    f"could not download DCS World icon: {downloaded.failure}",
+                    desktop,
+                    path,
+                )
+            if not _is_jpeg(downloaded.data):
+                return ShortcutResult(
+                    ShortcutStatus.FAILED,
+                    "downloaded DCS World icon is not a JPEG",
+                    desktop,
+                    path,
+                )
+            assert downloaded.data is not None
+            writer.write_bytes(icon, downloaded.data)
         writer.write_bytes(path, content)
         writer.make_executable(path)
     except OSError as error:
@@ -89,3 +120,7 @@ def create_shortcut(
             path,
         )
     return ShortcutResult(ShortcutStatus.CREATED, "desktop shortcut created", desktop, path)
+
+
+def _is_jpeg(data: bytes | None) -> bool:
+    return data is not None and data.startswith(JPEG_MAGIC)

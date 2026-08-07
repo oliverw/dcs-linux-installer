@@ -20,7 +20,7 @@ from dcs_linux.desktop import (
     detect_desktop,
 )
 from dcs_linux.diagnostics import bundle
-from dcs_linux.fetcher import RealFetcher
+from dcs_linux.fetcher import RealFetcher, RealFileFetcher
 from dcs_linux.installs import (
     AmbiguousInstall,
     DcsInstall,
@@ -314,7 +314,7 @@ def _offer_shortcut(
             else "Desktop shortcut skipped."
         )
         return ShortcutResult(ShortcutStatus.SKIPPED, detail, desktop)
-    return create_shortcut(system, writer, desktop, install)
+    return create_shortcut(system, writer, RealFileFetcher(), desktop, install)
 
 
 def _confirm_takeover(
