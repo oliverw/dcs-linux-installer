@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,12 @@ import typer
 from dcs_linux import __version__
 from dcs_linux.checks import blocking_preflight, has_blocking_failure, run_checks
 from dcs_linux.dcslog import read_log
+from dcs_linux.desktop import (
+    ShortcutResult,
+    ShortcutStatus,
+    create_shortcut,
+    detect_desktop,
+)
 from dcs_linux.diagnostics import bundle
 from dcs_linux.fetcher import RealFetcher
 from dcs_linux.installs import (
@@ -53,6 +60,7 @@ from dcs_linux.report import (
     render_patches,
     render_steps,
     render_table,
+    shortcut_json,
     verify_json,
 )
 from dcs_linux.reset import apply as apply_reset
@@ -60,9 +68,9 @@ from dcs_linux.reset import overlaps_lifetime, unsafe_stores
 from dcs_linux.reset import plan as reset_plan
 from dcs_linux.runner import RealRunner
 from dcs_linux.system import RealSystem, System
-from dcs_linux.updater import WEB_INSTALLER_NAME, handoff
+from dcs_linux.updater import WEB_INSTALLER_NAME, Stage, handoff
 from dcs_linux.verify import verify_install
-from dcs_linux.writer import RealWriter
+from dcs_linux.writer import RealWriter, Writer
 
 app = typer.Typer(
     name="dcs-linux",
@@ -180,6 +188,11 @@ def install(
         "--yes",
         help="Accept taking over a game directory managed by another launcher.",
     ),
+    shortcut: bool | None = typer.Option(
+        None,
+        "--shortcut/--no-shortcut",
+        help="Create or skip a desktop shortcut when adopting an existing install.",
+    ),
     installer: Path | None = INSTALLER_OPTION,
 ) -> None:
     """Build the runtime DCS needs, then hand off to the DCS updater.
@@ -194,6 +207,7 @@ def install(
     system = RealSystem()
     writer, runner = RealWriter(), RealRunner()
     layout = _install_layout(system, game_dir)
+    existing_install = adopt(system, layout.game) if game_dir is not None else None
 
     verbs = resolve_verbs(verb)
     if verbs.refusal is not None:
@@ -222,6 +236,7 @@ def install(
         render_steps(console, result, dcs_next=result.ok and not prefix_only)
 
     handed_off = None
+    shortcut_result = None
     if result.ok and not prefix_only:
         handed_off = handoff(
             system,
@@ -235,14 +250,70 @@ def install(
             # belongs to the payload alone.
             announce=lambda text: typer.echo(f"\n{text}\n", err=True),
         )
+        if (
+            existing_install is not None
+            and handed_off.ok
+            and handed_off.progress.stage is Stage.COMPLETE
+            and handed_off.progress.game_root is not None
+        ):
+            shortcut_result = _offer_shortcut(
+                system,
+                writer,
+                DcsInstall(
+                    game=handed_off.progress.game_root,
+                    launcher=Launcher.DCS_LINUX,
+                    prefix=layout.prefix,
+                ),
+                shortcut=shortcut,
+                interactive=_is_interactive() and not options.json_output,
+            )
 
     if options.json_output:
-        typer.echo(json.dumps(install_json(result, handed_off), indent=2))
+        typer.echo(json.dumps(install_json(result, handed_off, shortcut_result), indent=2))
     elif handed_off is not None:
         render_handoff(console, handed_off)
+        if shortcut_result is not None:
+            typer.echo(shortcut_result.detail, err=shortcut_result.status is ShortcutStatus.FAILED)
 
     if not result.ok or (handed_off is not None and not handed_off.ok):
         raise typer.Exit(code=1)
+
+
+def _is_interactive() -> bool:
+    """Whether an unanswered confirmation may safely wait for input."""
+    return sys.stdin.isatty()
+
+
+def _offer_shortcut(
+    system: System,
+    writer: Writer,
+    install: DcsInstall,
+    *,
+    shortcut: bool | None,
+    interactive: bool,
+) -> ShortcutResult:
+    """Resolve the user's shortcut choice after a successful adoption."""
+    desktop = detect_desktop(system)
+    if desktop is None:
+        return ShortcutResult(
+            ShortcutStatus.SKIPPED,
+            "Desktop shortcut skipped: the current desktop is not KDE or GNOME.",
+        )
+    accepted = shortcut
+    if accepted is None and interactive:
+        accepted = typer.confirm(
+            f"Create a {desktop.name} desktop shortcut?",
+            default=True,
+            err=True,
+        )
+    if not accepted:
+        detail = (
+            "Desktop shortcut skipped: use --shortcut in non-interactive mode."
+            if shortcut is None and not interactive
+            else "Desktop shortcut skipped."
+        )
+        return ShortcutResult(ShortcutStatus.SKIPPED, detail, desktop)
+    return create_shortcut(system, writer, desktop, install)
 
 
 def _confirm_takeover(
@@ -553,6 +624,45 @@ def reset(
 
     apply_reset(RealWriter(), layout, planned)
     typer.echo("Reset complete.")
+
+
+@app.command("create-shortcut")
+def create_shortcut_command(
+    ctx: typer.Context,
+    install: str | None = INSTALL_OPTION,
+) -> None:
+    """Create a KDE or GNOME shortcut for a prepared DCS install."""
+    options = output_options(ctx)
+    system = RealSystem()
+    targeted = _targeted(_probe(system, install))
+    if targeted.launcher is not Launcher.DCS_LINUX or targeted.prefix is None:
+        detail = "the targeted install was not prepared by this tool; run dcs-linux install"
+        _emit_shortcut_result(options, ShortcutResult(ShortcutStatus.FAILED, detail))
+        return
+    result = _offer_shortcut(
+        system,
+        RealWriter(),
+        targeted,
+        shortcut=True,
+        interactive=False,
+    )
+    _emit_shortcut_result(options, result)
+
+
+def _emit_shortcut_result(options: OutputOptions, result: ShortcutResult) -> None:
+    """Report one explicit create-shortcut outcome."""
+    ok = result.status in {ShortcutStatus.CREATED, ShortcutStatus.EXISTS}
+    if options.json_output:
+        typer.echo(
+            json.dumps(
+                {"command": "create-shortcut", "ok": ok, "shortcut": shortcut_json(result)},
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(result.detail, err=not ok)
+    if not ok:
+        raise typer.Exit(code=1)
 
 
 @app.command()

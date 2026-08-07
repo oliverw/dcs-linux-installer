@@ -56,12 +56,13 @@ uvx --from dcs-linux-installer dcs-linux check
 # Or install the command
 uv tool install dcs-linux-installer
 
-dcs-linux check      # is this machine ready? what DCS installs exist?
-dcs-linux install    # build the prefix, then hand off to the DCS updater
-dcs-linux launch     # start a prepared install without judging it
-dcs-linux patch      # apply the Linux fixes (IC-safe ones by default)
-dcs-linux verify     # launch DCS and confirm it actually works
-dcs-linux report     # diagnostics bundle for a bug report
+dcs-linux check             # is this machine ready? what DCS installs exist?
+dcs-linux install           # build the prefix, then hand off to the DCS updater
+dcs-linux create-shortcut   # add a KDE/GNOME launcher for a prepared install
+dcs-linux launch            # start a prepared install without judging it
+dcs-linux patch             # apply the Linux fixes (IC-safe ones by default)
+dcs-linux verify            # launch DCS and confirm it actually works
+dcs-linux report            # diagnostics bundle for a bug report
 ```
 
 Requires [uv](https://docs.astral.sh/uv/). It installs to your home directory without root, so this works on immutable distros too.
@@ -173,6 +174,8 @@ In the updater, **set the install path to `D:\`** — that is your game director
 
 The download is 150 GB and up, measured in hours. Interrupting is safe: close the terminal, reboot, and run `dcs-linux install` again — the updater resumes where it stopped, and nothing is recorded until the install is finished. After that the install is registered, so `check`, `launch`, `patch` and `verify` find it without you repeating `--game-dir`.
 
+When an explicit `--game-dir` adopts an existing install, KDE and GNOME users are offered a desktop shortcut after registration succeeds. Scripts can choose without a prompt by passing `--shortcut` or `--no-shortcut`.
+
 Once it is done, run `dcs-linux patch apply` — the Linux fixes are what turn an install that starts into one that flies.
 
 ### `dcs-linux launch`
@@ -185,6 +188,17 @@ dcs-linux launch --install 7976     # choose by ID or game path
 ```
 
 It uses the pinned umu and GE-Proton runtime, the mapped game directory and Saved Games, the Integrity Check-safe launch environment, and `--no-launcher`. It waits for the complete umu/Proton/Wine process tree and cleans it up if interrupted. The DCS exit code is reported but not treated as proof that the game worked; use `verify` when you want the log judged.
+
+### `dcs-linux create-shortcut`
+
+Create the same KDE/GNOME desktop launcher later, without re-running `install`:
+
+```sh
+dcs-linux create-shortcut                    # the single prepared install
+dcs-linux create-shortcut --install 7976     # choose by ID or game path
+```
+
+The launcher runs `dcs-linux launch --install ID`, so it keeps using the prepared prefix and durable mappings. Re-running the command does not create a duplicate.
 
 ### `dcs-linux verify`
 

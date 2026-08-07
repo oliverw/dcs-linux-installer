@@ -10,6 +10,7 @@ from rich.table import Table
 from rich.text import Text
 
 from dcs_linux.checks import CheckResult, Status
+from dcs_linux.desktop import ShortcutResult
 from dcs_linux.installs import EDITION_LABELS, DcsInstall
 from dcs_linux.patches import (
     SERVERS_REJECT,
@@ -248,7 +249,11 @@ def render_handoff(console: Console, result: HandoffResult) -> None:
     )
 
 
-def install_json(result: BuildResult, handoff: HandoffResult | None = None) -> dict[str, Any]:
+def install_json(
+    result: BuildResult,
+    handoff: HandoffResult | None = None,
+    shortcut: ShortcutResult | None = None,
+) -> dict[str, Any]:
     """The same install, machine-readable.
 
     The prefix build and the DCS handoff are one command and one payload, but
@@ -261,6 +266,17 @@ def install_json(result: BuildResult, handoff: HandoffResult | None = None) -> d
         "steps": [_step_json(step) for step in result.steps],
         "runtime": result.runtime.as_json() if result.runtime else None,
         "dcs": handoff_json(handoff) if handoff is not None else None,
+        "shortcut": shortcut_json(shortcut) if shortcut is not None else None,
+    }
+
+
+def shortcut_json(result: ShortcutResult) -> dict[str, str | None]:
+    """What happened to the optional desktop shortcut."""
+    return {
+        "status": result.status.value,
+        "desktop": result.desktop.value if result.desktop else None,
+        "path": str(result.path) if result.path else None,
+        "detail": result.detail,
     }
 
 

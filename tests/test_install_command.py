@@ -19,7 +19,7 @@ from dcs_linux.probes import Environment
 from dcs_linux.system import DiskUsage
 from dcs_linux.updater import HandoffResult, Progress, Stage
 from tests.environments import LAYOUT, bare_environment, healthy_environment
-from tests.fakes import FakeSystem
+from tests.fakes import FakeSystem, FakeWriter
 
 runner = CliRunner()
 
@@ -116,6 +116,16 @@ def use_adopt_result(
     monkeypatch.setattr(cli, "adopt", lambda system, path: install, raising=False)
 
 
+def completed_adoption(game: Path) -> HandoffResult:
+    return HandoffResult(
+        steps=(
+            Step("DCS", StepStatus.DONE, "DCS 2.9.28.26385 installed"),
+            Step("register", StepStatus.DONE, "install registered"),
+        ),
+        progress=Progress(stage=Stage.COMPLETE, game_root=game),
+    )
+
+
 def test_a_bare_machine_is_exactly_what_install_is_for(monkeypatch: pytest.MonkeyPatch) -> None:
     """No umu, no Proton, no prefix: all blocking for `check`, none for this."""
     spy, _ = use(monkeypatch, bare_environment())
@@ -162,6 +172,191 @@ def test_the_game_directory_is_the_users_to_choose(monkeypatch: pytest.MonkeyPat
     assert result.exit_code == 0, result.stdout
     assert spy.layout is not None
     assert spy.layout.game == Path("/mnt/big/DCS")
+
+
+def test_accepting_the_adoption_shortcut_prompt_creates_the_launcher(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adopted = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.ADOPTED)
+    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "KDE"})
+    writer = FakeWriter(system)
+    use(monkeypatch, bare_environment(), handoff=completed_adoption(adopted.game))
+    use_adopt_result(monkeypatch, adopted)
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: writer)
+    monkeypatch.setattr(cli, "_is_interactive", lambda: True, raising=False)
+
+    result = runner.invoke(
+        cli.app,
+        ["install", "--game-dir", str(adopted.game)],
+        input="y\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    launcher = (
+        system.home() / ".local/share/applications" / (f"dcs-linux-{adopted.install_id}.desktop")
+    )
+    assert "Create a KDE desktop shortcut?" in result.output
+    assert f"Exec=dcs-linux launch --install {adopted.install_id}" in (
+        system.read_text(launcher) or ""
+    )
+
+
+def test_json_shortcut_choice_is_scriptable_and_stays_machine_readable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adopted = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.ADOPTED)
+    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "GNOME"})
+    writer = FakeWriter(system)
+    use(monkeypatch, bare_environment(), handoff=completed_adoption(adopted.game))
+    use_adopt_result(monkeypatch, adopted)
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: writer)
+
+    result = runner.invoke(
+        cli.app,
+        ["--json", "install", "--game-dir", str(adopted.game), "--shortcut"],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.stdout)
+    assert payload["shortcut"] == {
+        "status": "created",
+        "desktop": "gnome",
+        "path": str(
+            system.home() / ".local/share/applications" / f"dcs-linux-{adopted.install_id}.desktop"
+        ),
+        "detail": "desktop shortcut created",
+    }
+    assert "Create a" not in result.stderr
+
+
+def test_declining_the_shortcut_prompt_creates_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adopted = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.ADOPTED)
+    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "GNOME"})
+    use(monkeypatch, bare_environment(), handoff=completed_adoption(adopted.game))
+    use_adopt_result(monkeypatch, adopted)
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: FakeWriter(system))
+    monkeypatch.setattr(cli, "_is_interactive", lambda: True)
+
+    result = runner.invoke(
+        cli.app,
+        ["install", "--game-dir", str(adopted.game)],
+        input="n\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Desktop shortcut skipped" in result.output
+    assert not [path for path in system.files if path.suffix == ".desktop"]
+
+
+def test_an_unsupported_desktop_skips_the_prompt_with_an_explanation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adopted = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.ADOPTED)
+    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "sway"})
+    use(monkeypatch, bare_environment(), handoff=completed_adoption(adopted.game))
+    use_adopt_result(monkeypatch, adopted)
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: FakeWriter(system))
+    monkeypatch.setattr(cli, "_is_interactive", lambda: True)
+
+    result = runner.invoke(cli.app, ["install", "--game-dir", str(adopted.game)])
+
+    assert result.exit_code == 0, result.output
+    assert "current desktop is not KDE or GNOME" in result.output
+    assert "Create a" not in result.output
+
+
+def test_noninteractive_adoption_without_a_choice_never_prompts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adopted = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.ADOPTED)
+    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "KDE"})
+    use(monkeypatch, bare_environment(), handoff=completed_adoption(adopted.game))
+    use_adopt_result(monkeypatch, adopted)
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: FakeWriter(system))
+    monkeypatch.setattr(cli, "_is_interactive", lambda: False)
+
+    result = runner.invoke(cli.app, ["install", "--game-dir", str(adopted.game)])
+
+    assert result.exit_code == 0, result.output
+    assert "use --shortcut in non-interactive mode" in result.output
+    assert "Create a" not in result.output
+
+
+def test_fresh_and_prefix_only_installs_do_not_offer_a_shortcut(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "KDE"})
+    use(monkeypatch, bare_environment())
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: FakeWriter(system))
+    monkeypatch.setattr(cli, "_is_interactive", lambda: True)
+
+    fresh = runner.invoke(cli.app, ["install"])
+
+    adopted = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.ADOPTED)
+    use_adopt_result(monkeypatch, adopted)
+    prefix_only = runner.invoke(
+        cli.app,
+        ["install", "--game-dir", str(adopted.game), "--prefix-only"],
+    )
+
+    assert fresh.exit_code == 0, fresh.output
+    assert prefix_only.exit_code == 0, prefix_only.output
+    assert "Create a" not in fresh.output
+    assert "Create a" not in prefix_only.output
+
+
+def test_a_failed_adoption_never_offers_a_shortcut(monkeypatch: pytest.MonkeyPatch) -> None:
+    adopted = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.ADOPTED)
+    failed = HandoffResult(
+        steps=(Step("DCS", StepStatus.FAILED, "nothing was installed"),),
+        progress=Progress(stage=Stage.ABSENT),
+    )
+    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "KDE"})
+    use(monkeypatch, bare_environment(), handoff=failed)
+    use_adopt_result(monkeypatch, adopted)
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: FakeWriter(system))
+    monkeypatch.setattr(cli, "_is_interactive", lambda: True)
+
+    result = runner.invoke(cli.app, ["install", "--game-dir", str(adopted.game)])
+
+    assert result.exit_code == 1
+    assert "Create a" not in result.output
+    assert not [path for path in system.files if path.suffix == ".desktop"]
+
+
+def test_a_shortcut_write_failure_does_not_roll_back_the_adoption(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FailingWriter(FakeWriter):
+        def write_bytes(self, path: Path, data: bytes) -> None:
+            if path.suffix == ".desktop":
+                raise OSError("desktop directory is read-only")
+            super().write_bytes(path, data)
+
+    adopted = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.ADOPTED)
+    system = FakeSystem(env={"XDG_CURRENT_DESKTOP": "KDE"})
+    use(monkeypatch, bare_environment(), handoff=completed_adoption(adopted.game))
+    use_adopt_result(monkeypatch, adopted)
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "RealWriter", lambda: FailingWriter(system))
+
+    result = runner.invoke(
+        cli.app,
+        ["install", "--game-dir", str(adopted.game), "--shortcut"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "could not write desktop shortcut" in result.output
+    assert "desktop directory is read-only" in result.output
 
 
 def test_declining_a_risky_takeover_leaves_the_install_untouched(
