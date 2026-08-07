@@ -109,6 +109,17 @@ class DcsInstall:
         return self.game.is_relative_to(self.prefix / "drive_c")
 
 
+def adopted_location_warning(install: DcsInstall) -> str | None:
+    """Why adopting this directory would take over another launcher's install."""
+    if install.launcher is not Launcher.ADOPTED:
+        return None
+    if "drive_c" in install.game.parts:
+        return f"{install.game} is inside a prefix its owner can rebuild"
+    if "steamapps" in install.game.parts:
+        return f"{install.game} is under steamapps and looks Steam-managed"
+    return None
+
+
 def is_dcs_install(system: System, path: Path) -> bool:
     """Whether `path` is the root of a DCS install.
 

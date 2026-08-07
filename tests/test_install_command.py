@@ -11,12 +11,15 @@ from typer.testing import CliRunner
 
 from dcs_linux import cli
 from dcs_linux.checks import GIB
+from dcs_linux.installs import DcsInstall, Launcher
+from dcs_linux.launchers import discover
 from dcs_linux.paths import Layout
 from dcs_linux.prefix import BuildResult, Runtime, Step, StepStatus
 from dcs_linux.probes import Environment
 from dcs_linux.system import DiskUsage
 from dcs_linux.updater import HandoffResult, Progress, Stage
 from tests.environments import LAYOUT, bare_environment, healthy_environment
+from tests.fakes import FakeSystem
 
 runner = CliRunner()
 
@@ -38,6 +41,8 @@ BUILT = BuildResult(
     ),
     runtime=RUNTIME,
 )
+
+RISKY_GAME = Path("/mnt/games/SteamLibrary/steamapps/common/DCS World")
 
 
 class Spy:
@@ -92,11 +97,23 @@ def use(
         lambda system, identifier=None, *, layout=None: environment,  # noqa: ARG005
     )
     monkeypatch.setattr(cli, "resolve_layout", lambda system: LAYOUT)  # noqa: ARG005
+    monkeypatch.setattr(cli, "discover", lambda system, layout: (), raising=False)
     spy = Spy(result)
     monkeypatch.setattr(cli, "build", spy)
     handoff_spy = HandoffSpy(handoff)
     monkeypatch.setattr(cli, "handoff", handoff_spy)
     return spy, handoff_spy
+
+
+def risky_adopted_install() -> DcsInstall:
+    return DcsInstall(game=RISKY_GAME, launcher=Launcher.ADOPTED)
+
+
+def use_adopt_result(
+    monkeypatch: pytest.MonkeyPatch,
+    install: DcsInstall,
+) -> None:
+    monkeypatch.setattr(cli, "adopt", lambda system, path: install, raising=False)
 
 
 def test_a_bare_machine_is_exactly_what_install_is_for(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -145,6 +162,135 @@ def test_the_game_directory_is_the_users_to_choose(monkeypatch: pytest.MonkeyPat
     assert result.exit_code == 0, result.stdout
     assert spy.layout is not None
     assert spy.layout.game == Path("/mnt/big/DCS")
+
+
+def test_declining_a_risky_takeover_leaves_the_install_untouched(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Declining happens before the prefix, mapping, and later register write."""
+    spy, handoff = use(monkeypatch, bare_environment())
+    adopted = risky_adopted_install()
+    use_adopt_result(monkeypatch, adopted)
+
+    result = runner.invoke(
+        cli.app,
+        ["install", "--game-dir", str(adopted.game)],
+        input="n\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "D:" in result.output
+    assert "dcs-linux" in result.output
+    assert "Saved Games" in result.output
+    assert spy.layout is None
+    assert handoff.calls == 0
+
+
+def test_yes_accepts_a_risky_takeover_without_prompting(monkeypatch: pytest.MonkeyPatch) -> None:
+    spy, _ = use(monkeypatch, bare_environment())
+    adopted = risky_adopted_install()
+    use_adopt_result(monkeypatch, adopted)
+
+    result = runner.invoke(cli.app, ["install", "--game-dir", str(adopted.game), "--yes"])
+
+    assert result.exit_code == 0, result.output
+    assert "Take over" not in result.output
+    assert spy.layout is not None
+
+
+def test_an_unrisky_adopted_directory_installs_without_a_prompt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spy, _ = use(monkeypatch, bare_environment())
+    adopted = DcsInstall(game=Path("/mnt/games/DCS World"), launcher=Launcher.ADOPTED)
+    monkeypatch.setattr(cli, "adopt", lambda system, path: adopted, raising=False)
+
+    result = runner.invoke(cli.app, ["install", "--game-dir", str(adopted.game)])
+
+    assert result.exit_code == 0, result.output
+    assert "Take over" not in result.output
+    assert spy.layout is not None
+
+
+def test_an_install_already_ours_does_not_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    spy, _ = use(monkeypatch, bare_environment())
+    adopted = risky_adopted_install()
+    ours = replace(adopted, launcher=Launcher.DCS_LINUX)
+    use_adopt_result(monkeypatch, adopted)
+    monkeypatch.setattr(cli, "discover", lambda system, layout: (ours,), raising=False)
+
+    result = runner.invoke(cli.app, ["install", "--game-dir", str(adopted.game)])
+
+    assert result.exit_code == 0, result.output
+    assert "Take over" not in result.output
+    assert spy.layout is not None
+
+
+def test_a_discovered_other_launcher_still_requires_takeover_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    spy, _ = use(monkeypatch, bare_environment())
+    adopted = risky_adopted_install()
+    steam = replace(adopted, launcher=Launcher.STEAM)
+    use_adopt_result(monkeypatch, adopted)
+    monkeypatch.setattr(cli, "discover", lambda system, layout: (steam,), raising=False)
+
+    result = runner.invoke(
+        cli.app,
+        ["install", "--game-dir", str(adopted.game)],
+        input="n\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Take over" in result.output
+    assert spy.layout is None
+
+
+def test_a_real_steam_discovery_still_requires_takeover_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An explicit game directory must not make another launcher's game ours."""
+    spy, _ = use(monkeypatch, bare_environment())
+    steam_root = "/home/pilot/.steam/root"
+    library = "/mnt/games/SteamLibrary"
+    system = FakeSystem(
+        files={
+            f"{steam_root}/steamapps/libraryfolders.vdf": (
+                '"libraryfolders" { "0" { "path" "' + library + '" } }'
+            ),
+            f"{library}/steamapps/appmanifest_223750.acf": (
+                '"AppState" { "appid" "223750" "installdir" "DCS World" }'
+            ),
+            str(RISKY_GAME / "bin" / "DCS.exe"): "",
+        }
+    )
+    monkeypatch.setattr(cli, "RealSystem", lambda: system)
+    monkeypatch.setattr(cli, "discover", discover)
+
+    result = runner.invoke(cli.app, ["install", "--game-dir", str(RISKY_GAME)], input="n\n")
+
+    assert result.exit_code == 0, result.output
+    assert "Take over" in result.output
+    assert spy.layout is None
+
+
+def test_a_game_inside_the_prefix_is_refused_before_a_takeover_prompt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    blocked = DcsInstall(
+        game=LAYOUT.prefix / "drive_c" / "Games" / "DCS World",
+        launcher=Launcher.ADOPTED,
+        prefix=LAYOUT.prefix,
+    )
+    spy, _ = use(monkeypatch, healthy_environment(installs=(blocked,), targeted=blocked))
+    use_adopt_result(monkeypatch, blocked)
+
+    result = runner.invoke(cli.app, ["install", "--game-dir", str(blocked.game)], input="y\n")
+
+    assert result.exit_code == 1
+    assert "Game location" in result.output
+    assert "Take over" not in result.output
+    assert spy.layout is None
 
 
 def test_vcrun2019_is_refused_before_anything_is_built(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -21,7 +21,7 @@ from dcs_linux.headtracking import (
     RULE_FILE,
     install_rule_command,
 )
-from dcs_linux.installs import Launcher
+from dcs_linux.installs import Launcher, adopted_location_warning
 from dcs_linux.patches import SERVERS_REJECT, PatchState, PatchStatus, risky_in_place
 from dcs_linux.probes import REQUIRED_TOOLS, Environment
 
@@ -429,19 +429,6 @@ def check_game_location(environment: Environment) -> CheckResult:
             status=Status.SKIP,
             detail=_nothing_selected(environment),
         )
-    if install.launcher is Launcher.ADOPTED:
-        if "drive_c" in install.game.parts:
-            return CheckResult(
-                name=GAME_LOCATION,
-                status=Status.WARN,
-                detail=f"{install.game} is inside a prefix its owner can rebuild",
-            )
-        if "steamapps" in install.game.parts:
-            return CheckResult(
-                name=GAME_LOCATION,
-                status=Status.WARN,
-                detail=f"{install.game} is under steamapps and looks Steam-managed",
-            )
     if install.under_prefix:
         return CheckResult(
             name=GAME_LOCATION,
@@ -450,6 +437,8 @@ def check_game_location(environment: Environment) -> CheckResult:
             remediation=f"move the install out of the prefix and map it as D: "
             f"— rebuilding {install.prefix} would otherwise delete it",
         )
+    if warning := adopted_location_warning(install):
+        return CheckResult(name=GAME_LOCATION, status=Status.WARN, detail=warning)
     return CheckResult(
         name=GAME_LOCATION,
         status=Status.PASS,

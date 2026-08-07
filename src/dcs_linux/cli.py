@@ -14,7 +14,14 @@ from dcs_linux.checks import blocking_preflight, has_blocking_failure, run_check
 from dcs_linux.dcslog import read_log
 from dcs_linux.diagnostics import bundle
 from dcs_linux.fetcher import RealFetcher
-from dcs_linux.installs import AmbiguousInstall, DcsInstall, InstallNotFound
+from dcs_linux.installs import (
+    AmbiguousInstall,
+    DcsInstall,
+    InstallNotFound,
+    Launcher,
+    adopted_location_warning,
+)
+from dcs_linux.launchers import adopt, discover
 from dcs_linux.output import OutputOptions, console_for, output_options
 from dcs_linux.patches import (
     MULTIPLAYER_WARNING,
@@ -167,6 +174,11 @@ def install(
         "--prefix-only",
         help="Stop at a working prefix. Nothing is downloaded and the updater is not opened.",
     ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        help="Accept taking over a game directory managed by another launcher.",
+    ),
     installer: Path | None = INSTALLER_OPTION,
 ) -> None:
     """Build the runtime DCS needs, then hand off to the DCS updater.
@@ -188,6 +200,12 @@ def install(
         raise typer.Exit(code=2)
 
     _require_preflight(system, layout)
+    _confirm_takeover(
+        system,
+        layout,
+        game_dir_explicit=game_dir is not None,
+        takeover_accepted=yes,
+    )
     result = build(
         system,
         writer,
@@ -224,6 +242,40 @@ def install(
 
     if not result.ok or (handed_off is not None and not handed_off.ok):
         raise typer.Exit(code=1)
+
+
+def _confirm_takeover(
+    system: System,
+    layout: Layout,
+    *,
+    game_dir_explicit: bool,
+    takeover_accepted: bool,
+) -> None:
+    """Ask before replacing another launcher's mapping for a named install."""
+    if not game_dir_explicit or takeover_accepted:
+        return
+    adopted = adopt(system, layout.game)
+    if adopted is None:
+        return
+    discovered_install = next(
+        (
+            install
+            for install in discover(system, replace(layout, game_dir=None))
+            if install.game == adopted.game
+        ),
+        None,
+    )
+    if discovered_install is not None and discovered_install.launcher is Launcher.DCS_LINUX:
+        return
+    warning = adopted_location_warning(adopted)
+    if warning is None:
+        return
+    typer.echo(f"{warning}. Continuing will:", err=True)
+    typer.echo(f"  - remap D: to {layout.game}", err=True)
+    typer.echo("  - label its launcher dcs-linux", err=True)
+    typer.echo(f"  - claim {layout.saved_games} as its Saved Games location", err=True)
+    if not typer.confirm("Take over this install?", default=False, err=True):
+        raise typer.Exit()
 
 
 def _install_layout(system: System, game_dir: Path | None) -> Layout:
