@@ -57,7 +57,7 @@ class Runner(Protocol):
         self,
         command: list[str],
         environment: dict[str, str],
-        timeout: float = DEFAULT_TIMEOUT,
+        timeout: float | None = DEFAULT_TIMEOUT,
         *,
         own_session: bool = False,
     ) -> Completed:
@@ -78,7 +78,7 @@ class RealRunner:
         self,
         command: list[str],
         environment: dict[str, str],
-        timeout: float = DEFAULT_TIMEOUT,
+        timeout: float | None = DEFAULT_TIMEOUT,
         *,
         own_session: bool = False,
     ) -> Completed:
@@ -99,7 +99,7 @@ class RealRunner:
         return Completed(returncode=completed.returncode)
 
     def _run_in_session(
-        self, command: list[str], environment: dict[str, str], timeout: float
+        self, command: list[str], environment: dict[str, str], timeout: float | None
     ) -> Completed:
         """Run a whole process tree, and take all of it down when we stop waiting.
 
@@ -108,11 +108,20 @@ class RealRunner:
         the interrupt has to be forwarded by hand, or the one thing a user does
         to abort a four-hour wait would leave DCS running.
         """
+        started = time.monotonic()
         process = subprocess.Popen(command, env=environment, start_new_session=True)
         group = process.pid
         try:
             returncode = process.wait(timeout=timeout)
-            _stop_group(process, group)
+            remaining = (
+                None if timeout is None else max(0.0, timeout - (time.monotonic() - started))
+            )
+            if not _wait_for_group(group, remaining):
+                _stop_group(process, group)
+                return Completed(
+                    returncode=None,
+                    detail=f"timed out after {timeout:.0f}s and was stopped",
+                )
             return Completed(returncode=returncode)
         except subprocess.TimeoutExpired:
             _stop_group(process, group)
@@ -125,17 +134,25 @@ class RealRunner:
             raise
 
 
-def _stop_group(process: subprocess.Popen[bytes], group: int | None = None) -> None:
+def _wait_for_group(group: int, timeout: float | None) -> bool:
+    """Wait until every process in `group` has exited."""
+    deadline = None if timeout is None else time.monotonic() + timeout
+    while True:
+        try:
+            os.killpg(group, 0)
+        except OSError:
+            return True
+        if deadline is not None and time.monotonic() >= deadline:
+            return False
+        time.sleep(0.05)
+
+
+def _stop_group(process: subprocess.Popen[bytes], group: int) -> None:
     """Ask the process group to stop, then insist.
 
     Best-effort throughout: every failure here means the group is already gone,
     which is the outcome being asked for.
     """
-    if group is None:
-        try:
-            group = os.getpgid(process.pid)
-        except OSError:
-            return
     for stop in (signal.SIGTERM, signal.SIGKILL):
         try:
             os.killpg(group, stop)

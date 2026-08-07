@@ -19,7 +19,7 @@ from dcs_linux.runner import RealRunner
 # A shell that spawns a child and then waits: the same shape as umu launching
 # Proton, small enough to be a test.
 TREE = "sleep 60 & echo $! > {marker}; wait"
-EARLY_PARENT_EXIT = "sleep 60 & echo $! > {marker}"
+EARLY_PARENT_EXIT = "sleep 0.3 & echo $! > {marker}"
 
 
 def alive(pid: int) -> bool:
@@ -82,22 +82,21 @@ def test_a_timeout_takes_the_whole_tree_down(tmp_path: Path) -> None:
     assert not alive(child), "the grandchild outlived the command it was started by"
 
 
-def test_a_parent_exit_cleans_up_the_rest_of_its_tree(tmp_path: Path) -> None:
-    """If umu exits first, the command still owns the Proton/Wine descendants."""
+def test_a_parent_exit_waits_for_the_rest_of_its_tree(tmp_path: Path) -> None:
+    """If umu exits first, the command still waits for Proton/Wine descendants."""
     marker = str(tmp_path / "child.pid")
+    started = time.monotonic()
 
     completed = RealRunner().run(
         ["sh", "-c", EARLY_PARENT_EXIT.format(marker=marker)],
         {},
         own_session=True,
     )
+    elapsed = time.monotonic() - started
     child = child_of(marker)
 
     assert completed.returncode == 0
-    for _ in range(50):
-        if not alive(child):
-            break
-        time.sleep(0.05)
+    assert elapsed >= 0.2
     assert not alive(child), "the command returned while its process tree was still running"
 
 

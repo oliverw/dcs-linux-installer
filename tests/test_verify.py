@@ -230,6 +230,7 @@ class TestLaunching:
             files={
                 str(OWN_INSTALL.game / "bin" / "DCS.exe"): "MZ",
                 str(LAYOUT.umu_run): "#!/usr/bin/env python",
+                str(LAYOUT.umu_version_marker): f"{UMU_VERSION}\n",
                 str(LAYOUT.ge_proton_build(GE_PROTON_VERSION) / "proton"): "#!/usr/bin/env python",
                 str(LAYOUT.prefix / "system.reg"): "WINE REGISTRY Version 2",
                 str(LAYOUT.manifest): json.dumps(manifest),
@@ -258,6 +259,7 @@ class TestLaunching:
         runner = FakeRunner()
         verify.verify_install(self.machine(), runner, healthy_environment(), LAYOUT)
         assert runner.sessions == [True]
+        assert runner.timeouts == [verify.VERIFY_LAUNCH_TIMEOUT]
 
     def test_a_timeout_is_a_failure_and_says_dcs_was_stopped(self) -> None:
         runner = FakeRunner(

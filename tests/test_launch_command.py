@@ -74,8 +74,9 @@ def test_a_start_failure_is_clear_and_exits_one(monkeypatch: pytest.MonkeyPatch)
     assert "umu-run could not be executed" in result.stdout
 
 
+@pytest.mark.parametrize("identifier", ["7976", "/data/dcs/game/DCS World"])
 def test_the_existing_install_selector_is_passed_to_discovery(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, identifier: str
 ) -> None:
     identifiers: list[str | None] = []
 
@@ -90,10 +91,10 @@ def test_the_existing_install_selector_is_passed_to_discovery(
         lambda *args: LaunchResult(True, 0, "DCS closed with exit code 0"),
     )
 
-    result = runner.invoke(cli.app, ["launch", "--install", "7976"])
+    result = runner.invoke(cli.app, ["launch", "--install", identifier])
 
     assert result.exit_code == 0
-    assert identifiers == ["7976"]
+    assert identifiers == [identifier]
 
 
 def test_with_no_install_launch_is_a_usage_error(monkeypatch: pytest.MonkeyPatch) -> None:

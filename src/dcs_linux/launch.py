@@ -11,6 +11,7 @@ from dcs_linux.prefix import (
     LAUNCH_ENVIRONMENT,
     PREFIX_MARKER,
     UMU_VERSION,
+    WINETRICKS_VERBS,
     points_at,
     read_prefix_manifest,
 )
@@ -19,7 +20,6 @@ from dcs_linux.runner import Runner
 from dcs_linux.system import System
 
 NO_LAUNCHER = "--no-launcher"
-LAUNCH_TIMEOUT = 4 * 60 * 60.0
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,13 @@ class LaunchResult:
         return self.started
 
 
-def launch_dcs(system: System, runner: Runner, environment: Environment) -> LaunchResult:
+def launch_dcs(
+    system: System,
+    runner: Runner,
+    environment: Environment,
+    *,
+    timeout: float | None = None,
+) -> LaunchResult:
     """Start the targeted install."""
     targeted = environment.targeted
     if targeted is None:
@@ -55,8 +61,12 @@ def launch_dcs(system: System, runner: Runner, environment: Environment) -> Laun
             None,
             "the targeted prefix was not prepared by this tool; run dcs-linux install",
         )
-    if runtime.prefix != prefix or (
-        runtime.game != targeted.game and runtime.game != targeted.game.parent
+    resolved_prefix = system.resolve(prefix)
+    resolved_game = system.resolve(runtime.game)
+    resolved_saved_games = system.resolve(runtime.saved_games)
+    targeted_game = system.resolve(targeted.game)
+    if system.resolve(runtime.prefix) != resolved_prefix or (
+        resolved_game != targeted_game and resolved_game != targeted_game.parent
     ):
         return LaunchResult(
             False,
@@ -74,11 +84,26 @@ def launch_dcs(system: System, runner: Runner, environment: Environment) -> Laun
             None,
             "the prefix does not use the current pinned runtime; run dcs-linux install",
         )
+    if not set(WINETRICKS_VERBS).issubset(runtime.verbs):
+        return LaunchResult(
+            False,
+            None,
+            "the prefix is missing required winetricks verbs; run dcs-linux install",
+        )
+    if any(
+        path == resolved_prefix or path.is_relative_to(resolved_prefix)
+        for path in (resolved_game, resolved_saved_games)
+    ):
+        return LaunchResult(
+            False,
+            None,
+            "the game directory and saved games must be outside the prefix",
+        )
     mappings = (
-        (prefix / "dosdevices" / "d:", runtime.game),
+        (prefix / "dosdevices" / "d:", resolved_game),
         (
             prefix / "drive_c" / "users" / "steamuser" / "Saved Games",
-            runtime.saved_games,
+            resolved_saved_games,
         ),
     )
     if not all(points_at(system, link, target) for link, target in mappings):
@@ -88,7 +113,12 @@ def launch_dcs(system: System, runner: Runner, environment: Environment) -> Laun
             "the prepared prefix lifetime mapping has drifted; run dcs-linux install",
         )
     proton = environment.layout.ge_proton_build(GE_PROTON_VERSION)
-    if not system.exists(environment.layout.umu_run) or not system.exists(proton / "proton"):
+    umu_version = (system.read_text(environment.layout.umu_version_marker) or "").strip()
+    if (
+        not system.exists(environment.layout.umu_run)
+        or umu_version != UMU_VERSION
+        or not system.exists(proton / "proton")
+    ):
         return LaunchResult(
             False,
             None,
@@ -97,12 +127,12 @@ def launch_dcs(system: System, runner: Runner, environment: Environment) -> Laun
     completed = runner.run(
         [str(environment.layout.umu_run), str(executable), NO_LAUNCHER],
         {
-            "WINEPREFIX": str(prefix),
+            "WINEPREFIX": str(resolved_prefix),
             "GAMEID": GAMEID,
             "PROTONPATH": str(proton),
             **LAUNCH_ENVIRONMENT,
         },
-        LAUNCH_TIMEOUT,
+        timeout,
         own_session=True,
     )
     if not completed.started:

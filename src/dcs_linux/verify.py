@@ -63,6 +63,7 @@ FONTS = "Fonts"
 CRASH = "Crash"
 SHADERS = "Shaders"
 SESSION = "Session"
+VERIFY_LAUNCH_TIMEOUT = 4 * 60 * 60.0
 # There is deliberately no `UPSCALING` here. That finding is `check`'s own rule
 # reported verbatim, name included (`_from_check`), and a second spelling of
 # the name in this module is a second thing to keep in step.
@@ -223,7 +224,7 @@ def _launch(system: System, runner: Runner, environment: Environment, layout: La
             remediation=f"start it from {targeted.launcher}, then run this again",
         )
 
-    result = launch_dcs(system, runner, environment)
+    result = launch_dcs(system, runner, environment, timeout=VERIFY_LAUNCH_TIMEOUT)
     if not result.ok:
         return Finding(LAUNCH, Status.FAIL, result.detail, remediation="dcs-linux install")
     # The process result is reported, never used as the verification verdict:
