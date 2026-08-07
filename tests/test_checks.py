@@ -37,6 +37,7 @@ from dcs_linux.headtracking import (
     HeadTracking,
     install_rule_command,
 )
+from dcs_linux.installs import Launcher
 from dcs_linux.probes import Gpu, InstallState, Umu
 from dcs_linux.system import DiskUsage
 from tests.environments import (
@@ -285,6 +286,58 @@ class TestLifetimeRows:
 
     def test_game_outside_the_prefix_passes(self) -> None:
         assert check_game_location(healthy_environment()).status is Status.PASS
+
+    def test_adopted_game_inside_drive_c_warns_that_its_owner_can_rebuild_the_prefix(self) -> None:
+        adopted = replace(
+            OWN_INSTALL,
+            game=Path("/mnt/bottles/dcs/drive_c/Games/DCS World"),
+            launcher=Launcher.ADOPTED,
+            prefix=None,
+        )
+
+        result = check_game_location(healthy_environment(targeted=adopted, installs=(adopted,)))
+
+        assert result.status is Status.WARN
+        assert "inside a prefix its owner can rebuild" in result.detail
+
+    def test_adopted_game_under_steamapps_warns_that_it_looks_steam_managed(self) -> None:
+        adopted = replace(
+            OWN_INSTALL,
+            game=Path("/mnt/games/SteamLibrary/steamapps/common/DCS World"),
+            launcher=Launcher.ADOPTED,
+            prefix=None,
+        )
+
+        result = check_game_location(healthy_environment(targeted=adopted, installs=(adopted,)))
+
+        assert result.status is Status.WARN
+        assert "looks Steam-managed" in result.detail
+
+    def test_adopted_game_outside_a_prefix_and_steamapps_passes(self) -> None:
+        adopted = replace(
+            OWN_INSTALL,
+            game=Path("/mnt/games/DCS World"),
+            launcher=Launcher.ADOPTED,
+            prefix=None,
+        )
+
+        result = check_game_location(healthy_environment(targeted=adopted, installs=(adopted,)))
+
+        assert result.status is Status.PASS
+
+    def test_discovered_game_under_steamapps_is_unaffected(self) -> None:
+        discovered = replace(
+            OWN_INSTALL,
+            game=Path("/mnt/games/SteamLibrary/steamapps/common/DCS World"),
+            launcher=Launcher.STEAM,
+            prefix=None,
+        )
+
+        environment = healthy_environment(targeted=discovered, installs=(discovered,))
+
+        result = check_game_location(environment)
+
+        assert result.status is Status.PASS
 
     def test_skipped_with_no_install(self) -> None:
         result = check_game_location(bare_environment())

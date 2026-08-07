@@ -429,6 +429,19 @@ def check_game_location(environment: Environment) -> CheckResult:
             status=Status.SKIP,
             detail=_nothing_selected(environment),
         )
+    if install.launcher is Launcher.ADOPTED:
+        if "drive_c" in install.game.parts:
+            return CheckResult(
+                name=GAME_LOCATION,
+                status=Status.WARN,
+                detail=f"{install.game} is inside a prefix its owner can rebuild",
+            )
+        if "steamapps" in install.game.parts:
+            return CheckResult(
+                name=GAME_LOCATION,
+                status=Status.WARN,
+                detail=f"{install.game} is under steamapps and looks Steam-managed",
+            )
     if install.under_prefix:
         return CheckResult(
             name=GAME_LOCATION,

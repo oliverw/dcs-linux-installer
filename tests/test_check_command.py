@@ -103,6 +103,22 @@ def test_warnings_alone_do_not_fail_the_run(monkeypatch: pytest.MonkeyPatch) -> 
     assert any(check["status"] == "warn" for check in payload["checks"])
 
 
+def test_adopted_location_warning_does_not_fail_the_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    adopted = replace(
+        OWN_INSTALL,
+        game=Path("/mnt/bottles/dcs/drive_c/Games/DCS World"),
+        launcher=Launcher.ADOPTED,
+        prefix=None,
+    )
+    use(monkeypatch, healthy_environment(installs=(adopted,), targeted=adopted))
+
+    result = runner.invoke(cli.app, ["--json", "check"])
+
+    assert result.exit_code == 0
+    rows = {row["key"]: row for row in json.loads(result.stdout)["checks"]}
+    assert rows["game_location"]["status"] == "warn"
+
+
 def test_no_color_output_has_no_ansi(monkeypatch: pytest.MonkeyPatch) -> None:
     use(monkeypatch, healthy_environment())
     result = runner.invoke(cli.app, ["--no-color", "check"])

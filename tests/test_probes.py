@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from dcs_linux.checks import Status, check_game_location
 from dcs_linux.installs import DcsInstall, Edition, InstallNotFound, Launcher
 from dcs_linux.paths import Layout, resolve_layout
 from dcs_linux.probes import (
@@ -657,6 +658,22 @@ class TestProbeTargeting:
         assert environment.targeted is not None
         assert environment.targeted.launcher is Launcher.ADOPTED
         assert environment.targeted.prefix == Path("/alias/dcs/prefix")
+
+    def test_an_adopted_symlink_into_drive_c_keeps_its_resolved_game_directory(self) -> None:
+        game = "/mnt/bottles/dcs/drive_c/Games/DCS World"
+        system = FakeSystem(
+            files={f"{game}/bin/DCS.exe": ""},
+            links={"/games/DCS World": game},
+            home="/home/pilot",
+        )
+
+        environment = probe(system, "/games/DCS World", layout=LAYOUT)
+
+        assert environment.targeted is not None
+        assert environment.targeted.launcher is Launcher.ADOPTED
+        assert environment.targeted.game == Path(game)
+        assert check_game_location(environment).status is Status.WARN
+        assert system.runs == []
 
     def test_the_adopted_install_is_listed_so_a_later_run_can_use_its_id(self) -> None:
         environment = probe(FakeSystem(files=self.FILES, home="/home/pilot"), self.GAME)
