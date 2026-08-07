@@ -1,0 +1,13 @@
+{
+  "notes": "CLEAN-ROOM, FLOWN, WITH A DOCUMENTED DEVIATION. The game directory started empty; the cache harness was off (no local cache, host redirect, or namespace). The user supplied an existing DCS_World_web.exe instead of downloading it through the manual's browser step; its MD5 matched the value published by ED. All later manual steps were followed. The updater found 0 local sources and fetched 269187825524 bytes in 36347 files from real ED servers. It logged HTTP transport. No persisted P2P setting was found, so this run does not establish that the default torrent setting remained enabled. The download phase ran for 1964.208 s (32m44s), averaging 131 MiB/s (137 MB/s); the full updater run completed in 1998.541 s (33m19s). The resulting game directory is 251 GB and was snapshotted as .cache/dcs-linux/gold by btrfs reflink. Human verdict: main menu and Instant Action worked; the log shows 54.2 s from player control until exit, approximately one minute.",
+  "verdict": "pass",
+  "versions": {
+    "captured_at": "2026-08-07T11:01:54+00:00",
+    "gameid": "umu-223750",
+    "ge_proton_version": "GE-Proton11-3",
+    "gpu_driver": "610.43.03",
+    "kernel": "7.1.4-202.fc44.x86_64",
+    "python": "3.14.6",
+    "umu_version": "umu-launcher version 1.4.4 (3.14.6 (main, Jun 11 2026, 00:00:00) [GCC 16.1.1 20260515 (Red Hat 16.1.1-2)])"
+  }
+}

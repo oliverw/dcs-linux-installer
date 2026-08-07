@@ -1,0 +1,961 @@
+=== Log opened UTC 2026-08-07 10:56:19
+2026-08-07 10:56:20.420 INFO    EDCORE (Main): Platform Timer Resolution: 1.06ms
+2026-08-07 10:56:21.389 INFO    EDCORE (Main): Created boot pool: n:20
+2026-08-07 10:56:21.401 INFO    APP (Main): Command line: "D:\DCS World\bin\DCS.exe" --no-launcher
+2026-08-07 10:56:21.411 INFO    APP (Main): DCS/2.9.28.26385 (x86_64; MT; Windows NT 10.0.19045)
+2026-08-07 10:56:21.411 INFO    APP (Main): Application revision: 266385
+2026-08-07 10:56:21.411 INFO    APP (Main): Renderer revision: 26305
+2026-08-07 10:56:21.411 INFO    APP (Main): Terrain revision: 27850
+2026-08-07 10:56:21.411 INFO    APP (Main): Build number: 541
+2026-08-07 10:56:21.411 INFO    APP (Main): CPU cores: 12, threads: 20, System RAM: 64099 MB, Pagefile: 8192 MB
+2026-08-07 10:56:21.412 INFO    DCS (Main): CPU info:
+system  affinity mask: 11111111111111111111
+process affinity mask: 11111111111111111111
+CPU: 12th Gen Intel(R) Core(TM) i7-12700F [1x L3 caches]
+CPU has uniform cache size 25 MB (per cache)
+CPU cores have different efficiency classes: [0-1]
+logical cores with efficiency class 1: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+logical cores with efficiency class 0: {16, 17, 18, 19}
+all CPU cores have the same performance class 0
+common cores: {8, 9, 10, 11, 12, 13, 14, 15}
+render cores: {0, 1, 2, 3, 4, 5, 6, 7}
+IO cores: {16, 17, 18, 19}
+unavailable cores: {}
+pause10: 0.042564 us (std dev: 0.009027)
+pause10: 782 cycles (std dev: 155.1)
+2026-08-07 10:57:13.433 INFO    ASYNCNET (464): Login success.
+2026-08-07 10:57:15.222 INFO    ASYNCNET (464): Got auth data.
+2026-08-07 10:57:15.237 INFO    APP (Main): Successfully got authorization data.
+2026-08-07 10:57:15.400 INFO    EDCORE (Main): (dDispatcher)enterToState_:0
+2026-08-07 10:57:15.411 INFO    Dispatcher (Main): 2026/8/7 12:57 V2404051500
+2026-08-07 10:57:15.411 INFO    ASYNCNET (Main): ProtocolVersion: 427
+2026-08-07 10:57:15.411 INFO    ASYNCNET (Main): Adding LAN search interface 0: 127.0.0.1 "IPv4 Loopback"
+2026-08-07 10:57:15.411 INFO    ASYNCNET (Main): Adding LAN search interface 0: 255.255.255.255 "IPv4 Broadcast"
+2026-08-07 10:57:16.356 INFO    ED_SOUND (Main): Using driver: wasapi
+2026-08-07 10:57:16.356 INFO    ED_SOUND (Main): Found 6 available audio device(s):
+2026-08-07 10:57:16.356 INFO    ED_SOUND (Main):   0: ID: "{0.0.0.00000000}.{67227c3e-91d7-48c5-9159-5968ef147eaa}", Name: "Speakers (PulseAudio Output)"
+2026-08-07 10:57:16.356 INFO    ED_SOUND (Main):   1: ID: "{0.0.0.00000000}.{d657d221-7c9f-4414-880e-c24f1a49f4d6}", Name: "Speakers (K3 Analog Stereo)"
+2026-08-07 10:57:16.356 INFO    ED_SOUND (Main):   2: ID: "{0.0.0.00000000}.{29c368ce-8081-437c-b5a5-53fddc210c31}", Name: "Speakers (RØDE NT-USB Mini Analog Stereo)"
+2026-08-07 10:57:16.356 INFO    ED_SOUND (Main):   3: ID: "{0.0.0.00000000}.{5479c444-f10b-4efe-97bd-149caecdc332}", Name: "Speakers (Schlafzimmer)"
+2026-08-07 10:57:16.356 INFO    ED_SOUND (Main):   4: ID: "{0.0.0.00000000}.{1a5ca17d-ec68-4e73-8b13-fd375c24a5e1}", Name: "Speakers (Wohnzimmer)"
+2026-08-07 10:57:16.356 INFO    ED_SOUND (Main):   5: ID: "{0.0.0.00000000}.{27737575-79b9-4a32-84ff-ee9ea5b6d858}", Name: "Speakers (WiiM Mini)"
+2026-08-07 10:57:16.558 INFO    SOUND (Main): Added sound path: Sounds
+2026-08-07 10:57:16.645 INFO    SOUNDER (Main): Loaded 229 packed sounders.
+2026-08-07 10:57:16.672 INFO    EDCORE (Main): Loaded D:/DCS World/bin/dx11backend.dll
+2026-08-07 10:57:16.673 INFO    EDCORE (Main): Loaded D:/DCS World/bin/dxgui_edge_render.dll
+2026-08-07 10:57:16.673 INFO    EDCORE (Main): Loaded D:/DCS World/bin/edterrain4.dll
+2026-08-07 10:57:16.674 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-direct_output.dll
+2026-08-07 10:57:16.675 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-dxgui.dll
+2026-08-07 10:57:16.676 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-dxguiWin.dll
+2026-08-07 10:57:16.676 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-ED_demosceneAPI.dll
+2026-08-07 10:57:16.677 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-guid.dll
+2026-08-07 10:57:16.678 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-gui_axes_tune.dll
+2026-08-07 10:57:16.678 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-gui_demoscene.dll
+2026-08-07 10:57:16.679 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-gui_nodes_map.dll
+2026-08-07 10:57:16.680 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-gui_overlay.dll
+2026-08-07 10:57:16.681 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-gui_ruler.dll
+2026-08-07 10:57:16.681 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-gui_user_container.dll
+2026-08-07 10:57:16.686 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-gui_video_player.dll
+2026-08-07 10:57:16.687 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-gui_webview.dll
+2026-08-07 10:57:16.687 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-librs232.dll
+2026-08-07 10:57:16.688 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-magvar.dll
+2026-08-07 10:57:16.688 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-md5.dll
+2026-08-07 10:57:16.688 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-mime.dll
+2026-08-07 10:57:16.689 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-minizip.dll
+2026-08-07 10:57:16.692 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-MissionGenerator.dll
+2026-08-07 10:57:16.692 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-reg.dll
+2026-08-07 10:57:16.693 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-socket.dll
+2026-08-07 10:57:16.693 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-terrain.dll
+2026-08-07 10:57:16.694 INFO    EDCORE (Main): Loaded D:/DCS World/bin/lua-textutil.dll
+2026-08-07 10:57:16.704 INFO    Dispatcher (Main): InitLow
+2026-08-07 10:57:16.705 INFO    EDCORE (Main): Loaded D:/DCS World/bin/CockpitBase.dll
+2026-08-07 10:57:16.723 INFO    Dispatcher (Main): Loading installed modules...
+2026-08-07 10:57:20.357 INFO    Scripting (Main): OBSOLETE mount_vfs_sound_path() used in ./CoreMods/aircraft/AJS37/entry.lua
+2026-08-07 10:57:20.470 INFO    Scripting (Main): OBSOLETE mount_vfs_sound_path() used in ./CoreMods/aircraft/C130J/entry.lua
+2026-08-07 10:57:20.556 INFO    Scripting (Main): OBSOLETE mount_vfs_sound_path() used in ./CoreMods/aircraft/F-4E/entry.lua
+2026-08-07 10:57:20.739 INFO    Scripting (Main): OBSOLETE mount_vfs_sound_path() used in ./CoreMods/aircraft/Hawk/Hawk.lua
+2026-08-07 10:57:20.867 INFO    Scripting (Main): PLUGINS START-------------------------------------------------
+2026-08-07 10:57:20.991 INFO    Scripting (Main): plugin: ColdWarAssetsPack unit replace BRDM-2
+2026-08-07 10:57:20.991 INFO    Scripting (Main): plugin: ColdWarAssetsPack unit replace Strela-1 9P31
+2026-08-07 10:57:21.006 INFO    Scripting (Main): plugin: Currenthill Assets Pack unit replace Mi-28N
+2026-08-07 10:57:21.006 INFO    Scripting (Main): plugin: Currenthill Assets Pack unit replace Tu-95MS
+2026-08-07 10:57:21.007 INFO    Scripting (Main): plugin: Currenthill Assets Pack unit replace T-90
+2026-08-07 10:57:21.007 INFO    Scripting (Main): plugin: Currenthill Assets Pack unit replace ALBATROS
+2026-08-07 10:57:21.058 INFO    SOUND (748): Added sound path: ./CoreMods/tech/Animals/Sounds
+2026-08-07 10:57:21.075 INFO    Scripting (Main): plugin: World War II PTO Units by Magnitude 3 LLC unit replace Type_3_80mm_AA
+2026-08-07 10:57:21.075 INFO    Scripting (Main): plugin: World War II PTO Units by Magnitude 3 LLC unit replace Type_88_75mm_AA
+2026-08-07 10:57:21.075 INFO    Scripting (Main): plugin: World War II PTO Units by Magnitude 3 LLC unit replace Type_94_Truck
+2026-08-07 10:57:21.075 INFO    Scripting (Main): plugin: World War II PTO Units by Magnitude 3 LLC unit replace Type_96_25mm_AA
+2026-08-07 10:57:21.075 INFO    Scripting (Main): plugin: World War II PTO Units by Magnitude 3 LLC unit replace Type_94_25mm_AA_Truck
+2026-08-07 10:57:21.075 INFO    Scripting (Main): plugin: World War II PTO Units by Magnitude 3 LLC unit replace Type_98_Ke_Ni
+2026-08-07 10:57:21.075 INFO    Scripting (Main): plugin: World War II PTO Units by Magnitude 3 LLC unit replace Type_98_So_Da
+2026-08-07 10:57:21.075 INFO    Scripting (Main): plugin: World War II PTO Units by Magnitude 3 LLC unit replace Type_89_I_Go
+2026-08-07 10:57:21.081 INFO    SOUND (748): Added sound path: ./CoreMods/tech/ColdWarAssetsPack/Sounds
+2026-08-07 10:57:21.082 INFO    SOUNDER (748): Loaded 9 packed sounders.
+2026-08-07 10:57:21.155 INFO    SOUND (748): Added sound path: ./CoreMods/tech/Currenthill Assets Pack/Sounds
+2026-08-07 10:57:21.156 INFO    SOUNDER (748): Loaded 45 packed sounders.
+2026-08-07 10:57:21.298 INFO    SOUND (748): Added sound path: ./CoreMods/tech/HeavyMetalCore/Sounds
+2026-08-07 10:57:21.299 INFO    SOUNDER (748): Loaded 14 packed sounders.
+2026-08-07 10:57:21.479 INFO    SOUND (748): Added sound path: ./CoreMods/tech/Kuznecow/Sounds
+2026-08-07 10:57:21.479 INFO    SOUNDER (748): Loaded 1 packed sounders.
+2026-08-07 10:57:21.517 INFO    SOUND (748): Added sound path: ./CoreMods/tech/M3 WWII PTO units/Sounds
+2026-08-07 10:57:21.518 INFO    SOUNDER (748): Loaded 8 packed sounders.
+2026-08-07 10:57:21.603 INFO    SOUND (748): Added sound path: ./CoreMods/tech/SouthAtlanticAssets/Sounds
+2026-08-07 10:57:21.603 INFO    SOUNDER (748): Loaded 15 packed sounders.
+2026-08-07 10:57:21.651 WARNING EDCORE (748): Source coremods/tech/southatlanticassets/textures/vehicles is already mounted to the same mount /textures/.
+2026-08-07 10:57:21.684 INFO    SOUND (748): Added sound path: ./CoreMods/tech/TechWeaponPack/Sounds
+2026-08-07 10:57:21.686 INFO    SOUNDER (748): Loaded 80 packed sounders.
+2026-08-07 10:57:22.270 INFO    SOUND (748): Added sound path: ./CoreMods/tech/USS_Nimitz/Sounds
+2026-08-07 10:57:22.271 INFO    SOUNDER (748): Loaded 6 packed sounders.
+2026-08-07 10:57:22.617 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/AJS37/Sounds
+2026-08-07 10:57:22.640 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/AV8BNA/Sounds
+2026-08-07 10:57:22.645 INFO    SOUNDER (748): Loaded 1 sounders.
+2026-08-07 10:57:22.648 WARNING EDCORE (748): Source coremods/aircraft/av8bna/shapes is already mounted to the same mount /models/.
+2026-08-07 10:57:22.700 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/C-101/Sounds
+2026-08-07 10:57:22.763 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/C130J/Sounds
+2026-08-07 10:57:22.824 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/CH-47F/Sounds
+2026-08-07 10:57:22.842 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/ChinaAssetPack/Sounds
+2026-08-07 10:57:22.853 INFO    SOUNDER (748): Loaded 16 sounders.
+2026-08-07 10:57:22.881 WARNING EDCORE (748): Source coremods/aircraft/chinaassetpack/textures/vehicles/hq7 is already mounted to the same mount /textures/.
+2026-08-07 10:57:22.972 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/Christen Eagle II/Sounds
+2026-08-07 10:57:23.024 INFO    Scripting (Main): PLUGINS DONE--------------------------------------------------
+2026-08-07 10:57:23.096 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/F-100D/Sounds
+2026-08-07 10:57:23.099 WARNING EDCORE (748): Source coremods/aircraft/f-100d/shapes is already mounted to the same mount /models/.
+2026-08-07 10:57:23.283 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/F-15E/Sounds
+2026-08-07 10:57:23.567 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/F-4E/Sounds
+2026-08-07 10:57:23.938 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/F14/Sounds
+2026-08-07 10:57:23.951 INFO    SOUNDER (748): Loaded 1 sounders.
+2026-08-07 10:57:24.370 INFO    APP (Main): options.graphics =
+{
+	['volumetricLights'] = 1;
+	['messagesFontScale'] = 1;
+	['forestDetailsFactor'] = 1;
+	['rainDroplets'] = 0;
+	['LensEffects'] = 3;
+	['heatBlr'] = 0;
+	['anisotropy'] = 4;
+	['water'] = 2;
+	['motionBlurAmount'] = 1;
+	['BlurFlatShadows'] = 0;
+	['visibRange'] = 'High';
+	['lights'] = 2;
+	['shadows'] = 2;
+	['MSAA'] = 1;
+	['canopyReflections'] = 1;
+	['ScreenshotExt'] = 'jpg';
+	['clutterMaxDistance'] = 0;
+	['cockpitGI'] = 1;
+	['terrainTextures'] = 'min';
+	['multiMonitorSetup'] = '1camera';
+	['outputGamma'] = 2.2;
+	['defaultFOV'] = 78;
+	['shadowTree'] = false;
+	['chimneySmokeDensity'] = 4;
+	['AA'] = 'OFF';
+	['SSS'] = 0;
+	['fullScreen'] = false;
+	['Sharpening'] = 0;
+	['DLSS_PerfQuality'] = 0;
+	['Scaling'] = 0.66;
+	['DOF'] = 0;
+	['clouds'] = 1;
+	['sceneryDetailsFactor'] = 1;
+	['Upscaling'] = 'OFF';
+	['flatTerrainShadows'] = 0;
+	['scaleGui'] = 1;
+	['useDeferredShading'] = 1;
+	['SSLR'] = 0;
+	['effects'] = 3;
+	['SSAO'] = 0;
+	['motionBlur'] = 0;
+	['sync'] = false;
+	['forestDistanceFactor'] = 0.5;
+	['textures'] = 0;
+	['secondaryShadows'] = 0;
+	['preloadRadius'] = 150000;
+	['civTraffic'] = '';
+};
+2026-08-07 10:57:24.532 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/F4U-1D/Sounds
+2026-08-07 10:57:25.010 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/I-16/Sounds
+2026-08-07 10:57:25.046 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/Ka-50/Sounds
+2026-08-07 10:57:25.187 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/La-7/Sounds
+2026-08-07 10:57:25.235 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/M-2000C/Sounds
+2026-08-07 10:57:25.339 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/MiG-21bis/Sounds
+2026-08-07 10:57:25.671 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/MiG-29-Fulcrum/Sounds
+2026-08-07 10:57:25.718 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/Mirage-F1/Sounds
+2026-08-07 10:57:26.255 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/OH-58D/Sounds
+2026-08-07 10:57:26.318 INFO    SOUND (748): Added sound path: ./CoreMods/aircraft/SA342/Sounds
+2026-08-07 10:57:26.498 INFO    SOUND (748): Added sound path: ./CoreMods/services/VoiceChat/Sounds
+2026-08-07 10:57:26.535 INFO    SOUND (748): Added sound path: ./Mods/terrains/MarianaIslands/Sounds
+2026-08-07 10:57:26.544 INFO    Dispatcher (Main): Waiting for module resource mounts: 2.171s
+2026-08-07 10:57:26.544 INFO    VISUALIZER (Main): render thread initialization...
+2026-08-07 10:57:26.562 INFO    GRAPHICSVISTA (764): renderer: 'dx11backend.dll'
+2026-08-07 10:57:27.079 INFO    DX11BACKEND (764): DX11Renderer initialization (w:3840 h:2160 fullscrn:0 vsync:0 adapter:0 monitor:0 shaderErrors:1)
+2026-08-07 10:57:28.216 INFO    DX11BACKEND (764): Driver Concurrent Creates - 1
+2026-08-07 10:57:28.216 INFO    DX11BACKEND (764): Driver Command Lists - 1
+2026-08-07 10:57:28.248 INFO    DX11BACKEND (764): NVIDIA API init OK
+2026-08-07 10:57:28.248 INFO    DX11BACKEND (764): NVIDIA Display Driver Version 61043.r61050_v0.9.2
+2026-08-07 10:57:28.248 INFO    DX11BACKEND (764): GPU count:1
+2026-08-07 10:57:28.367 INFO    DX11BACKEND (764): commonPool: 48-128, cbPool: 4-14
+2026-08-07 10:57:28.367 INFO    DX11BACKEND (764): samplerPool: 5-16
+2026-08-07 10:57:28.615 INFO    DX11BACKEND (764): NVIDIA DLSS Minimum driver version was reported as : 470.0
+2026-08-07 10:57:28.615 INFO    METASHADER (764): Init filesystem: D
+2026-08-07 10:57:28.624 INFO    DX11BACKEND (764): DX11ShaderBinaries::loadCache bazar/shaders/fxo/fxo
+2026-08-07 10:57:29.966 INFO    DX11BACKEND (764): DX11ShaderBinaries::loadCache done. Loaded 2630/2630.
+2026-08-07 10:57:29.970 INFO    DX11BACKEND (764): DX11ShaderBinaries::loadCache c:/users/steamuser/saved games/dcs/fxo
+2026-08-07 10:57:29.970 INFO    DX11BACKEND (764): DX11ShaderBinaries::loadCache done. Loaded 0/0.
+2026-08-07 10:57:30.075 INFO    VISUALIZER (764): SceneManager initialization
+2026-08-07 10:57:30.352 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/groundPuffComp.fx
+2026-08-07 10:57:33.527 WARNING LOG (364): 3 duplicate message(s) skipped.
+2026-08-07 10:57:33.527 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/groundPuff.fx
+2026-08-07 10:57:33.637 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/groundPuffComp.fx
+2026-08-07 10:57:35.485 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:57:35.485 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/ffx.fx
+2026-08-07 10:57:35.620 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/ffxComp.fx
+2026-08-07 10:57:36.831 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:57:36.831 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/ffx.fx
+2026-08-07 10:57:36.927 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/ffxComp.fx
+2026-08-07 10:57:37.377 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:57:37.377 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/groundPuffComp.fx
+2026-08-07 10:57:40.387 WARNING LOG (364): 3 duplicate message(s) skipped.
+2026-08-07 10:57:40.387 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/ffxComp.fx
+2026-08-07 10:57:41.461 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:57:41.461 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/GPUExplosion.fx
+2026-08-07 10:57:41.559 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/hedgehogExplosionComp.fx
+2026-08-07 10:57:42.657 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:57:42.657 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/groundPuff.fx
+2026-08-07 10:57:42.791 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/cloud.fx
+2026-08-07 10:57:42.913 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/cloudComp.fx
+2026-08-07 10:57:43.454 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:57:43.454 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/ffxComp.fx
+2026-08-07 10:57:43.781 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/steamCatapult.fx
+2026-08-07 10:57:43.905 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/steamCatapultComp.fx
+2026-08-07 10:57:44.333 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:57:44.333 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/overwingVapor.fx
+2026-08-07 10:57:44.462 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/overwingVaporComp.fx
+2026-08-07 10:57:45.562 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:57:45.562 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/ffx.fx
+2026-08-07 10:57:45.676 INFO    DX11BACKEND (764): Compile shader: ParticleSystem2/ffxComp.fx
+2026-08-07 10:57:46.256 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:57:46.256 ERROR_ONCE DX11BACKEND (428): texture 'KevinWakePattern812x1024.dds' not found. Asked from ''
+2026-08-07 10:57:46.317 INFO    VISUALIZER (764): DCSScene initialized
+2026-08-07 10:57:46.351 INFO    DX11BACKEND (764): Compile shader: enlight/separateTransparent.fx
+2026-08-07 10:57:46.376 ALERT   DX11BACKEND (764): Error: Can't find precompiled shader for effect enlight/separatetransparent.fx:DIRECTX11=true;USE_DCS_DEFERRED=1;.
+Recompilation process will take some time, please wait
+(this situation should not occur on end user PC, if there is no manual shader editing)
+2026-08-07 10:57:46.436 INFO    DX11BACKEND (764): Compile shader: deferred/blurCompute.fx
+2026-08-07 10:57:48.214 WARNING LOG (364): 23 duplicate message(s) skipped.
+2026-08-07 10:57:48.214 ERROR_ONCE DX11BACKEND (764): render target 'mainDepthBuffer' not found
+2026-08-07 10:57:48.333 ERROR_ONCE DX11BACKEND (764): render target 'uiTargetColor' not found
+2026-08-07 10:57:48.333 ERROR_ONCE DX11BACKEND (764): render target 'uiTargetDepth' not found
+2026-08-07 10:57:48.333 INFO    VISUALIZER (764): DCSSceneRenderer initialized
+2026-08-07 10:57:48.432 INFO    VISUALIZER (764): SceneManager: render pool size:6
+2026-08-07 10:57:48.587 INFO    VISUALIZER (Main): render thread is initialized
+2026-08-07 10:57:48.594 INFO    INPUT (Main): created [Keyboard]
+2026-08-07 10:57:48.638 INFO    ED_SOUND (Main): Opening default audio device.
+2026-08-07 10:57:48.638 INFO    ED_SOUND (Main): Speaker layout: auto
+2026-08-07 10:57:48.638 INFO    ED_SOUND (Main): Driver reports 2 channels with mask 0x3
+2026-08-07 10:57:48.638 INFO    ED_SOUND (Main): Using 2 channels at 48000 Hz
+2026-08-07 10:57:48.638 INFO    ED_SOUND (Main): Channel layout: Headphones/Stereo
+2026-08-07 10:57:48.719 INFO    ED_SOUND (Main): Opening default audio device.
+2026-08-07 10:57:48.719 INFO    ED_SOUND (Main): Speaker layout: forced_stereo
+2026-08-07 10:57:48.719 INFO    ED_SOUND (Main): Driver reports 2 channels with mask 0x3
+2026-08-07 10:57:48.719 INFO    ED_SOUND (Main): Using 2 channels at 48000 Hz
+2026-08-07 10:57:48.719 INFO    ED_SOUND (Main): Channel layout: Headphones/Stereo
+2026-08-07 10:57:48.938 INFO    APP (Main): gDescription: "NVIDIA GeForce RTX 4080" gVendorId: 4318 gDeviceId: 9988 gMemory: 16376 MB
+2026-08-07 10:57:48.958 ERROR   EDOBJECTS (Main): SAB-100 already declared in shapes.txt
+2026-08-07 10:57:48.958 ERROR   EDOBJECTS (Main): Object HB_F4E_GBU15V1 with id=42 already declared in table BombTable
+2026-08-07 10:57:48.958 ERROR   EDOBJECTS (Main): Object FUEL TANK 200 GAL  (EMPTY) with id=3095 already declared in table ContainerTable
+2026-08-07 10:57:48.958 ERROR   EDOBJECTS (Main): Object FUEL TANK 275 GAL LEFT  (EMPTY) with id=3096 already declared in table ContainerTable
+2026-08-07 10:57:48.958 ERROR   EDOBJECTS (Main): Object FUEL TANK 275 GAL RIGHT  (EMPTY) with id=3097 already declared in table ContainerTable
+2026-08-07 10:57:48.958 ERROR   EDOBJECTS (Main): Object FUEL TANK 335 GAL LEFT  (EMPTY) with id=3098 already declared in table ContainerTable
+2026-08-07 10:57:48.958 ERROR   EDOBJECTS (Main): Object FUEL TANK 335 GAL RIGHT  (EMPTY) with id=3099 already declared in table ContainerTable
+2026-08-07 10:57:48.958 ERROR   EDOBJECTS (Main): Object FUEL TANK 450 GAL  (EMPTY) with id=3100 already declared in table ContainerTable
+2026-08-07 10:57:48.958 ERROR   EDOBJECTS (Main): Object FIM-92C STINGER with id=93 already declared in table MissileTable
+2026-08-07 10:57:48.958 ERROR   EDOBJECTS (Main): Object OH58D_FIM_92 with id=93 already declared in table MissileTable
+2026-08-07 10:57:52.304 ERROR   WORLDGENERAL (Main): Error: Unit [QF-4E]: Effect presets records are defined but empty.
+2026-08-07 10:57:52.307 ERROR   WORLDGENERAL (Main): Error: Unit [CH-47Fbl1]: Effect presets records are defined but empty.
+2026-08-07 10:57:52.318 ERROR   WORLDGENERAL (Main): Error: Unit [F-4E-45MC]: Effect presets records are defined but empty.
+2026-08-07 10:57:52.319 ERROR   WORLDGENERAL (Main): AJS37 AI by Heatblur Simulations: Unexpected fires_pos index  12
+2026-08-07 10:57:52.324 ERROR   WORLDGENERAL (Main): Error: Unit [OH58D]: Asymmetrical wing configuration found.
+2026-08-07 10:57:52.343 WARNING LOG (364): 2 duplicate message(s) skipped.
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK83_MER_3x_AFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{BRU-70A_2*GBU-54_SIDE_RIGHT}" (origin: "./CoreMods/aircraft/AV8BNA/WEAPONS/AV8BNA_Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "OH58D_Violet_Smoke_Grenade" (origin: "./CoreMods/aircraft/OH-58D/OH58D_Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{FAB-500-M54-TU}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_TALD_MER_4x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK81_MER_4x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK81_MER_4x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45_MER_1x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK106_MER_6x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{AB_2xBETAB-500_MBD3-U2T}" (origin: "./CoreMods/aircraft/MiG-29-Fulcrum/MiG-29-Fulcrum.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45_MER_2x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative weight of payload "{LAU-7_AIM-9M_Right}" (origin: "./CoreMods/aircraft/F-4E/Entry/Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative weight of payload "{HB_A6E_M117_MER_4x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_M117_MER_4x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.343 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82SE_MER_5x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82_MER_2x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{MAK79_BDU45B 3R}" (origin: "./CoreMods/aircraft/F14/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative weight of payload "{HB_F4E_M117_MER_5x}" (origin: "./CoreMods/aircraft/F-4E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "OH58D_Green_Smoke_Grenade" (origin: "./CoreMods/aircraft/OH-58D/OH58D_Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45_MER_3x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45SE_MER_3x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{CHAP_HOT3}" (origin: "./CoreMods/tech/Currenthill Assets Pack/Database/Weapons/CHAP_missiles.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK20_MER_3x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{FAB-250-M54-TU}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative weight of payload "{HB_A6E_M117_MER_4x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_M117_MER_4x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{BRU-70A_2*GBU-54_SIDE_LEFT}" (origin: "./CoreMods/aircraft/AV8BNA/WEAPONS/AV8BNA_Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{OFAB-100-120-TU}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{MB339_MagicI}" (origin: "./CoreMods/aircraft/MB-339/Weapons/AirToAirMissiles.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK83_MER_2x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45SE_MER_5x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative weight of payload "{LAU-7_AIM-9M_Left}" (origin: "./CoreMods/aircraft/F-4E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45SE_MER_5x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK83_MER_3x_FWD}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK81_MER_3x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{MB339_MagicII}" (origin: "./CoreMods/aircraft/MB-339/Weapons/AirToAirMissiles.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK20_MER_4x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45SE_MER_6x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{FAB-500-M54}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK83_MER_2x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82_MER_5x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{BETAB-500M}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.344 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45_MER_3x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{BRU-42_3*GBU-38}" (origin: "./CoreMods/aircraft/AV8BNA/WEAPONS/AV8BNA_Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{IAB-500}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82SE_MER_2x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK81_MER_5x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45SE_MER_3x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK81_MER_5x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{AB_RBK-500-PTAB-1M_BDZ-UMK2-B}" (origin: "./CoreMods/aircraft/MiG-29-Fulcrum/MiG-29-Fulcrum.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82SE_MER_5x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{BRU-70A_2*GBU-38_SIDE_RIGHT}" (origin: "./CoreMods/aircraft/AV8BNA/WEAPONS/AV8BNA_Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45SE_MER_4x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45_MER_6x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45_MER_4x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK20_MER_4x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82SE_MER_4x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{AB_BETAB-500_BDZ-UMK2-B}" (origin: "./CoreMods/aircraft/MiG-29-Fulcrum/MiG-29-Fulcrum.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{BRU-42_2*GBU-38_LEFT}" (origin: "./CoreMods/aircraft/AV8BNA/WEAPONS/AV8BNA_Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK20_MER_2x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82_MER_3x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82_MER_5x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_GBU12_MER_2x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82SE_MER_3x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{FAB-500-TA}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45_MER_5x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45SE_MER_5x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_TALD_MER_2x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{FAB-250-M54}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK81_MER_6x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK20_MER_6x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_TALD_MER_2x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.345 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45SE_MER_2x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK76_MER_6x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{BRU-70A_2*GBU-54_RIGHT}" (origin: "./CoreMods/aircraft/AV8BNA/WEAPONS/AV8BNA_Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{ODAB-500PM}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45SE_MER_4x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK20_MER_5x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "OH58D_White_Smoke_Grenade" (origin: "./CoreMods/aircraft/OH-58D/OH58D_Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK81_MER_3x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "OH58D_Blue_Smoke_Grenade" (origin: "./CoreMods/aircraft/OH-58D/OH58D_Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "OH58D_Red_Smoke_Grenade" (origin: "./CoreMods/aircraft/OH-58D/OH58D_Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{AB_RBK-500-255-PTAB-10-5_BDZ-UMK2-B}" (origin: "./CoreMods/aircraft/MiG-29-Fulcrum/MiG-29-Fulcrum.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{AB_RBK-250_BDZ-UMK2-B}" (origin: "./CoreMods/aircraft/MiG-29-Fulcrum/MiG-29-Fulcrum.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45_MER_4x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{RN-24}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{RN-28}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative weight of payload "{FAB-100-4}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{FAB-100-4}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_BDU45_MER_5x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82_MER_4x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative weight of payload "{HB_A6E_M117_MER_4x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_M117_MER_4x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_GBU12_MER_2x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{BRU-70A_2*GBU-54_LEFT}" (origin: "./CoreMods/aircraft/AV8BNA/WEAPONS/AV8BNA_Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK81_MER_2x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{BETAB-500S}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82_MER_6x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82SE_MER_5x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative weight of payload "{5F1C54C0-0ABD-4868-A883-B52FF9FCB422}" (origin: "Scripts/Database/db_weapons_data.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{MAK79_BDU45B 3L}" (origin: "./CoreMods/aircraft/F14/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{MAK79_BDU45B 4}" (origin: "./CoreMods/aircraft/F14/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{BRU-42_2*GBU-38_RIGHT}" (origin: "./CoreMods/aircraft/AV8BNA/WEAPONS/AV8BNA_Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "OH58D_Yellow_Smoke_Grenade" (origin: "./CoreMods/aircraft/OH-58D/OH58D_Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{BRU-70A_3*GBU-38}" (origin: "./CoreMods/aircraft/AV8BNA/WEAPONS/AV8BNA_Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_TALD_MER_2x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82_MER_3x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{AB_BETAB-500SHP_BDZ-UMK2-B}" (origin: "./CoreMods/aircraft/MiG-29-Fulcrum/MiG-29-Fulcrum.lua")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{FAB-500-SL}" (origin: "./CoreMods/aircraft/MiG-21bis/Entry/Aw")
+2026-08-07 10:57:52.346 ERROR   wInfo (Main): negative drag of payload "{CHAP_Kh555x6}" (origin: "./CoreMods/tech/Currenthill Assets Pack/Database/Weapons/CHAP_missiles.lua")
+2026-08-07 10:57:52.347 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82_MER_4x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.347 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82SE_MER_6x}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.347 ERROR   wInfo (Main): negative weight of payload "{LAU-7_AIM-9L_Right}" (origin: "./CoreMods/aircraft/F-4E/Entry/Weapons.lua")
+2026-08-07 10:57:52.347 ERROR   wInfo (Main): negative weight of payload "{LAU-7_AIM-9L_Left}" (origin: "./CoreMods/aircraft/F-4E/Entry/Weapons.lua")
+2026-08-07 10:57:52.347 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82SE_MER_4x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.347 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK20_MER_5x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.347 ERROR   wInfo (Main): negative drag of payload "{BRU-70A_2*GBU-38_SIDE_LEFT}" (origin: "./CoreMods/aircraft/AV8BNA/WEAPONS/AV8BNA_Weapons.lua")
+2026-08-07 10:57:52.347 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK82SE_MER_3x_LEFT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.347 ERROR   wInfo (Main): negative drag of payload "{BRU-70A_3*GBU-54}" (origin: "./CoreMods/aircraft/AV8BNA/WEAPONS/AV8BNA_Weapons.lua")
+2026-08-07 10:57:52.347 ERROR   wInfo (Main): negative drag of payload "{HB_A6E_MK20_MER_3x_RIGHT}" (origin: "./CoreMods/aircraft/A-6E/Entry/Weapons.lua")
+2026-08-07 10:57:52.347 INFO    WEATHER (Main): set fog: visibility:1  thickness:300.0
+2026-08-07 10:57:52.368 INFO    WorldPlugIns (Main): Waiting for immediate load to finish...
+2026-08-07 10:57:52.395 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/tech/SouthAtlanticAssets/bin/SouthAtlantic.dll
+2026-08-07 10:57:52.396 INFO    WorldPlugIns (Main): loading "South_Atlantic_Assets": 0.028
+2026-08-07 10:57:52.415 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/A-6E/bin/HeatblurCore_A-6E.dll
+2026-08-07 10:57:52.444 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/A-6E/bin/HeatblurComponents_A-6E.dll
+2026-08-07 10:57:52.472 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/A-6E/bin/HeatblurDCSBase_A-6E.dll
+2026-08-07 10:57:52.490 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/A-6E/bin/A-6E-AI.dll
+2026-08-07 10:57:52.491 INFO    WorldPlugIns (Main): loading "A-6E AI by Heatblur Simulations": 0.095
+2026-08-07 10:57:52.509 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/AV8BNA/bin/AV8B_AI.dll
+2026-08-07 10:57:52.510 INFO    WorldPlugIns (Main): loading "AV-8B N/A AI by RAZBAM Sims": 0.018
+2026-08-07 10:57:52.538 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/C-101/bin/C101Core.dll
+2026-08-07 10:57:52.539 INFO    WorldPlugIns (Main): loading "C-101 Aviojet by AvioDev": 0.029
+2026-08-07 10:57:52.555 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/C130J/bin/C130J_Sounder.dll
+2026-08-07 10:57:52.555 INFO    WorldPlugIns (Main): loading "C-130J AI": 0.016
+2026-08-07 10:57:52.573 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/ChinaAssetPack/bin/CAP_AI.dll
+2026-08-07 10:57:52.590 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/ChinaAssetPack/bin/JF-17_AI.dll
+2026-08-07 10:57:52.591 INFO    WorldPlugIns (Main): loading "China Asset Pack by Deka Ironwork Simulations and Eagle Dynamics": 0.035
+2026-08-07 10:57:52.608 INFO    CE2_AI (Main): Loading CE AI
+2026-08-07 10:57:52.608 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/Christen Eagle II/bin/CE2_AI.dll
+2026-08-07 10:57:52.609 INFO    WorldPlugIns (Main): loading "Christen Eagle II AI by Magnitude 3 LLC": 0.018
+2026-08-07 10:57:52.626 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/F-100D/bin/F100_AI.dll
+2026-08-07 10:57:52.626 INFO    WorldPlugIns (Main): loading "F-100D AI by GrinnelliDesigns": 0.017
+2026-08-07 10:57:52.643 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/F-15E/bin/F15E_AI.dll
+2026-08-07 10:57:52.643 INFO    WorldPlugIns (Main): loading "F-15E AI by RAZBAM": 0.016
+2026-08-07 10:57:52.662 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/F-4E/bin/HeatblurCore_F-4E.dll
+2026-08-07 10:57:52.693 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/F-4E/bin/HeatblurComponents_F-4E.dll
+2026-08-07 10:57:52.714 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/F-4E/bin/HeatblurDCSBase_F-4E.dll
+2026-08-07 10:57:52.733 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/F-4E/bin/F-4E-AI.dll
+2026-08-07 10:57:52.734 INFO    WorldPlugIns (Main): loading "F-4E AI by Heatblur Simulations": 0.090
+2026-08-07 10:57:52.753 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/F14/bin/HeatblurCore_F14.dll
+2026-08-07 10:57:52.783 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/F14/bin/HeatblurComponents_F14.dll
+2026-08-07 10:57:52.804 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/F14/bin/HeatblurDCSBase_F14.dll
+2026-08-07 10:57:52.821 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/F14/bin/F14-AI.dll
+2026-08-07 10:57:52.822 INFO    WorldPlugIns (Main): loading "F-14B AI by Heatblur Simulations": 0.088
+2026-08-07 10:57:52.840 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/F4U-1D/bin/F4U_AI.dll
+2026-08-07 10:57:52.841 INFO    WorldPlugIns (Main): loading "F4U-1D AI by Magnitude 3 LLC": 0.018
+2026-08-07 10:57:52.858 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/M-2000C/bin/M2KC_AI.dll
+2026-08-07 10:57:52.859 INFO    WorldPlugIns (Main): loading "M-2000C AI by RAZBAM Sims": 0.018
+2026-08-07 10:57:52.875 INFO    MiG21_AI (Main): Loading Mig21 AI
+2026-08-07 10:57:52.875 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/MiG-21bis/bin/MiG21_AI.dll
+2026-08-07 10:57:52.876 INFO    WorldPlugIns (Main): loading "MiG-21Bis AI by Magnitude 3 LLC": 0.017
+2026-08-07 10:57:52.894 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/Mirage-F1/bin/MirageF1Core.dll
+2026-08-07 10:57:52.895 INFO    WorldPlugIns (Main): loading "Mirage F1 Assets by Aerges": 0.018
+2026-08-07 10:57:52.911 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/OH-58D/bin/OH58D_AI.dll
+2026-08-07 10:57:52.911 INFO    WorldPlugIns (Main): loading "OH58D AI by Polychop-Simulations": 0.016
+2026-08-07 10:57:52.930 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/aircraft/SA342/bin/SA342_ai.dll
+2026-08-07 10:57:52.931 INFO    WorldPlugIns (Main): loading "SA342 AI by Polychop-Simulations": 0.019
+2026-08-07 10:57:52.952 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/services/CaptoGlove/bin/edCaptoGlove.dll
+2026-08-07 10:57:52.953 INFO    WorldPlugIns (Main): loading "CaptoGloveSupport": 0.022
+2026-08-07 10:57:52.988 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/services/LeapMotion/bin/edLeapMotion.dll
+2026-08-07 10:57:52.989 INFO    WorldPlugIns (Main): loading "LeapMotionSupport": 0.036
+2026-08-07 10:57:53.007 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/services/SensoryxVRFree/bin/edSensoryxVRFree.dll
+2026-08-07 10:57:53.008 INFO    WorldPlugIns (Main): loading "SensoryxVRFreeSupport": 0.018
+2026-08-07 10:57:53.057 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/services/VoiceChat/bin/VoiceChat.dll
+2026-08-07 10:57:53.058 INFO    WorldPlugIns (Main): loading "VoiceChat": 0.050
+2026-08-07 10:57:53.164 ERROR   EDCORE (Main): Can't open file 'C:\users\steamuser\Saved Games\DCS\Config\vc_options.json.' from fs
+2026-08-07 10:57:53.206 INFO    EDCORE (Main): Loaded D:/DCS World/CoreMods/services/jsAvionics/bin/jsAvionics.dll
+2026-08-07 10:57:53.207 INFO    WorldPlugIns (Main): loading "jsAvionics": 0.042
+2026-08-07 10:57:53.207 INFO    WorldPlugIns (Main): Immediate load done.
+2026-08-07 10:57:53.254 INFO    Dispatcher (Main): Waiting for module resource mounts: 0.000s
+2026-08-07 10:57:53.311 INFO    EDCORE (Main): (dDispatcher)enterToState_:1
+2026-08-07 10:57:56.128 INFO    UIBASERENDERER (Main): Cannot load font [D:\DCS World\dxgui\skins\fonts\]!
+2026-08-07 10:57:56.128 INFO    UIBASERENDERER (Main): Cannot create font [D:\DCS World\dxgui\skins\fonts\] size 0!
+2026-08-07 10:57:58.435 INFO    APP (Main): Loaded D:\DCS World\Scripts\Hooks\common.lua
+2026-08-07 10:57:58.444 INFO    APP (Main): Loaded D:\DCS World\Scripts\Hooks\multiplayerCoalitionBlocker.lua
+2026-08-07 10:57:58.445 INFO    APP (Main): Loaded D:\DCS World\Scripts\Hooks\multislot.lua
+2026-08-07 10:57:58.445 INFO    APP (Main): Loaded D:\DCS World\Scripts\Hooks\voicechat.lua
+2026-08-07 10:57:58.458 INFO    APP (Main): Loaded D:\DCS World\Scripts\Hooks\webGUI.lua
+2026-08-07 10:57:58.459 INFO    APP (Main): Loaded D:\DCS World\Scripts\Hooks\webRTCwebSocket.lua
+2026-08-07 10:57:59.758 INFO    Dispatcher (Main): //=== END OF INIT ======================================//
+2026-08-07 10:57:59.758 INFO    EDCORE (Main): (dDispatcher)enterToState_:2
+2026-08-07 10:57:59.808 INFO    EDCORE (Main): (dDispatcher)enterToState_:3
+2026-08-07 10:58:03.065 INFO    ED_SOUND (928): Using SSSE3 for peak calc.
+2026-08-07 10:58:11.307 INFO    Dispatcher (Main): load terrain from ./Mods/terrains/Caucasus\terrain.cfg.lua
+2026-08-07 10:58:11.371 INFO    SECURITYCONTROL (Main): Loaded ./Mods/terrains/Caucasus\terrain.cfg.lua.pak.crypt
+2026-08-07 10:58:11.371 INFO    TERRAIN (Main): lSystem::load(./Mods/terrains/Caucasus\terrain.cfg.lua)
+2026-08-07 10:58:11.371 INFO    TERRAIN (Main): lSystem::openSession(./Mods/terrains/Caucasus\terrain.cfg.lua)
+2026-08-07 10:58:11.371 INFO    TERRAIN (Main): lSystem::exit()
+2026-08-07 10:58:11.372 INFO    TERRAIN (Main): lSystem::CleanScenes()
+2026-08-07 10:58:11.372 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 13
+2026-08-07 10:58:11.372 INFO    INTER (Main): ITerrainEntryPoint::close()
+2026-08-07 10:58:11.382 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:58:11.382 INFO    INTER (Main): ITerrainEntryPoint::openTerrain()
+2026-08-07 10:58:11.397 INFO    INTER (Main): ITerrainEntryPoint: call createITerrain()
+2026-08-07 10:58:11.398 INFO    EDTERRAIN4 (Main): Open terrain cfg "./Mods/terrains/Caucasus\terrain.cfg.lua"
+2026-08-07 10:58:11.401 INFO    EDTERRAIN4 (Main): TERRAIN_REVISION = 6889
+2026-08-07 10:58:11.401 INFO    EDTERRAIN4 (Main): Build date:
+2026-08-07 10:58:11.401 INFO    EDTERRAIN4 (Main): Texture quality: "min"
+2026-08-07 10:58:11.401 INFO    EDTERRAIN4 (Main): Language: "en"
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'ceh_ang_b' (sq=0.000000e+00) (xyz=19.680016, 24.800762, -43.199993)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'ceh_ang_b' (sq=0.000000e+00) (xyz=-19.679996, 24.800762, -43.199993)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'ceh_ang_b' (sq=0.000000e+00) (xyz=-59.040010, 24.800762, -14.399994)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'ceh_ang_b' (sq=0.000000e+00) (xyz=-59.040011, 24.800762, 14.400005)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'ceh_ang_b' (sq=0.000000e+00) (xyz=-19.680000, 24.800762, 43.200005)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'ceh_ang_b' (sq=0.000000e+00) (xyz=19.680012, 24.800762, 43.200005)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'ceh_ang_b' (sq=0.000000e+00) (xyz=59.040025, 24.800762, 14.400005)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'ceh_ang_b' (sq=0.000000e+00) (xyz=59.040026, 24.800762, -14.399994)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'hotel_a' (sq=7.564423e-06) (xyz=-4.443190, 0.597240, 10.019501)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'school_a' (sq=1.642593e-08) (xyz=6.994224, 4.236901, 1.671592)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'tr_budka_new' (sq=0.000000e+00) (xyz=3.123838, 4.327496, -2.127915)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'tr_budka_new' (sq=0.000000e+00) (xyz=3.123837, 4.327496, 2.145863)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'tr_budka_new' (sq=0.000000e+00) (xyz=-1.042828, 4.327496, -6.401694)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'tr_budka_new' (sq=0.000000e+00) (xyz=1.040505, 4.327496, -6.401693)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'tr_budka_new' (sq=0.000000e+00) (xyz=-3.126163, 4.327496, 2.145862)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'tr_budka_new' (sq=0.000000e+00) (xyz=-3.126163, 4.327496, -2.127916)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'tr_budka_new' (sq=0.000000e+00) (xyz=1.040503, 4.327496, 6.419640)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'tr_budka_new' (sq=0.000000e+00) (xyz=-1.042830, 4.327496, 6.419640)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'uniwersam_a_new' (sq=3.081897e-06) (xyz=-13.705606, 8.235668, -2.060844)
+2026-08-07 10:58:11.456 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'uniwersam_a_new' (sq=7.611944e-06) (xyz=-13.708746, 8.232817, 2.179883)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airbase_airport_tbilisi_big' (sq=4.631429e-06) (xyz=-18.044575, 22.660065, -61.759819)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airbase_airport_tbilisi_big' (sq=7.271992e-07) (xyz=-16.787917, 22.810421, 57.034218)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new' (sq=0.000000e+00) (xyz=27.878689, 8.499997, -10.707115)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new' (sq=0.000000e+00) (xyz=19.292899, 8.499997, -2.121329)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new' (sq=0.000000e+00) (xyz=-19.292891, 8.499997, 27.878686)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new' (sq=0.000000e+00) (xyz=-27.878678, 8.499998, 19.292897)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new' (sq=0.000000e+00) (xyz=10.707110, 8.499997, -2.121327)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new' (sq=0.000000e+00) (xyz=2.121320, 8.499998, -10.707111)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new' (sq=4.628650e-06) (xyz=30.213438, 2.790612, -23.508533)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new' (sq=1.159289e-06) (xyz=30.210464, 2.790612, -7.105153)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'batumi_hangar_small' (sq=0.000000e+00) (xyz=-5.709213, -3.317785, -15.576451)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'batumi_kdp' (sq=6.750820e-07) (xyz=-7.613943, 7.277841, 1.481227)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'batumi_kdp' (sq=0.000000e+00) (xyz=5.116231, 12.707878, 6.124228)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'batumi_kdp' (sq=0.000000e+00) (xyz=3.992901, 12.597298, 5.965339)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'batumi_kdp' (sq=0.000000e+00) (xyz=5.106196, 12.599205, 5.237995)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'batumi_kdp' (sq=0.000000e+00) (xyz=4.763738, 12.598251, 5.082096)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'batumi_kdp' (sq=0.000000e+00) (xyz=5.448654, 12.636065, 5.393893)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'batumi_kdp' (sq=0.000000e+00) (xyz=5.106196, 12.707329, 5.237995)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'boat-1b' (sq=0.000000e+00) (xyz=0.255124, 1.405493, -0.452704)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'boat-1b' (sq=0.000000e+00) (xyz=0.974799, 1.266999, -0.942004)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-7.493908, 0.141645, -17.744604)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-7.493908, 0.141645, -13.916192)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-7.493908, 0.141645, -10.996424)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-7.493908, 0.141645, -7.403983)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-7.493908, 0.141645, -4.349680)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-7.493908, 0.141645, -0.757238)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-7.493908, 0.141645, 2.297066)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-7.493908, 0.141645, 5.889507)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-7.493908, 0.141645, 8.943810)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-7.493908, 0.141645, 12.267182)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-7.493908, 0.141645, 15.725090)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=6.130935e-07) (xyz=7.500020, 0.141645, 17.744607)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=7.500020, 0.141645, 14.185260)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=7.500020, 0.141645, 10.592819)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=7.500020, 0.141645, 7.673052)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=7.500020, 0.141645, 4.080610)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=7.500020, 0.141645, 1.026307)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=7.500020, 0.141645, -2.566135)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=7.500020, 0.141645, -5.620438)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=7.500020, 0.141645, -9.212879)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=7.500020, 0.141645, -12.267183)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=7.500020, 0.141645, -15.590555)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=5.306941, 0.141645, -20.000093)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=2.312498, 0.141645, -20.000093)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=4.035587, 0.141645, -20.000093)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-3.537906, 0.141645, -20.000093)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=-3.537905, 0.141645, 20.000097)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=2.312498, 0.141645, 20.000097)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=5.306941, 0.141645, 20.000097)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'f_home3_c' (sq=0.000000e+00) (xyz=4.035587, 0.141645, 20.000097)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'mig19-monument' (sq=0.000000e+00) (xyz=-3.773873, 6.767669, 4.694133)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'mig19-monument' (sq=0.000000e+00) (xyz=3.770340, 6.918002, 4.826016)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'mig19-monument' (sq=0.000000e+00) (xyz=-3.762786, 6.918003, 4.826016)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'mig19-monument' (sq=0.000000e+00) (xyz=3.774230, 6.767668, 4.694133)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'par_anten7_l' (sq=0.000000e+00) (xyz=-5.738346, 0.000000, 5.770747)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'par_anten7_l' (sq=0.000000e+00) (xyz=-5.762677, 0.000000, 5.746404)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'par_anten7_l' (sq=0.000000e+00) (xyz=-5.770747, 3.973969, -5.738346)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'par_anten7_l' (sq=0.000000e+00) (xyz=-5.746404, 3.973965, -5.762677)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'par_anten7_l' (sq=0.000000e+00) (xyz=5.738346, 3.973969, -5.770747)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'par_anten7_l' (sq=0.000000e+00) (xyz=5.762677, 3.973965, -5.746404)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'par_anten7_l' (sq=0.000000e+00) (xyz=5.770746, 0.000000, 5.738347)
+2026-08-07 10:58:11.467 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'par_anten7_l' (sq=0.000000e+00) (xyz=5.746404, 0.000000, 5.762678)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_b' (sq=0.000000e+00) (xyz=1.865910, 1.700000, 75.496307)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_b' (sq=0.000000e+00) (xyz=-1.865910, 1.700000, -69.911713)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_c' (sq=0.000000e+00) (xyz=-7.951810, 1.270918, -14.678645)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_c' (sq=0.000000e+00) (xyz=-7.951810, 1.270918, 14.443448)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_c' (sq=0.000000e+00) (xyz=-7.951810, 1.270918, 14.678294)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_c' (sq=0.000000e+00) (xyz=-8.951809, 1.270920, -14.488286)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_c' (sq=0.000000e+00) (xyz=-8.951808, 0.847280, -14.488286)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_c' (sq=0.000000e+00) (xyz=7.951810, 1.270918, -14.678645)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_c' (sq=0.000000e+00) (xyz=7.951810, 1.270918, 14.443448)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_c' (sq=0.000000e+00) (xyz=7.951810, 1.270918, 14.678294)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_c' (sq=0.000000e+00) (xyz=8.951809, 1.270920, -14.488286)
+2026-08-07 10:58:11.468 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'vok_sim_c' (sq=0.000000e+00) (xyz=8.951808, 0.847280, -14.488286)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new_crash' (sq=2.384189e-06) (xyz=30.212013, 2.740270, -22.774262)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new_crash' (sq=2.883288e-06) (xyz=30.212016, 2.582145, -22.184131)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new_crash' (sq=2.402740e-06) (xyz=28.378682, 2.582145, -22.184131)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new_crash' (sq=7.996792e-07) (xyz=-7.249265, 2.898390, 30.212026)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new_crash' (sq=3.576276e-07) (xyz=-7.839395, 2.740265, 30.212027)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new_crash' (sq=1.239114e-05) (xyz=-114.791499, 7.363461, 11.845170)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'airport_babushara_new_crash' (sq=5.092136e-06) (xyz=-113.316063, 6.840351, 11.371226)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'batumi_kdp_crash' (sq=7.630534e-07) (xyz=-2.281200, 14.310538, 6.860374)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'batumi_kdp_crash' (sq=7.630536e-07) (xyz=-2.797938, 14.310538, 5.968825)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'garage_a_crash' (sq=0.000000e+00) (xyz=-10.061975, 1.696121, -15.715268)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'garage_a_crash' (sq=0.000000e+00) (xyz=-9.222221, 2.484941, -15.648526)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'garage_a_crash' (sq=0.000000e+00) (xyz=-12.248419, 1.057744, 14.183513)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'garage_a_crash' (sq=0.000000e+00) (xyz=-13.119382, 1.756869, 13.892777)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'gradir_crush' (sq=0.000000e+00) (xyz=-10.382706, 13.076068, -5.998585)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'gradir_crush' (sq=0.000000e+00) (xyz=3.550477, 25.719932, 9.735236)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'gradir_crush' (sq=1.795513e-06) (xyz=-8.965139, 26.624737, 5.179361)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'gradir_crush' (sq=1.802424e-06) (xyz=8.979416, 26.624737, 5.179365)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'gradir_crush' (sq=0.000000e+00) (xyz=3.206941, 28.739100, 8.791380)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'gradir_crush' (sq=0.000000e+00) (xyz=-3.870823, 25.140288, -5.869917)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'home16_twin_crush' (sq=3.881179e-07) (xyz=2.281361, 0.823538, 12.809234)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'home16_twin_crush' (sq=0.000000e+00) (xyz=20.060312, 0.823538, -20.635106)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'home16_twin_crush' (sq=3.849332e-07) (xyz=2.265471, 0.874712, 21.440470)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'home16_twin_crush' (sq=0.000000e+00) (xyz=20.044423, 0.874712, -10.159812)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'home1ug_crush' (sq=1.507641e-07) (xyz=-0.458285, 0.697940, -8.122790)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'home1ug_crush' (sq=8.944863e-08) (xyz=1.958412, 0.732230, -7.868588)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'home1ugr_crush' (sq=1.507641e-07) (xyz=7.777606, 0.697940, -0.359557)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'home1ugr_crush' (sq=8.944863e-08) (xyz=7.523404, 0.732230, 2.057140)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'home52_st_crash' (sq=2.363315e-07) (xyz=9.902370, 4.265686, -39.480270)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'lokator_crash' (sq=1.355111e-05) (xyz=12.294858, 2.045360, 9.936700)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'lokator_crash' (sq=1.484206e-05) (xyz=12.346491, 1.373256, 10.040321)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'most(road)small-crush' (sq=0.000000e+00) (xyz=0.755923, -3.529291, -9.486899)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'most(road)small-crush' (sq=0.000000e+00) (xyz=0.297044, -4.790061, -8.136270)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'polyklinika_a_crush' (sq=0.000000e+00) (xyz=-2.181127, 0.062917, -12.834483)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'polyklinika_a_crush' (sq=0.000000e+00) (xyz=-8.694631, 0.302820, -14.073813)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'restoran1_crash' (sq=3.014118e-07) (xyz=-10.378951, 6.352591, -14.858738)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'restoran1_crash' (sq=0.000000e+00) (xyz=-10.479951, 7.269756, -14.858739)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'restoran1_crash' (sq=4.029761e-06) (xyz=-10.311618, 7.269756, -11.257864)
+2026-08-07 10:58:11.483 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 's1_crash' (sq=1.606771e-07) (xyz=0.423504, 0.662391, 1.372451)
+2026-08-07 10:58:11.493 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:58:11.493 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'tuapse_building2_crash' (sq=0.000000e+00) (xyz=-8.883338, 1.650052, 1.762125)
+2026-08-07 10:58:11.493 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'tuapse_building2_crash' (sq=0.000000e+00) (xyz=-8.883338, 1.650035, -1.370581)
+2026-08-07 10:58:11.494 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'gaz_66_new' (sq=5.531112e-09) (xyz=-2.848471, 0.764464, 0.658997)
+2026-08-07 10:58:11.494 WARNING EDTERRAIN4 (Main): Removed degenerate triangle in collision 'gaz_66_new' (sq=5.531110e-09) (xyz=-3.048830, 0.764464, 0.658997)
+2026-08-07 10:58:11.504 INFO    EDCORE (Main): 0.057 s  terrain references
+2026-08-07 10:58:11.505 INFO    EDCORE (Main): 0.000 s  terrain models
+2026-08-07 10:58:11.506 INFO    EDCORE (Main): 0.000 s  terrain assets
+2026-08-07 10:58:11.579 INFO    EDCORE (Main): 0.070 s  terrain assets2
+2026-08-07 10:58:11.718 INFO    EDCORE (Main): 0.138 s  terrain landfile
+2026-08-07 10:58:11.733 INFO    EDCORE (Main): 0.003 s  terrain surfaceTile
+2026-08-07 10:58:11.735 INFO    EDTERRAIN4 (Main): switchTextures (season=1, minTexture=true)
+2026-08-07 10:58:12.259 INFO    EDCORE (Main): 0.524 s  terrain vfstextures
+2026-08-07 10:58:12.300 INFO    EDCORE (Main): 0.040 s  terrain scene
+2026-08-07 10:58:12.301 INFO    EDCORE (Main): 0.000 s  terrain roaddetails
+2026-08-07 10:58:12.302 INFO    EDCORE (Main): 0.000 s  terrain forest
+2026-08-07 10:58:13.688 INFO    EDCORE (Main): 1.384 s  terrain routes
+2026-08-07 10:58:13.690 INFO    EDCORE (Main): 0.000 s  terrain surfacedetails
+2026-08-07 10:58:13.691 INFO    EDCORE (Main): 0.000 s  terrain blocks
+2026-08-07 10:58:13.700 INFO    EDCORE (Main): 0.000 s  terrain references
+2026-08-07 10:58:13.837 INFO    EDCORE (Main): 0.143 s  terrain superficials
+2026-08-07 10:58:13.845 INFO    EDCORE (Main): 0.007 s  terrain lma
+2026-08-07 10:58:13.846 INFO    EDCORE (Main): 0.000 s  terrain vectordatasettings
+2026-08-07 10:58:14.661 INFO    EDCORE (Main): 0.814 s  terrain navgraph
+2026-08-07 10:58:14.667 INFO    EDCORE (Main): 0.004 s  terrain vti
+2026-08-07 10:58:14.959 INFO    EDTERRAIN4 (Main): terrain time: 3.516238 s
+2026-08-07 10:58:14.968 INFO    TERRAIN (Main): lSystem::InitScenes()
+2026-08-07 10:58:15.012 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setTrafficDecimation(0)
+2026-08-07 10:58:15.013 WARNING LOG (364): 3 duplicate message(s) skipped.
+2026-08-07 10:58:15.013 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setDate( day=1, month=10)
+2026-08-07 10:58:15.013 INFO    EDTERRAIN4 (Main): lTerraDispatchImpl::setDate( day=1, month=10)
+2026-08-07 10:58:15.013 INFO    EDTERRAIN4 (Main): switch to season = autumn
+2026-08-07 10:58:15.013 INFO    EDTERRAIN4 (Main): switchTextures (season=2, minTexture=true)
+2026-08-07 10:58:15.037 INFO    EDTERRAIN4 (996): ITerrainContextImpl4::setTrafficDecimation(0)
+2026-08-07 10:58:15.082 INFO    EDTERRAIN4 (988): ITerrainContextImpl4::setDate( day=1, month=10)
+2026-08-07 10:58:15.083 WARNING LOG (364): 3 duplicate message(s) skipped.
+2026-08-07 10:58:15.083 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setTextureMode(full=0)
+2026-08-07 10:58:15.178 WARNING LOG (364): 4 duplicate message(s) skipped.
+2026-08-07 10:58:15.178 INFO    DX11BACKEND (764): Reloading textures ...
+2026-08-07 10:58:15.198 INFO    Dispatcher (Main): load terrain done
+2026-08-07 10:58:15.199 INFO    LUA-TERRAIN (Main): Init done
+2026-08-07 10:58:15.199 INFO    INTER (Main): ITerrainGraphicsEntryPoint::close()
+2026-08-07 10:58:15.199 INFO    INTER (Main): ITerrainGraphicsEntryPoint::createTerrainGraphics()
+2026-08-07 10:58:15.203 INFO    INTER (764): ITerrainGraphicsEntryPoint: call CreateITerrainGraphics()
+2026-08-07 10:58:15.203 INFO    EDTERRAINGRAPHICS41 (764): ITerrainGraphicsImpl4::openTerrain() START
+2026-08-07 10:58:15.203 INFO    EDTERRAINGRAPHICS41 (764): loading terrain options: Config/terrain/terrainoptions41.lua
+2026-08-07 10:58:15.204 INFO    EDTERRAINGRAPHICS41 (764): loading terrain shading options: ./Mods/terrains/Caucasus/shadingOptions/Caucasus.lua
+2026-08-07 10:58:15.205 INFO    METASHADER (764): MetaShaderCache2: [82] from ./Mods/terrains/Caucasus/misc/metacache/base.lua
+2026-08-07 10:58:15.319 INFO    METASHADER (764): loaded [82/82]
+2026-08-07 10:58:15.346 WARNING EDTERRAINGRAPHICS41 (764): failed to open "surfaceDetailsHints" section in terrain config
+2026-08-07 10:58:15.347 ERROR_ONCE DX11BACKEND (420): texture 'lightPalette.tif' not found. Asked from ''
+2026-08-07 10:58:16.743 INFO    EDCORE (764): 1.392 s  Precompile metashaders
+2026-08-07 10:58:16.745 INFO    EDTERRAINGRAPHICS41 (764): 0.000009s Loaded reference file "caucasus" buffers: 0
+2026-08-07 10:58:16.745 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.749 INFO    EDTERRAINGRAPHICS41 (764): 0.000330s Loaded reference file "airfieldslights" buffers: 7
+2026-08-07 10:58:16.749 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.754 INFO    EDTERRAINGRAPHICS41 (764): 0.000629s Loaded reference file "blockbuildings" buffers: 9
+2026-08-07 10:58:16.754 INFO    EDCORE (764): 0.001 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.759 INFO    EDTERRAINGRAPHICS41 (764): 0.001673s Loaded reference file "blocktrees" buffers: 0
+2026-08-07 10:58:16.759 INFO    EDCORE (764): 0.002 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.766 INFO    EDTERRAINGRAPHICS41 (764): 0.004544s Loaded reference file "caucasusafbbuildings_new" buffers: 30
+2026-08-07 10:58:16.766 INFO    EDCORE (764): 0.005 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.767 INFO    EDTERRAINGRAPHICS41 (764): 0.000177s Loaded reference file "caucasusbridges" buffers: 11
+2026-08-07 10:58:16.767 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.779 INFO    EDTERRAINGRAPHICS41 (764): 0.008387s Loaded reference file "caucasusobjects" buffers: 0
+2026-08-07 10:58:16.779 INFO    EDCORE (764): 0.008 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.782 INFO    EDTERRAINGRAPHICS41 (764): 0.001145s Loaded reference file "communication" buffers: 7
+2026-08-07 10:58:16.782 INFO    EDCORE (764): 0.001 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.785 INFO    EDTERRAINGRAPHICS41 (764): 0.000062s Loaded reference file "crashmodels" buffers: 3
+2026-08-07 10:58:16.785 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.789 INFO    EDTERRAINGRAPHICS41 (764): 0.001085s Loaded reference file "crashmodelsfromedm" buffers: 22
+2026-08-07 10:58:16.789 INFO    EDCORE (764): 0.001 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.792 INFO    EDTERRAINGRAPHICS41 (764): 0.000117s Loaded reference file "housedetails" buffers: 9
+2026-08-07 10:58:16.792 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.797 INFO    EDTERRAINGRAPHICS41 (764): 0.000168s Loaded reference file "industrial" buffers: 8
+2026-08-07 10:58:16.797 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.800 INFO    EDTERRAINGRAPHICS41 (764): materialParams[1]*1536
+2026-08-07 10:58:16.803 INFO    EDTERRAINGRAPHICS41 (764): 0.002554s Loaded reference file "misc" buffers: 3
+2026-08-07 10:58:16.803 INFO    EDCORE (764): 0.003 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.804 INFO    EDTERRAINGRAPHICS41 (764): 0.000110s Loaded reference file "oilplatforms" buffers: 7
+2026-08-07 10:58:16.804 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.809 INFO    EDTERRAINGRAPHICS41 (764): 0.000153s Loaded reference file "tuapserefinery" buffers: 6
+2026-08-07 10:58:16.809 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.812 INFO    EDTERRAINGRAPHICS41 (764): 0.000143s Loaded reference file "vehicles" buffers: 12
+2026-08-07 10:58:16.813 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.817 INFO    EDTERRAINGRAPHICS41 (764): 0.000083s Loaded reference file "vessels" buffers: 7
+2026-08-07 10:58:16.817 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.820 INFO    EDTERRAINGRAPHICS41 (764): 0.000045s Loaded reference file "walls" buffers: 2
+2026-08-07 10:58:16.820 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.826 INFO    EDTERRAINGRAPHICS41 (764): 0.001736s Loaded reference file "americanbeech" buffers: 0
+2026-08-07 10:58:16.826 INFO    EDCORE (764): 0.002 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.828 INFO    EDTERRAINGRAPHICS41 (764): 0.000062s Loaded reference file "caucasus_fir" buffers: 0
+2026-08-07 10:58:16.828 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.832 INFO    EDTERRAINGRAPHICS41 (764): 0.000065s Loaded reference file "cypress_oak" buffers: 0
+2026-08-07 10:58:16.832 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.836 INFO    EDTERRAINGRAPHICS41 (764): 0.000068s Loaded reference file "european_beech" buffers: 0
+2026-08-07 10:58:16.836 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.840 INFO    EDTERRAINGRAPHICS41 (764): 0.000052s Loaded reference file "green_ash" buffers: 0
+2026-08-07 10:58:16.840 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.844 INFO    EDTERRAINGRAPHICS41 (764): 0.000060s Loaded reference file "honey_mesquite" buffers: 0
+2026-08-07 10:58:16.844 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.848 INFO    EDTERRAINGRAPHICS41 (764): 0.000047s Loaded reference file "italiancypress" buffers: 0
+2026-08-07 10:58:16.848 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.852 INFO    EDTERRAINGRAPHICS41 (764): 0.000069s Loaded reference file "lombardypoplar" buffers: 0
+2026-08-07 10:58:16.852 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.856 INFO    EDTERRAINGRAPHICS41 (764): 0.000056s Loaded reference file "mountain_maple" buffers: 0
+2026-08-07 10:58:16.856 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.860 INFO    EDTERRAINGRAPHICS41 (764): 0.000053s Loaded reference file "norwayspruce" buffers: 0
+2026-08-07 10:58:16.860 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.864 INFO    EDTERRAINGRAPHICS41 (764): 0.000044s Loaded reference file "shrub" buffers: 0
+2026-08-07 10:58:16.864 INFO    EDCORE (764): 0.000 s  landscape4::lReferenceFile
+2026-08-07 10:58:16.864 INFO    EDTERRAINGRAPHICS41 (764): InstanceManager2 is completing initialization...
+2026-08-07 10:58:16.869 INFO    EDTERRAINGRAPHICS41 (764): InstanceManager2 complete initialization:
+2026-08-07 10:58:16.869 INFO    EDTERRAINGRAPHICS41 (764):   objects:    1338
+2026-08-07 10:58:16.869 INFO    EDTERRAINGRAPHICS41 (764):   subObjects: 1090
+2026-08-07 10:58:16.869 INFO    EDTERRAINGRAPHICS41 (764):   objectLods: 5786
+2026-08-07 10:58:16.869 INFO    EDTERRAINGRAPHICS41 (764):   objectLodRenderItems: 353
+2026-08-07 10:58:16.869 INFO    EDTERRAINGRAPHICS41 (764):   MAX_LODS_IN_OBJECT:       10
+2026-08-07 10:58:16.869 INFO    EDTERRAINGRAPHICS41 (764):   MAX_SUBOBJECTS_IN_OBJECT: 74
+2026-08-07 10:58:16.869 INFO    EDTERRAINGRAPHICS41 (764):   GEOMETRY BUFFERS: 143
+2026-08-07 10:58:16.873 INFO    EDCORE (764): 0.000 s  landscape5::OceanFile
+2026-08-07 10:58:16.951 INFO    EDCORE (764): 0.074 s  landscape5::GrassFile
+2026-08-07 10:58:16.952 INFO    EDCORE (764): 0.000 s  landscape5::lModels5File
+2026-08-07 10:58:17.109 WARNING LOG (364): 16 duplicate message(s) skipped.
+2026-08-07 10:58:17.109 INFO    EDTERRAINGRAPHICS41 (764): remapper.deformers is not empty
+2026-08-07 10:58:17.412 INFO    EDTERRAINGRAPHICS41 (764): materialParams[37382]*1536
+2026-08-07 10:58:17.416 INFO    EDCORE (764): 0.396 s  landscape5::Surface5File
+2026-08-07 10:58:17.432 INFO    EDTERRAINGRAPHICS41 (764): materialParams[1040]*1536
+2026-08-07 10:58:17.433 INFO    EDCORE (764): 0.015 s  landscape5::SurfaceTile
+2026-08-07 10:58:17.436 INFO    EDCORE (764): 0.002 s  landscape5::Scene5File
+2026-08-07 10:58:17.439 INFO    EDCORE (764): 0.001 s  landscape4::lRoutesFile
+2026-08-07 10:58:17.443 INFO    EDCORE (764): 0.000 s  landscape4::lSurfaceDetails2File
+2026-08-07 10:58:17.447 INFO    EDTERRAINGRAPHICS41 (764): materialParams[1]*1536
+2026-08-07 10:58:17.447 INFO    EDCORE (764): 0.000 s  landscape4::lSuperficialFile
+2026-08-07 10:58:17.451 INFO    EDCORE (764): Loaded D:/DCS World/bin/dxgui_edge_render.dll
+2026-08-07 10:58:17.451 INFO    EDCORE (764): 0.000 s  landscape4::lGeoNamesFile
+2026-08-07 10:58:17.455 INFO    EDCORE (764): 0.001 s  landscape5::sup5File
+2026-08-07 10:58:17.459 INFO    EDCORE (764): 0.000 s  landscape5::sup5File
+2026-08-07 10:58:17.463 INFO    EDCORE (764): 0.000 s  landscape5::navGraph5File
+2026-08-07 10:58:17.463 INFO    EDTERRAINGRAPHICS41 (764): ITerrainGraphicsImpl4::openTerrain() END 2.259758 s
+2026-08-07 10:58:18.593 INFO    Dispatcher (Main): loadMission C:\users\steamuser\AppData\Local\Temp\DCS\tempMission.miz
+2026-08-07 10:58:18.593 INFO    WORLDGENERAL (Main): loading mission from: "C:\users\steamuser\AppData\Local\Temp\DCS\tempMission.miz"
+2026-08-07 10:58:18.700 INFO    APP (Main): use_xRay: yes
+2026-08-07 10:58:18.700 INFO    APP (Main): netfm_enable_coeff_switching: yes
+2026-08-07 10:58:18.732 INFO    Dispatcher (Main): Terrain theatre Caucasus
+2026-08-07 10:58:18.777 INFO    EDCORE (Main): (dDispatcher)enterToState_:4
+2026-08-07 10:58:18.777 INFO    Dispatcher (Main): Start
+2026-08-07 10:58:18.945 INFO    Dispatcher (Main): Terrain theatre Caucasus
+2026-08-07 10:58:18.948 INFO    Dispatcher (Main): load terrain from ./Mods/terrains/Caucasus\terrain.cfg.lua
+2026-08-07 10:58:19.027 INFO    SECURITYCONTROL (Main): Loaded ./Mods/terrains/Caucasus\terrain.cfg.lua.pak.crypt
+2026-08-07 10:58:19.027 INFO    TERRAIN (Main): lSystem::load(./Mods/terrains/Caucasus\terrain.cfg.lua)
+2026-08-07 10:58:19.027 INFO    TERRAIN (Main): lSystem::openSession(./Mods/terrains/Caucasus\terrain.cfg.lua)
+2026-08-07 10:58:19.027 INFO    WORLDGENERAL (Main): TerrainUtility:: updated in parallel: 0, updated in the main thread: 0
+2026-08-07 10:58:19.115 INFO    EDCORE (Main): 0.000 s  terrain references
+2026-08-07 10:58:19.121 INFO    EDCORE (Main): 0.000 s  terrain models
+2026-08-07 10:58:19.126 INFO    EDCORE (Main): 0.000 s  terrain assets
+2026-08-07 10:58:19.132 INFO    EDCORE (Main): 0.000 s  terrain assets2
+2026-08-07 10:58:19.138 INFO    EDCORE (Main): 0.000 s  terrain landfile
+2026-08-07 10:58:19.139 INFO    EDCORE (Main): 0.000 s  terrain surfaceTile
+2026-08-07 10:58:19.146 INFO    EDCORE (Main): 0.000 s  terrain vfstextures
+2026-08-07 10:58:19.152 INFO    EDCORE (Main): 0.000 s  terrain scene
+2026-08-07 10:58:19.158 INFO    EDCORE (Main): 0.000 s  terrain roaddetails
+2026-08-07 10:58:19.164 INFO    EDCORE (Main): 0.000 s  terrain forest
+2026-08-07 10:58:19.170 INFO    EDCORE (Main): 0.000 s  terrain routes
+2026-08-07 10:58:19.176 INFO    EDCORE (Main): 0.000 s  terrain surfacedetails
+2026-08-07 10:58:19.181 INFO    EDCORE (Main): 0.000 s  terrain blocks
+2026-08-07 10:58:19.187 INFO    EDCORE (Main): 0.000 s  terrain superficials
+2026-08-07 10:58:19.193 INFO    EDCORE (Main): 0.000 s  terrain lma
+2026-08-07 10:58:19.198 INFO    EDCORE (Main): 0.000 s  terrain vectordatasettings
+2026-08-07 10:58:19.204 INFO    EDCORE (Main): 0.000 s  terrain navgraph
+2026-08-07 10:58:19.209 INFO    EDCORE (Main): 0.000 s  terrain vti
+2026-08-07 10:58:19.209 INFO    EDTERRAIN4 (Main): terrain time: 0.098210 s
+2026-08-07 10:58:19.227 INFO    TERRAIN (Main): lSystem::InitScenes()
+2026-08-07 10:58:19.270 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setTrafficDecimation(0)
+2026-08-07 10:58:19.270 WARNING LOG (364): 3 duplicate message(s) skipped.
+2026-08-07 10:58:19.270 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setDate( day=1, month=10)
+2026-08-07 10:58:19.270 WARNING LOG (364): 3 duplicate message(s) skipped.
+2026-08-07 10:58:19.270 INFO    EDTERRAIN4 (Main): ITerrainContextImpl4::setTextureMode(full=0)
+2026-08-07 10:58:19.283 WARNING LOG (364): 3 duplicate message(s) skipped.
+2026-08-07 10:58:19.283 INFO    EDTERRAIN4 (1112): ITerrainContextImpl4::setTrafficDecimation(0)
+2026-08-07 10:58:19.283 INFO    EDTERRAIN4 (1112): ITerrainContextImpl4::setDate( day=1, month=10)
+2026-08-07 10:58:19.283 INFO    EDTERRAIN4 (1112): ITerrainContextImpl4::setTextureMode(full=0)
+2026-08-07 10:58:19.284 INFO    Dispatcher (Main): load terrain done
+2026-08-07 10:58:19.303 INFO    WEATHER (Main): set fog: visibility:1  thickness:300.0
+2026-08-07 10:58:19.303 WARNING GRAPHICSCORE (Main): already registered Renderer callback
+2026-08-07 10:58:19.303 INFO    WEATHER (Main): set fog: visibility:100000  thickness:0.0
+2026-08-07 10:58:19.308 WARNING SCENE (Main): Scene was removed with 5 alive objects
+2026-08-07 10:58:19.308 INFO    VISUALIZER (Main): DCSScene initialized
+2026-08-07 10:58:19.377 INFO    VISUALIZER (764): DCSSceneRenderer initialized
+2026-08-07 10:58:19.625 INFO    Dispatcher (Main): initial random seed = 299717
+2026-08-07 10:58:19.625 INFO    Dispatcher (Main): apply random seed = 299717
+2026-08-07 10:58:20.012 INFO    WORLDGENERAL (Main): loaded from mission Scripts/World/GPS_GNSS.lua
+2026-08-07 10:58:20.612 INFO    DX11BACKEND (Main): Compile shader: ParticleSystem2/overwingVaporComp.fx
+2026-08-07 10:58:27.175 WARNING LOG (364): 7 duplicate message(s) skipped.
+2026-08-07 10:58:27.175 ERROR   ED_SOUND (920): render time = 0.021289s exceeded allowed slice of 0.010000s
+2026-08-07 10:58:27.175 ERROR   ED_SOUND (924): render time = 0.021319s exceeded allowed slice of 0.010000s
+2026-08-07 10:58:28.116 INFO    DX11BACKEND (Main): Compile shader: ParticleSystem2/overwingVaporComp.fx
+2026-08-07 10:58:28.770 INFO    WORLDGENERAL (Main): loaded from mission Config/View/SnapViewsDefault.lua
+2026-08-07 10:58:28.771 INFO    WORLDGENERAL (Main): loaded from mission Config/View/View.lua
+2026-08-07 10:58:28.771 INFO    WORLDGENERAL (Main): loaded from mission Config/View/Server.lua
+2026-08-07 10:58:30.833 WARNING FLIGHT (Main): No taxiroad found on Batumi from 2 to 1
+2026-08-07 10:58:30.833 WARNING FLIGHT (Main): No taxiroad found on Batumi from 3 to 1
+2026-08-07 10:58:30.833 WARNING FLIGHT (Main): No taxiroad found on Batumi from 4 to 1
+2026-08-07 10:58:30.834 WARNING FLIGHT (Main): No taxiroad found on Batumi from 5 to 1
+2026-08-07 10:58:30.834 WARNING FLIGHT (Main): No taxiroad found on Batumi from 6 to 1
+2026-08-07 10:58:30.834 WARNING FLIGHT (Main): No taxiroad found on Batumi from 7 to 1
+2026-08-07 10:58:30.834 WARNING FLIGHT (Main): No taxiroad found on Batumi from 8 to 1
+2026-08-07 10:58:30.834 WARNING FLIGHT (Main): No taxiroad found on Batumi from 9 to 1
+2026-08-07 10:58:30.835 WARNING FLIGHT (Main): No taxiroad found on Batumi from 10 to 1
+2026-08-07 10:58:30.835 WARNING FLIGHT (Main): No taxiroad found on Batumi from 11 to 1
+2026-08-07 10:58:31.026 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 1 to 16
+2026-08-07 10:58:31.026 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 2 to 16
+2026-08-07 10:58:31.026 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 3 to 16
+2026-08-07 10:58:31.027 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 4 to 16
+2026-08-07 10:58:31.027 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 5 to 16
+2026-08-07 10:58:31.027 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 6 to 16
+2026-08-07 10:58:31.028 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 7 to 16
+2026-08-07 10:58:31.028 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 8 to 16
+2026-08-07 10:58:31.028 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 9 to 16
+2026-08-07 10:58:31.029 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 10 to 16
+2026-08-07 10:58:31.029 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 11 to 16
+2026-08-07 10:58:31.029 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 12 to 16
+2026-08-07 10:58:31.030 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 13 to 16
+2026-08-07 10:58:31.030 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 14 to 16
+2026-08-07 10:58:31.030 WARNING FLIGHT (Main): No taxiroad found on Nalchik from 15 to 16
+2026-08-07 10:58:31.146 WARNING FLIGHT (Main): No taxiroad found on Tbilisi-Lochini from 62 to 73
+2026-08-07 10:58:31.146 WARNING FLIGHT (Main): No taxiroad found on Tbilisi-Lochini from 63 to 73
+2026-08-07 10:58:31.147 WARNING FLIGHT (Main): No taxiroad found on Tbilisi-Lochini from 64 to 73
+2026-08-07 10:58:31.147 WARNING FLIGHT (Main): No taxiroad found on Tbilisi-Lochini from 65 to 73
+2026-08-07 10:58:31.698 ERROR   EDCORE (Main): Can't open file: /textures/liveries/tu-95ms/af standard/description.lua.
+2026-08-07 10:58:32.906 ERROR   WORLDGENERAL (Main): Error: Unit [Mi-8MT]: No property record for cell "TAIL_ROTOR".
+2026-08-07 10:58:32.906 ERROR   WORLDGENERAL (Main): Error: Unit [Mi-8MT]: No property record for segment "TAIL_ROTOR".
+2026-08-07 10:58:33.386 ERROR   WORLDGENERAL (Main): Error: Unit [Su-25T]: No property record for segment "LEFT_WHEEL".
+2026-08-07 10:58:33.386 ERROR   WORLDGENERAL (Main): Error: Unit [Su-25T]: No property record for segment "RIGHT_WHEEL".
+2026-08-07 10:58:33.386 ERROR   WORLDGENERAL (Main): Error: Unit [Su-25T]: No property record for segment "FRONT_WHEEL".
+2026-08-07 10:58:34.298 INFO    APP (Main): MissionSpawn:initScript
+2026-08-07 10:58:34.298 INFO    APP (Main): MissionSpawn:spawnCoalition neutrals
+2026-08-07 10:58:34.298 INFO    APP (Main): MissionSpawn:spawnCoalition red
+2026-08-07 10:58:34.298 INFO    APP (Main): MissionSpawn:spawnPlanes 0
+2026-08-07 10:58:34.749 ERROR   APP (Main): Error: Unit [Su-25T]: Corrupt damage model.
+2026-08-07 10:58:35.093 WARNING LOG (364): 3 duplicate message(s) skipped.
+2026-08-07 10:58:35.093 ERROR   WORLDGENERAL (Main): Error: Unit [MiG-23MLD]: No cell for property record GEAR_C.
+2026-08-07 10:58:35.093 ERROR   APP (Main): Error: Unit [MiG-23MLD]: Corrupt damage model.
+2026-08-07 10:58:35.445 WARNING LOG (364): 1 duplicate message(s) skipped.
+2026-08-07 10:58:35.445 ERROR   EDCORE (Main): Can't open file: /textures/liveries/tu-95ms/russia/description.lua.
+2026-08-07 10:58:35.446 ERROR   EDCORE (Main): Can't open file: /textures/liveries/tu-95ms/standard/description.lua.
+2026-08-07 10:58:35.887 ERROR_ONCE DX11BACKEND (432): texture 'pilot_L39_FP1_B' not found. Asked from ''
+2026-08-07 10:58:35.887 ERROR_ONCE DX11BACKEND (424): texture 'pilot_L39_FP2_B' not found. Asked from ''
+2026-08-07 10:58:35.908 ERROR   APP (Main): Error: Unit [Su-25T]: Corrupt damage model.
+2026-08-07 10:58:35.941 INFO    APP (Main): MissionSpawn:spawnCoalition blue
+2026-08-07 10:58:35.941 INFO    APP (Main): MissionSpawn:spawnVehicles 2
+2026-08-07 10:58:36.141 INFO    APP (Main): MissionSpawn:spawnLocalPlayer 8,Su-25T
+2026-08-07 10:58:36.204 ERROR_ONCE DX11BACKEND (444): texture 'Yak52_Main_flir' not found. Asked from ''
+2026-08-07 10:58:36.224 ERROR   APP (Main): Error: Unit [Su-25T]: Corrupt damage model.
+2026-08-07 10:58:38.913 INFO    VISUALIZER (460): ILV loaded  for /models/Cockpit_Su-25T.edm.ilv
+2026-08-07 10:58:38.917 INFO    ENLIGHT (460): get cockpit shading params from /models/Cockpit_Su-25T.edm.lua
+2026-08-07 10:58:38.972 INFO    WORLDGENERAL (Main): loaded from mission Scripts/World/birds.lua
+2026-08-07 10:58:38.975 INFO    APP (Main): dbox not found , skip
+2026-08-07 10:58:39.029 INFO    EDTERRAINGRAPHICS41 (764):     surface5 gc() LOD 0 0 squares
+2026-08-07 10:58:39.029 INFO    EDTERRAINGRAPHICS41 (764):     surface5 gc() LOD 1 0 squares
+2026-08-07 10:58:39.029 INFO    EDTERRAINGRAPHICS41 (764):     surface5 gc() LOD 2 0 squares
+2026-08-07 10:58:39.029 INFO    EDTERRAINGRAPHICS41 (764):     surface5 gc() LOD 3 0 squares
+2026-08-07 10:58:39.029 INFO    EDTERRAINGRAPHICS41 (764): surface5 gc() 0.137200 ms
+2026-08-07 10:58:39.095 INFO    VISUALIZER (Main): Preload() radius: 150000.000000
+2026-08-07 10:58:39.139 INFO    EDTERRAINGRAPHICS41 (Main): ITerrainGraphicsImpl4::forceLoading(): pos=(-82588.8, 2438.42, 681671), radius=150000
+2026-08-07 10:58:39.847 INFO    EDTERRAINGRAPHICS41 (764): surface5 clean up LOD 0: left 0  released 0
+2026-08-07 10:58:39.847 INFO    EDTERRAINGRAPHICS41 (764): surface5 clean up LOD 1: left 0  released 0
+2026-08-07 10:58:39.847 INFO    EDTERRAINGRAPHICS41 (764): surface5 clean up 0.060200 ms
+2026-08-07 10:58:40.611 INFO    EDTERRAIN4 (764): ITerrainContextImpl4::setTrafficDecimation(0)
+2026-08-07 10:58:40.611 INFO    EDTERRAIN4 (764): ITerrainContextImpl4::setDate( day=1, month=10)
+2026-08-07 10:58:40.611 INFO    EDTERRAIN4 (764): ITerrainContextImpl4::setTextureMode(full=0)
+2026-08-07 10:58:41.393 INFO    GRAPHICSVISTA (764): Creating Resource "Unicode" of type 1
+2026-08-07 10:58:41.395 INFO    EDTERRAINGRAPHICS41 (764): instancer factors has been changed. Update lod buffers.
+2026-08-07 10:58:41.395 INFO    EDTERRAINGRAPHICS41 (764): 	 distanceFactor = 1.000000
+2026-08-07 10:58:41.395 INFO    EDTERRAINGRAPHICS41 (764): 	 instancerDetailsFactor = 1.000000
+2026-08-07 10:58:41.395 INFO    EDTERRAINGRAPHICS41 (764): 	 forestDistanceFactor = 0.500000
+2026-08-07 10:58:41.395 INFO    EDTERRAINGRAPHICS41 (764): 	 forestDetailsFactor = 1.000000
+2026-08-07 10:58:41.552 ERROR_ONCE DX11BACKEND (448): texture 'su27_cpt_lamps' not found. Asked from ''
+2026-08-07 10:58:44.186 INFO    VISUALIZER (Main): Preload() finished
+2026-08-07 10:58:44.225 INFO    Dispatcher (Main): precache units resources in slots
+2026-08-07 10:58:44.943 INFO    EDCORE (Main): Created game pool: h:2 n:6 l:4
+2026-08-07 10:58:44.943 INFO    Dispatcher (Main): loadMission Done: Control passed to the player
+2026-08-07 10:58:49.520 WARNING WORLD (Main): ModelTimeQuantizer: SAME MODEL TIME
+2026-08-07 10:59:39.126 WARNING LOG (364): 456 duplicate message(s) skipped.
+2026-08-07 10:59:39.126 INFO    Dispatcher (Main): Stop
+2026-08-07 10:59:39.520 INFO    TERRAIN (Main): lSystem::CleanScenes()
+2026-08-07 10:59:39.520 INFO    WORLDGENERAL (Main): TerrainUtility:: updated in parallel: 0, updated in the main thread: 0
+2026-08-07 10:59:39.537 INFO    VISUALIZER (764): Stopped collection of statistic.
+2026-08-07 10:55:59.000 ERROR_ONCE  ():
+2026-08-07 10:59:39.639 ERROR_ONCE DX11BACKEND (764): render target 'uiTargetColor' not found
+2026-08-07 10:59:39.639 ERROR_ONCE DX11BACKEND (764): render target 'uiTargetDepth' not found
+2026-08-07 10:59:39.639 INFO    VISUALIZER (764): DCSSceneRenderer initialized
+2026-08-07 10:59:39.723 INFO    EDCORE (Main): Created boot pool: n:20
+2026-08-07 10:59:39.723 INFO    WORLDGENERAL (Main): wDetectorWorker:: updated in parallel: 0, updated in the main thread: 0
+2026-08-07 10:59:39.782 INFO    EDCORE (Main): (dDispatcher)enterToState_:3
+2026-08-07 10:59:40.012 INFO    EDCORE (Main): (dDispatcher)enterToState_:5
+2026-08-07 10:59:40.089 INFO    APP (Main): application shutdown
+2026-08-07 10:59:40.114 INFO    WorldPlugIns (Main): Stopping preloader...
+2026-08-07 10:59:40.274 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 0
+2026-08-07 10:59:40.277 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 1
+2026-08-07 10:59:40.277 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 2
+2026-08-07 10:59:40.408 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 3
+2026-08-07 10:59:40.525 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 4
+2026-08-07 10:59:40.555 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 5
+2026-08-07 10:59:40.558 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 6
+2026-08-07 10:59:40.564 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 7
+2026-08-07 10:59:40.565 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 8
+2026-08-07 10:59:40.568 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 9
+2026-08-07 10:59:40.568 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 10
+2026-08-07 10:59:40.569 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 11
+2026-08-07 10:59:40.569 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 12
+2026-08-07 10:59:40.569 INFO    EDOBJECTS (Main): lTypeObjectManagerImpl::clear 13
+2026-08-07 10:59:40.620 INFO    WorldPlugIns (Main): Deinitializing plugins...
+2026-08-07 10:59:41.431 INFO    TERRAIN (Main): lSystem::exit()
+2026-08-07 10:59:41.432 INFO    TERRAIN (Main): lSystem::CleanScenes()
+2026-08-07 10:59:41.452 INFO    INTER (764): ITerrainGraphicsEntryPoint::close()
+2026-08-07 10:59:41.479 INFO    INTER (Main): ITerrainEntryPoint::close()
+2026-08-07 10:59:41.758 INFO    INTER (Main): ITerrainGraphicsEntryPoint::close()
+2026-08-07 10:59:41.758 INFO    INTER (Main): ITerrainEntryPoint::close()
+2026-08-07 10:59:41.766 WARNING SCENE (764): Scene was removed with 75 alive objects
+2026-08-07 10:59:41.897 INFO    DX11BACKEND (764): DX11Renderer::shutdown()
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): NVIDIA API exit OK
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): textures_count: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): textures_size: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): buffers_count: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): buffers_size: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): CB_count: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): CB_size: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): SB_count: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): SB_size: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): IB_count: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): IB_size: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): VB_count: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): VB_size: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): total_buffers_size: 0
+2026-08-07 10:59:42.117 INFO    DX11BACKEND (764): total_size: 0
+2026-08-07 10:59:42.122 INFO    VISUALIZER (764): render thread has stopped
+=== Log closed.
