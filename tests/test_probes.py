@@ -421,6 +421,11 @@ def test_probe_assembles_the_whole_environment() -> None:
             "/etc/os-release": 'ID=fedora\nPRETTY_NAME="Fedora Linux 44"\nVERSION_ID=44\n',
             **gpu_files("0x10de", "nvidia"),
             "/sys/module/nvidia/version": "610.43.03\n",
+            "/sys/bus/usb/devices/1-2/idVendor": "131d\n",
+            "/sys/bus/usb/devices/1-2/idProduct": "0158\n",
+            "/sys/bus/usb/devices/1-2/busnum": "1\n",
+            "/sys/bus/usb/devices/1-2/devnum": "7\n",
+            "/sys/bus/usb/devices/1-2/product": "TrackIR 5\n",
         },
         env={"DCS_LINUX_ROOT": "/data/dcs", "DCS_LINUX_TOOLCHAIN": "/data/toolchain"},
         executables={"curl": "/usr/bin/curl"},
@@ -434,6 +439,7 @@ def test_probe_assembles_the_whole_environment() -> None:
     assert environment.filesystem == "btrfs"
     assert environment.layout.game == Path("/data/dcs/game")
     assert not environment.install_state.prefix_exists
+    assert environment.head_tracking.trackers[0].name == "TrackIR 5"
 
 
 class TestKernel:

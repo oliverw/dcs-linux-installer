@@ -6,15 +6,19 @@ import pytest
 
 from dcs_linux.checks import (
     GIB,
+    HEAD_TRACKING_CHECKS,
     REQUIRED_FREE_BYTES,
     CheckResult,
     Status,
     check_d3dcompiler,
+    check_dcs_head_tracking,
     check_disk_space,
     check_distro,
     check_external_tools,
     check_game_location,
     check_gpu,
+    check_head_tracker,
+    check_opentrack,
     check_proton_builds,
     check_reflink_filesystem,
     check_saved_games_mapping,
@@ -25,6 +29,12 @@ from dcs_linux.checks import (
     run_checks,
 )
 from dcs_linux.distro import Family
+from dcs_linux.headtracking import (
+    OPENTRACK_INSTALL,
+    RULE_FILE,
+    HeadTracking,
+    install_rule_command,
+)
 from dcs_linux.probes import Gpu, InstallState, Umu
 from dcs_linux.system import DiskUsage
 from tests.environments import (
@@ -35,6 +45,7 @@ from tests.environments import (
     STEAMOS,
     bare_environment,
     healthy_environment,
+    with_tracker,
 )
 
 
@@ -300,3 +311,121 @@ def test_only_a_fail_blocks() -> None:
     for status in (Status.PASS, Status.WARN, Status.SKIP):
         assert not CheckResult(name="x", status=status, detail="").is_blocking
     assert CheckResult(name="x", status=Status.FAIL, detail="").is_blocking
+
+
+class TestHeadTrackerRow:
+    def test_no_device_is_reported_calmly_and_skipped(self) -> None:
+        result = check_head_tracker(healthy_environment())
+        assert result.status is Status.SKIP
+        assert "no" in result.detail.lower()
+        assert result.remediation is None
+
+    def test_an_accessible_tracker_passes_and_is_named(self) -> None:
+        result = check_head_tracker(healthy_environment(head_tracking=with_tracker()))
+        assert result.status is Status.PASS
+        assert "TrackIR 5" in result.detail
+        assert "/dev/bus/usb/001/007" in result.detail
+
+    def test_an_unreadable_tracker_warns_with_the_rule_to_install(self) -> None:
+        """The mundane reason head tracking fails on Linux."""
+        result = check_head_tracker(healthy_environment(head_tracking=with_tracker(access=False)))
+        assert result.status is Status.WARN
+        assert result.remediation is not None
+        assert result.remediation.startswith(install_rule_command())
+        assert "replug" in result.remediation
+
+    def test_whether_the_udev_rule_is_installed_is_always_stated(self) -> None:
+        without = check_head_tracker(healthy_environment(head_tracking=with_tracker()))
+        with_rule = check_head_tracker(
+            healthy_environment(head_tracking=with_tracker(rule=RULE_FILE))
+        )
+        assert "no udev rule" in without.detail
+        assert str(RULE_FILE) in with_rule.detail
+
+    def test_a_rule_that_is_installed_and_still_not_working_says_what_to_do_next(self) -> None:
+        """Writing the rule a second time would not help; reconnecting might."""
+        tracking = with_tracker(access=False, rule=RULE_FILE)
+        result = check_head_tracker(healthy_environment(head_tracking=tracking))
+        assert result.status is Status.WARN
+        assert result.remediation is not None
+        assert "udevadm trigger" in result.remediation
+        assert "sudo tee" not in result.remediation
+
+    def test_the_tool_only_ever_prints_the_privileged_command(self) -> None:
+        assert install_rule_command().count("sudo") >= 1
+
+
+class TestOpentrackRow:
+    def test_installed_passes_and_says_where(self) -> None:
+        tracking = replace(with_tracker(), opentrack="/usr/bin/opentrack")
+        result = check_opentrack(healthy_environment(head_tracking=tracking))
+        assert result.status is Status.PASS
+        assert "/usr/bin/opentrack" in result.detail
+
+    def test_absent_with_no_tracker_is_not_worth_nagging_about(self) -> None:
+        assert check_opentrack(healthy_environment()).status is Status.SKIP
+
+    def test_a_tracker_with_no_opentrack_warns_and_says_how_to_install_it(self) -> None:
+        result = check_opentrack(healthy_environment(head_tracking=with_tracker()))
+        assert result.status is Status.WARN
+        assert result.remediation is not None
+        assert OPENTRACK_INSTALL in result.remediation
+
+    def test_flatpak_itself_is_installed_first_when_it_is_missing(self) -> None:
+        tracking = replace(with_tracker(), flatpak=False)
+        result = check_opentrack(healthy_environment(head_tracking=tracking))
+        assert result.remediation is not None
+        assert result.remediation.startswith("sudo dnf install flatpak")
+
+    def test_an_immutable_base_is_never_told_to_run_a_package_manager(self) -> None:
+        tracking = replace(with_tracker(), flatpak=False)
+        result = check_opentrack(healthy_environment(distro=STEAMOS, head_tracking=tracking))
+        assert result.remediation is not None
+        assert "pacman" not in result.remediation
+
+
+class TestDcsHeadTrackingRow:
+    def test_skipped_when_nothing_suggests_head_tracking_is_wanted(self) -> None:
+        assert check_dcs_head_tracking(healthy_environment()).status is Status.SKIP
+
+    def test_skipped_before_there_is_a_prefix_to_read(self) -> None:
+        environment = bare_environment(head_tracking=with_tracker())
+        result = check_dcs_head_tracking(environment)
+        assert result.status is Status.SKIP
+        assert "no prefix yet" in result.detail
+
+    def test_a_registered_wine_bridge_passes(self) -> None:
+        tracking = replace(with_tracker(), wine_bridge=True)
+        assert check_dcs_head_tracking(healthy_environment(head_tracking=tracking)).status is (
+            Status.PASS
+        )
+
+    def test_a_tracker_dcs_cannot_see_warns_and_names_the_prefix(self) -> None:
+        result = check_dcs_head_tracking(healthy_environment(head_tracking=with_tracker()))
+        assert result.status is Status.WARN
+        assert result.remediation is not None
+        assert str(LAYOUT.prefix) in result.remediation
+
+    def test_opentrack_alone_is_enough_to_engage_the_row(self) -> None:
+        """opentrack tracks a face through a webcam, with no TrackIR anywhere."""
+        tracking = HeadTracking(opentrack="/usr/bin/opentrack", flatpak=True)
+        assert check_dcs_head_tracking(healthy_environment(head_tracking=tracking)).status is (
+            Status.WARN
+        )
+
+
+def test_head_tracking_never_blocks_a_check() -> None:
+    """A missing or unreadable tracker must never make `check` exit non-zero.
+
+    Head tracking is a nice-to-have; DCS runs without it. A blocking failure
+    here would stop `install` and tell a user with no tracker that their
+    machine is not ready.
+    """
+    broken = with_tracker(access=False)
+    for environment in (
+        healthy_environment(head_tracking=broken),
+        bare_environment(head_tracking=broken),
+        healthy_environment(head_tracking=HeadTracking()),
+    ):
+        rows = [check(environment) for check in HEAD_TRACKING_CHECKS]
+        assert not has_blocking_failure(rows)

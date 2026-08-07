@@ -50,6 +50,14 @@ class System(Protocol):
 
     def is_symlink(self, path: Path) -> bool: ...
 
+    def is_accessible(self, path: Path) -> bool:
+        """Whether the current user can read *and* write `path`.
+
+        Asked of device nodes, where the answer is rarely the mode bits alone:
+        udev's `uaccess` tag grants the logged-in seat an ACL, so reasoning
+        from owner and group would call an accessible tracker inaccessible.
+        """
+
     def resolve(self, path: Path) -> Path:
         """The path with symlinks followed, or unchanged if it cannot be."""
 
@@ -108,6 +116,9 @@ class RealSystem:
             return path.resolve()
         except OSError:
             return path
+
+    def is_accessible(self, path: Path) -> bool:
+        return os.access(path, os.R_OK | os.W_OK)
 
     def list_dir(self, path: Path) -> list[str]:
         try:

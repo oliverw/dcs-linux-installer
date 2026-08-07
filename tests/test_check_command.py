@@ -17,6 +17,7 @@ from tests.environments import (
     STEAMOS,
     bare_environment,
     healthy_environment,
+    with_tracker,
 )
 
 runner = CliRunner()
@@ -176,3 +177,39 @@ class TestDiscoveryOutput:
         assert steam["game"] == str(STEAM_INSTALL.game)
         assert steam["prefix"] == str(STEAM_INSTALL.prefix)
         assert steam["targeted"] is False
+
+
+def test_head_tracking_rows_reach_the_table(monkeypatch: pytest.MonkeyPatch) -> None:
+    use(monkeypatch, healthy_environment(head_tracking=with_tracker(access=False)))
+    result = runner.invoke(cli.app, ["--no-color", "check"])
+    assert "TrackIR 5" in result.stdout
+    assert "udev" in result.stdout
+
+
+def test_an_unreadable_tracker_does_not_make_check_fail(monkeypatch: pytest.MonkeyPatch) -> None:
+    """DCS flies without head tracking, so it can never be a blocking problem."""
+    use(monkeypatch, healthy_environment(head_tracking=with_tracker(access=False)))
+    result = runner.invoke(cli.app, ["check"])
+    assert result.exit_code == 0
+    assert "No blocking problems" in result.stdout
+
+
+def test_a_machine_with_no_tracker_says_so_without_erroring(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    use(monkeypatch, healthy_environment())
+    result = runner.invoke(cli.app, ["--no-color", "check"])
+    assert result.exit_code == 0
+    assert "no NaturalPoint or TrackIR device connected" in _unwrapped(result.stdout)
+
+
+def test_head_tracking_rows_are_in_the_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    use(monkeypatch, healthy_environment(head_tracking=with_tracker()))
+    result = runner.invoke(cli.app, ["--json", "check"])
+    keys = {check["key"] for check in json.loads(result.stdout)["checks"]}
+    assert {"head_tracker", "opentrack", "head_tracking_in_dcs"} <= keys
+
+
+def _unwrapped(text: str) -> str:
+    """Rich folds long cells, so a sentence can arrive split across lines."""
+    return " ".join(text.split())

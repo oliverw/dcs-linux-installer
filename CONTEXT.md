@@ -221,6 +221,49 @@ loses the user's login and keybinds on every repair.
   the other two lifetimes are outside. It **refuses** if the game directory or
   saved games is inside the prefix — there, wiping is not a repair.
 
+## Head tracking
+
+The one peripheral in scope, and deliberately the only one. HOTAS, joysticks
+and throttles were cut, and they share this exact plumbing — udev rules and
+device permissions — so the scope line is drawn in code: detection matches the
+**NaturalPoint** USB vendor id (`131d`) and nothing else. A second vendor id in
+`dcs_linux.headtracking` is how that decision gets quietly reversed.
+
+- **tracker** — a connected NaturalPoint device, named by the `product` string
+  the device itself advertises. There is no product-id table on purpose: a
+  hard-coded catalogue would claim to recognise hardware nobody here has seen,
+  and misname half of it. An unnamed device reports as `131d:<idProduct>`.
+- **access** — whether *this user* can open the tracker's `/dev/bus/usb` node.
+  The mundane reason head tracking fails on Linux: the device is present, and
+  the account is not allowed to talk to it. Read with `os.access`, never from
+  the mode bits, because udev's `uaccess` tag grants the logged-in seat an ACL
+  that owner-and-group reasoning cannot see.
+- **udev rule** — any file under udev's rules directories that names the
+  vendor id, whoever wrote it: by hand, or shipped by linuxtrack or an
+  opentrack package. Installing one needs root, so the tool **prints the exact
+  command and runs none of it**. The rule it emits uses `TAG+="uaccess"` rather
+  than the `MODE="0666"` of the old TrackIR recipes, which hands the device to
+  every account on the machine — and is numbered **70**, not the customary 99,
+  because systemd applies uaccess ACLs from `73-seat-late.rules` and a tag set
+  after that is a tag nothing reads.
+- **wine bridge** — the `NPClient Location` registry key in the prefix, which
+  is how DCS finds NaturalPoint's client DLL and therefore the only part of
+  the opentrack chain that is readable from disk. Whether opentrack is
+  *running*, and whether the axes are bound, is not.
+  **Unverified**: reasoned from the NaturalPoint client interface and
+  opentrack's Wine output protocol, not observed on hardware.
+
+None of these rows ever **fails**. DCS flies without head tracking, so a
+blocking row here would stop `install` on a machine that is otherwise ready.
+They also stay quiet: with no tracker connected and no opentrack installed,
+nothing on the machine says head tracking is wanted, and all three skip. A row
+that warns on every run teaches users to skim the table.
+
+opentrack is in no mainstream distro's own repositories, so the install advice
+is **Flathub** on every family — the one route that also works on the
+image-based bases (ADR-0006). Only flatpak itself, when it is missing, is
+answered for per distro.
+
 ## Known failure signatures
 
 Recorded so `check` (#5), `report` (#7) and `verify` (#12) can tell noise from

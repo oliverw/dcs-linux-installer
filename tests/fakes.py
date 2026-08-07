@@ -20,6 +20,10 @@ class FakeSystem:
     `symlinks` records which paths are links; `links` additionally says where
     a link points, which is what makes two spellings of one directory —
     `~/.steam/root` and `~/.local/share/Steam` — resolve to the same place.
+
+    `accessible` lists the paths the current user may read and write. Only
+    device nodes are asked, and a node absent from the set is the ordinary
+    Linux head-tracking failure: present, but not ours to open.
     """
 
     def __init__(
@@ -29,6 +33,7 @@ class FakeSystem:
         blobs: dict[str, bytes] | None = None,
         directories: set[str] | None = None,
         symlinks: set[str] | None = None,
+        accessible: set[str] | None = None,
         links: dict[str, str] | None = None,
         executables: dict[str, str] | None = None,
         commands: dict[str, CommandResult] | None = None,
@@ -44,8 +49,12 @@ class FakeSystem:
         self.directories = {Path(path) for path in (directories or set())}
         self.links = {Path(source): Path(target) for source, target in (links or {}).items()}
         self.symlinks = {Path(path) for path in (symlinks or set())} | set(self.links)
+        self.accessible = {Path(path) for path in (accessible or set())}
         self.executables = executables or {}
         self.commands = commands or {}
+        # Every command this machine was asked to run, so a test can assert
+        # that a read-only probe ran none at all.
+        self.runs: list[list[str]] = []
         self.binary_commands = binary_commands or {}
         self.disk = disk
         self.filesystem = filesystem
@@ -69,6 +78,9 @@ class FakeSystem:
         # Deliberately not resolved: the question is about this path itself.
         return path in self.symlinks
 
+    def is_accessible(self, path: Path) -> bool:
+        return self.resolve(path) in self.accessible
+
     def resolve(self, path: Path) -> Path:
         for source, target in self.links.items():
             if path == source:
@@ -88,6 +100,7 @@ class FakeSystem:
         return self.executables.get(name)
 
     def run(self, command: list[str]) -> CommandResult | None:
+        self.runs.append(command)
         return self.commands.get(" ".join(command))
 
     def run_binary(self, command: list[str]) -> bytes | None:

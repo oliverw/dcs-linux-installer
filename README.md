@@ -78,6 +78,36 @@ It reports your distro and whether its base system is immutable, your GPU and dr
 
 Once DCS is installed it also checks the things that break it in ways the logs never mention — DLSS upscaling, the missing Segoe fonts the AH-64D needs, `d3dcompiler_47`, and whether the game and your saved games really do live outside the disposable prefix.
 
+#### Head tracking
+
+`check` also reports on head tracking, because on Linux it usually fails for a boring reason: the TrackIR is plugged in and your account is not allowed to open it.
+
+```
+┏━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃      ┃ Check                ┃ Result                                                             ┃
+┡━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ warn │ Head tracker         │ TrackIR 5 at /dev/bus/usb/001/007; no udev rule installed, and     │
+│      │                      │ this user cannot open the device, so nothing will move in the      │
+│      │                      │ cockpit                                                            │
+│      │                      │ → printf '%s\n' 'SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device",     │
+│      │                      │ ATTRS{idVendor}=="131d", TAG+="uaccess"' | sudo tee                │
+│      │                      │ /etc/udev/rules.d/70-trackir.rules && sudo udevadm control         │
+│      │                      │ --reload-rules && sudo udevadm trigger   # then unplug and replug  │
+│      │                      │ the tracker                                                        │
+│ warn │ opentrack            │ a head tracker is connected but opentrack is not installed, so DCS │
+│      │                      │ has nothing feeding it head movement                               │
+│      │                      │ → flatpak install flathub io.github.opentrack.opentrack            │
+│ warn │ Head tracking in DCS │ nothing in the prefix points DCS at an NPClient bridge, so head    │
+│      │                      │ movement will not reach the cockpit                                │
+│      │                      │ → in opentrack set Output to 'Wine' and point it at                │
+│      │                      │ ~/dcs-linux/prefix                                                 │
+└──────┴──────────────────────┴────────────────────────────────────────────────────────────────────┘
+```
+
+Installing a udev rule needs root, so the tool prints the command and never runs it. None of these rows can fail the check — DCS flies without head tracking — and with no tracker connected and no opentrack installed, all three simply skip.
+
+Head tracking is the only peripheral in scope. HOTAS, joysticks and throttles are not, and detection is limited to the NaturalPoint vendor id so it stays that way.
+
 Paths default to `~/dcs-linux`, `~/.cache/dcs-linux/toolchain` and `~/.local/state/dcs-linux`; override with `DCS_LINUX_ROOT`, `DCS_LINUX_TOOLCHAIN` and `DCS_LINUX_STATE` (which also honours `XDG_STATE_HOME`). `DCS_LINUX_GAME` moves the game directory on its own — the same choice `install --game-dir` makes, but remembered, so every later command measures the right drive.
 
 #### The DCS installs you already have

@@ -107,6 +107,15 @@ _PACKAGES: dict[str, dict[Family, str]] = {
         Family.ARCH: "imagemagick",
         Family.SUSE: "ImageMagick",
     },
+    # Named the same everywhere, but routed through here anyway so an
+    # immutable base still gets layering or container advice rather than a
+    # `sudo dnf install` that the next system update undoes (ADR-0006).
+    "flatpak": {
+        Family.FEDORA: "flatpak",
+        Family.DEBIAN: "flatpak",
+        Family.ARCH: "flatpak",
+        Family.SUSE: "flatpak",
+    },
     "dejavu-fonts": {
         Family.FEDORA: "dejavu-sans-fonts",
         Family.DEBIAN: "fonts-dejavu-core",
@@ -121,6 +130,7 @@ _DEFAULT_PACKAGE = {
     "bwrap": "bubblewrap",
     "glxinfo": "glxinfo",
     "magick": "ImageMagick",
+    "flatpak": "flatpak",
     "dejavu-fonts": "the DejaVu fonts",
 }
 
