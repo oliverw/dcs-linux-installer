@@ -47,6 +47,9 @@ from dcs_linux.report import (
     render_table,
     verify_json,
 )
+from dcs_linux.reset import apply as apply_reset
+from dcs_linux.reset import plan as reset_plan
+from dcs_linux.reset import stores_with_records
 from dcs_linux.runner import RealRunner
 from dcs_linux.system import RealSystem, System
 from dcs_linux.updater import WEB_INSTALLER_NAME, handoff
@@ -452,6 +455,46 @@ def _emit_outcomes(ctx: typer.Context, action: str, outcomes: list[Outcome]) -> 
 
     if any(not outcome.ok for outcome in outcomes):
         raise typer.Exit(code=1)
+
+
+@app.command()
+def reset(
+    patches: bool = typer.Option(
+        False,
+        "--patches",
+        help="Also delete patch backups and state. Refuses while a patch remains revertible.",
+    ),
+    yes: bool = typer.Option(False, "--yes", help="Delete without asking for confirmation."),
+) -> None:
+    """Clear the install register, and optionally patch stores.
+
+    The prefix, game directory and saved games are separate lifetimes. Reset
+    owns only the tool state, so it never touches any of them.
+    """
+    system = RealSystem()
+    layout = resolve_layout(system)
+    planned = reset_plan(system, layout, patches=patches)
+    protected = stores_with_records(system, planned.stores)
+    if protected:
+        typer.echo(
+            "patch stores still contain reversible patches; run `dcs-linux patch revert` first"
+        )
+        raise typer.Exit(code=1)
+    if not planned.has_deletions:
+        typer.echo("Nothing to delete.")
+        return
+
+    typer.echo("Will delete:")
+    if planned.register_exists:
+        typer.echo(f"  {layout.installs_register}")
+    for store in planned.stores:
+        typer.echo(f"  {store.directory} (and everything under it)")
+    if not yes and not typer.confirm("Continue?", default=False):
+        typer.echo("Nothing was deleted.")
+        return
+
+    apply_reset(RealWriter(), layout, planned)
+    typer.echo("Reset complete.")
 
 
 @app.command()
