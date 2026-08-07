@@ -11,9 +11,11 @@ and #11 (updater handoff) lift their logic from, plus the transcript that
 
 Two halves, kept apart on purpose:
 
-  * INSTALL LOGIC   -- what #10/#11 will carry into the real tool.
-  * CACHE HARNESS   -- dev-only scaffolding that makes iteration affordable.
-                       Never ships. Every harness symbol is prefixed `harness_`.
+  * INSTALL LOGIC     -- what #10/#11 will carry into the real tool.
+  * ITERATION HARNESS -- dev-only scaffolding that makes rebuilding against a
+                         536 GB install affordable, by snapshotting it with
+                         btrfs/xfs reflinks. Never ships. Every harness symbol
+                         is prefixed `harness_`.
 
 Layout, three independent lifetimes under --data-root
 (default /run/media/oliver/Data):
@@ -548,7 +550,8 @@ def launch_dcs_updater(
 
     This is interactive by design (see issue #1's Flow decision) -- a human
     logs in and picks modules. The script's job stops at getting the updater
-    on screen with the cache harness in place.
+    on screen with the prefix built and the D:\\ mapping already in place --
+    without that mapping, the install lands inside the disposable prefix.
     """
     installed = find_installed_updater(layout)
     if installed is not None:
@@ -705,28 +708,22 @@ def harness_restore_game_from_gold(layout: Layout, journal: RunJournal, *, dry_r
         staging_dir.rename(layout.game_dir)
 
 
-# Hosts the DCS updater pulls content from. Both v4 and v6 must be pinned:
-# glibc still goes to DNS for AAAA if only an A record is in /etc/hosts,
-# which silently defeats the whole redirect (RUN 0004).
-# ONLY content hosts belong here. RUN 0009: redirecting
-# www.digitalcombatsimulator.com breaks the updater outright --
-# "ERROR: Conection to server 'www.digitalcombatsimulator.com' failed".
-# www is the API/auth host and is HTTPS-only, so pointing it at an
-# http-only cache means nothing is listening on 443 and the connection
-# dies before any HTTP is spoken. Caching it would need TLS interception,
-# which issue #2 rules out. updates.* refuses 443 outright, so it is
-# genuinely http-only and safe to redirect.
 # POSTMORTEM (run 0010): there is no HTTP cache harness, and there cannot be
-# one. Issue #2 assumed "the HTTP servers are plain http://, so the traffic is
-# cacheable with no TLS interception". The host does offer plain http, but the
-# updater does not use it -- it downloads over HTTPS to cdn77. An HTTP proxy
-# cache never sees that traffic, and intercepting it needs a MITM certificate,
-# which the ticket rules out.
+# one. Issue #2 assumed "the HTTP servers are plain http://, so the
+# traffic is cacheable with no TLS interception". The host does offer plain
+# http, but the updater does not use it -- it downloads over HTTPS to cdn77.
+# An HTTP proxy cache never sees that traffic, and intercepting it needs a
+# MITM certificate, which the ticket rules out.
 #
 # A working nginx/podman cache plus an /etc/hosts redirect was built and
 # verified (MISS then HIT against the real CDN) before this was noticed. It
 # cached the probe perfectly and zero bytes of DCS. Deleted rather than left
-# as dead machinery, along with the machine state it required.
+# as dead machinery, along with the machine state it required. No step in this
+# script gates on it, and torrent/P2P is left at the setting a real user has.
+#
+# The one consequence that outlived the harness is in ADR-0002: never redirect
+# www.digitalcombatsimulator.com. It is the HTTPS-only API/auth host, and
+# pointing it at an http listener kills the updater outright (RUN 0009).
 
 
 # --------------------------------------------------------------------------
@@ -808,8 +805,6 @@ def main(argv: list[str] | None = None) -> int:
     apply_font_patch(layout, journal, dry_run=args.dry_run)
     map_game_and_saved_games(layout, dry_run=args.dry_run)
 
-    # Gate only the step that actually hits the ED CDN -- everything above
-    # (toolchain, prefix, drive mapping) works fine without the harness.
     versions = pinned_versions(layout)
     try:
         if not args.launch_only:
